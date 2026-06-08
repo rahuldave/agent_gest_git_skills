@@ -41,6 +41,30 @@ bugs, behavioral regressions, safety, error handling, and missing tests. Treat
 `Findings: None` as a precise statement about blocking or actionable code-review
 findings, not as the whole review.
 
+For non-trivial changes, act as an adversarial review aggregator. Apply distinct
+review lenses, delegating them to independent read-only review sub-agents when
+sub-agents are available, authorized, and useful:
+
+- correctness and regression risk
+- test adequacy and missing edge cases
+- Git/GitButler workflow safety
+- docs, setup, and command-contract drift
+- security, privacy, or data safety when relevant
+- browser/UI behavior when relevant
+- language/runtime idioms when the project profile is known
+
+If sub-agents are not used, run the lenses explicitly yourself. Gest mutations,
+task completion, commits, pushes, and PR decisions should remain centralized
+unless deliberately assigned.
+
+Test review should ask:
+
+- Would the new or changed test fail against the old code?
+- Does it assert behavior rather than implementation trivia?
+- Are semantic dependers and edge cases covered?
+- Does the test scope match the workflow kind, blast radius, and
+  `test.strategy`?
+
 After findings, add reviewer judgment when it would help the user: call out
 non-blocking opinions about clarity, maintainability, UX, naming, fit with local
 patterns, or tradeoffs. Label these separately from findings so taste-level
@@ -55,6 +79,12 @@ For workflow changes, review VCS safety as behavior: flag any instruction that
 allows raw `git commit`/`git switch`/`git checkout` in GitButler mode, any plan
 that launches parallel write agents in one GitButler workspace, or any stacked
 branch flow that lacks bottom-up integration/review guidance.
+
+For reusable Git/GitButler/JJ workflow changes, also verify adapter boundaries:
+plain Git branches, GitButler-managed branches/stacks, physical git worktrees,
+and JJ bookmarks/workspaces must not be collapsed into one generic model. In
+this Git/GitButler skill family, preserve `but` write commands in GitButler
+mode and preserve physical git worktrees as the parallel write primitive.
 
 ## Tag And Dependency Findings
 

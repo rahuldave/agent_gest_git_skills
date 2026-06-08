@@ -25,6 +25,24 @@ There are four distinct concepts:
 The mode of an iteration does not determine whether work can run in parallel.
 Parallelism depends on task independence, file overlap, and risk.
 
+Workflow mode also does not determine how tests are written. Treat these as
+orthogonal axes:
+
+```text
+workflow.kind=session|development
+test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
+test.scope=focused|regression|integration|browser|full
+review.depth=solo|adversarial|multi-agent
+language.profile=python|ruby|typescript|go|rust|mixed|unknown
+contract.source=agents-md|just-agent-contract|manual
+```
+
+Session work may use `test-first` when the behavior is small and clear, such as
+a regression fix. Development work may begin with `characterization-first` or
+`exploratory` when the code needs to be understood before a good red/green loop
+exists. Development mode raises the expected breadth of verification and review;
+it does not force one test strategy.
+
 ## Branch, Stack, And Worktree Policy
 
 Main should stay integration-ready. Any Gest-tracked workflow that writes files
@@ -104,6 +122,11 @@ vcs.workspace_path=<absolute-path>
 vcs.integration=fast-forward|squash|rebase|merge|stacked-pr|local-only
 vcs.owner_session=<thread-or-agent-label>
 vcs.write_scope=<paths-or-subsystems>
+test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
+test.scope=focused|regression|integration|browser|full
+review.depth=solo|adversarial|multi-agent
+language.profile=python|ruby|typescript|go|rust|mixed|unknown
+contract.source=agents-md|just-agent-contract|manual
 ```
 
 `vcs.parallel_allowed=false` is required when
@@ -200,6 +223,51 @@ Gest tag vocabulary. Record `classification.tags.reviewed=true`,
 For code-facing work, use `ast-grep` to inspect semantic dependers of changed
 contracts. If a tag or dependency search reveals coupled surfaces, expand the
 current task or create/link child tasks before implementation is complete.
+
+## Testing Strategy
+
+`gte` owns both test design and test execution. For implementation tasks, choose
+and record a strategy before editing production code when practical:
+
+- `test-first`: write the smallest meaningful failing test, run it to confirm a
+  useful red failure, implement, confirm green, refactor, then run broader
+  checks.
+- `characterization-first`: capture current behavior before refactoring,
+  migration, or risky semantic change.
+- `test-after`: implement first only when test-first is awkward or the expected
+  behavior is still forming; add focused behavior coverage before completion.
+- `exploratory`: probe unknown APIs, UI affordances, or tooling; record why
+  test-first does not fit and what later test boundary should be created.
+- `no-test-needed`: docs-only, planning-only, or pure workflow prose, with a
+  concrete reason.
+
+For bug fixes, parsers, exports, imports, persistence, APIs, and shared
+contracts, prefer `test-first` or `characterization-first` unless there is a
+clear reason not to. Completion notes should include the strategy, focused
+commands, broader commands, and any deferred test boundary.
+
+## Adversarial Review
+
+`grv` is the local review aggregator and should become adversarial for
+non-trivial changes. It should review through distinct lenses:
+
+- correctness and regression risk
+- test adequacy, including whether new tests would fail on the old code
+- Git/GitButler workflow safety
+- docs, setup, and command-contract drift
+- security, privacy, or data safety when relevant
+- browser/UI behavior when relevant
+- language/runtime idioms when the profile is known
+
+When sub-agents are available and useful, these lenses may be delegated as
+independent read-only reviews. If sub-agents are not used, Codex should still
+apply the lenses explicitly. Gest mutations and checkpoint decisions should
+remain centralized unless deliberately assigned.
+
+For reusable workflow changes, reviewers must preserve adapter boundaries:
+plain Git branches, GitButler branches/stacks, and physical git worktrees are
+different execution/review tools. Do not rewrite GitButler stack guidance into
+jj bookmark semantics or treat GitButler parallel lanes as agent isolation.
 
 ## Tags
 
