@@ -507,15 +507,28 @@ local `.gest/` sync can make read-looking commands perform database writes.
 
 ## Serialization And Storage
 
-Gest v0.5 stores the canonical data in:
+Current forked Gest builds from June 8, 2026 and later prefer project-local
+storage for local projects:
+
+```text
+<project-root>/.gest/gest.db
+```
+
+This is the expected path when the project has `.gest/` and the user has not
+set an explicit `database.url` or `storage.data_dir` override. In Codex, that
+usually avoids sandbox write failures because the SQLite file is inside the
+workspace writable root. Continue to serialize Gest commands because local sync
+and SQLite writes can still conflict within one workspace.
+
+Legacy or stock system Gest builds may still store the canonical data in:
 
 ```text
 ~/Library/Application Support/gest/gest.db
 ```
 
-The `.gest/` directory is a local sync mirror. The database is the source of
-truth, but commands can import/export mirror changes. Debug output has shown
-`sync import` running before `gest task list`.
+For those builds, the `.gest/` directory is a local sync mirror. The database is
+the source of truth, but commands can import/export mirror changes. Debug output
+has shown `sync import` running before `gest task list`.
 
 Current SQLite pragmas observed locally:
 
@@ -525,9 +538,9 @@ busy_timeout=0
 locking_mode=normal
 ```
 
-The Gest maintainer noted that local and global modes both use the same global
-database, so the readonly warning is not inherently a local-mode issue. The
-recommended permission normalization is:
+Before the project-local fork, local and global modes both used the same global
+database, so the readonly warning was not inherently a local-mode issue. The
+recommended legacy permission normalization is:
 
 ```bash
 chmod 755 ~/Library/Application\ Support/gest/
@@ -540,16 +553,18 @@ sync import, while the same trace run outside the sandbox did not. Treat that
 warning as likely environment/sandbox-related unless it also reproduces in a
 normal terminal.
 
-In Codex, this happens because the canonical Gest database is outside the
-workspace writable roots. A command such as `gest task list` can still write
-before listing because local sync imports mirrored `.gest/` state into tables
-such as `authors`, `tags`, `tasks`, `relationships`, `transactions`, and
-`sync_digests`.
+In Codex, the legacy failure happens because the canonical Gest database is
+outside the workspace writable roots. A command such as `gest task list` can
+still write before listing because local sync imports mirrored `.gest/` state
+into tables such as `authors`, `tags`, `tasks`, `relationships`,
+`transactions`, and `sync_digests`.
 
 Codex command policy:
 
-- run Gest mutations with `require_escalated` because they must write to the
-  global database
+- with the newer project-local fork, prefer `.gest/gest.db` and avoid sandbox
+  escalation unless another path or command requires it
+- with legacy or stock system Gest, run Gest mutations with `require_escalated`
+  because they may need to write to the global database
 - for read-looking Gest commands, retry with `require_escalated` if they emit
   `attempt to write a readonly database` or a sync-import readonly warning
 - request or use a narrow approval prefix such as `["gest"]`
@@ -561,7 +576,8 @@ Therefore:
 - do not run Gest commands in parallel during normal Codex work
 - use `--json` and `--quiet` for parseable outputs
 - verify state after any `database is locked` or sync warning before retrying
-- consider WAL/busy-timeout experiments only after backing up the database
+- when diagnosing storage, check `gest --version`, `gest config show`, and
+  whether `.gest/gest.db` exists before assuming the global path is canonical
 
 ## Deferred Hooks
 
