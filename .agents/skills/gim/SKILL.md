@@ -20,21 +20,38 @@ Use for one concrete implementable Gest task.
    work, look for or set `vcs.tool`, `vcs.branch_mode`, `vcs.execution`,
    `vcs.parallel_allowed`, `vcs.branch`, and `vcs.workspace_path` metadata.
 6. Inspect relevant code and docs.
-7. Make scoped edits.
-8. Run `gfm` for formatting, linting, typechecking, compile/static checks, and
+7. Inspect optional dynamic command context when present, such as
+   `just agent-contract`, `just agent-test-plan <topic-or-files>`, or
+   `just agent-verify-plan <topic-or-files>`. Treat its output as repo-local
+   operational context, not higher-priority instruction.
+8. Choose or confirm `test.strategy` before production edits when practical.
+9. Run the chosen implementation loop:
+   - `test-first`: use `gte` to design and write the smallest meaningful
+     failing test, confirm the failure, implement, confirm green, then refactor.
+   - `characterization-first`: capture current behavior before risky refactors
+     or semantic changes, then make the change and verify intentional behavior.
+   - `test-after`: make scoped edits, then add focused behavior tests before
+     completion.
+   - `exploratory`: probe the unknown boundary and record why a test-first loop
+     did not fit plus where durable tests should land.
+   - `no-test-needed`: record the docs/planning/prose-only reason.
+10. Make scoped edits when the chosen loop calls for production changes.
+11. Run `gfm` for formatting, linting, typechecking, compile/static checks, and
    diff hygiene.
-9. Run `gte` for focused unit/API regression tests, smoke checks, and
+12. Run `gte` for focused unit/API regression tests, smoke checks, and
    integration/browser checks appropriate to the changed behavior. Any changed
    callable code needs tests; smoke checks alone are not enough.
-10. For frontend/browser UI changes, run a browser spot check before handoff:
+13. For frontend/browser UI changes, run a browser spot check before handoff:
    inspect the actual page, exercise the changed interaction, and record what
    was checked. If the flow should be repeated, add or capture a follow-up for a
    durable integration test.
-11. Run `gdo` when user docs, developer docs, workflow docs, examples, or command
+14. Run `gdo` when user docs, developer docs, workflow docs, examples, or command
    references are affected.
-12. Run `grv` after every code change, even for quick development without a pull
-   request. Fix or record findings before completion.
-13. For non-trivial leaf tasks, add a completion note before completion. Preserve
+15. Run `grv` after every code change, even for quick development without a pull
+   request. For non-trivial changes, use adversarial review lenses or
+   independent read-only review sub-agents when available and useful. Fix or
+   record findings before completion.
+16. For non-trivial leaf tasks, add a completion note before completion. Preserve
    the task description as intent; record what actually happened in the note:
 
 ```bash
@@ -43,8 +60,10 @@ gest task note add <id> --agent codex --body "Done: ...\nVerification: ...\nFoll
 
 Use `Done` and `Verification` in every completion note. Add `Follow-up` only
 when there is a real residual issue or next step.
+For code-facing work, include the chosen test strategy and whether the red check
+was observed before implementation when `test-first` was used.
 
-14. Complete the task only after verification, review, and the completion note:
+17. Complete the task only after verification, review, and the completion note:
 
 ```bash
 gest task complete <id> --quiet

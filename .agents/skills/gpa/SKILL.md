@@ -97,6 +97,26 @@ workflow safety:
 - GitButler violations such as raw git writes in GitButler mode or shared
   GitButler workspace parallelism
 
+For non-trivial PRs, use adversarial review lenses. Delegate independent
+read-only lenses to review sub-agents when sub-agents are available, authorized,
+and useful; otherwise run the lenses explicitly yourself:
+
+- code behavior and regression risk
+- test adequacy, including whether new tests would fail on the old code
+- Git/GitButler branch, stack, worktree, push, and merge safety
+- PR body and sanitized Gest context accuracy
+- docs, setup, command-contract, release, and deployment drift
+- security, privacy, data, browser/UI, or language/runtime risk when relevant
+
+Gest mutations, approvals, merges, and post-merge bookkeeping should remain
+centralized unless deliberately assigned.
+
+For reusable workflow PRs, preserve adapter boundaries: plain Git branches,
+GitButler-managed branches/stacks, physical git worktrees, and JJ
+bookmarks/workspaces must remain distinct. In this Git/GitButler skill family,
+do not weaken `but` write-command guidance or treat GitButler parallel lanes as
+agent isolation.
+
 Treat `Findings: None` as a precise statement about blocking or actionable
 code-review findings, not as the whole PR review. If there are no findings, say
 so clearly and list residual risk.
@@ -139,6 +159,13 @@ Gest Context:
 
 Human Checklist:
 - <what the user should inspect manually>
+
+Adversarial Review:
+- Code behavior:
+- Test adequacy:
+- Workflow/VCS safety:
+- Docs/setup/contract drift:
+- Residual risk:
 
 Recommendation:
 - approve/request changes/hold

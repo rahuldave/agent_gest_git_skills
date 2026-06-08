@@ -24,6 +24,8 @@ with existing project files so local conventions are preserved.
 - `rust/rust-toolchain.toml`
 - `gitignore/browser-agent.gitignore` and `just/browser-agent.just`
 - `just/npm-local-cache.just`
+- `just/agent-contract.just`: optional dynamic agent context targets such as
+  `agent-contract`, `agent-test-plan`, and `agent-review-plan`.
 
 `gsu` should record the final command contract in `AGENTS.md` after composing
 or adapting these snippets.
