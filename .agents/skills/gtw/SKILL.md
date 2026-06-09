@@ -51,12 +51,20 @@ or were intentionally skipped.
 Serialize Gest commands. In this workspace, local `.gest/` sync can make
 read-looking commands write to SQLite.
 
-Codex sandbox note: Gest's canonical database lives at
+Codex sandbox note: current forked Gest builds from June 8, 2026 and later
+prefer the project-local database at `.gest/gest.db` when the project has
+`.gest/` and no explicit `database.url` or `storage.data_dir` override. That
+path is normally inside the writable workspace, so ordinary Gest commands do
+not need sandbox escalation just to reach SQLite.
+
+Legacy or stock system Gest builds may still store the canonical database at
 `~/Library/Application Support/gest/gest.db`, outside the workspace writable
-roots. Run Gest mutations with `require_escalated`. If a read-looking command
-emits `attempt to write a readonly database` or a sync-import readonly warning,
-retry it with `require_escalated`. Use a narrow approval prefix such as
-`["gest"]`.
+roots. Keep the compatibility workaround for those installations: run Gest
+mutations with `require_escalated`; if a read-looking command emits
+`attempt to write a readonly database` or a sync-import readonly warning, retry
+it with `require_escalated`; use a narrow approval prefix such as `["gest"]`.
+When unsure which mode is active, inspect `gest --version`, `gest config show`,
+and whether `.gest/gest.db` exists for the project.
 
 ```bash
 gest search "<short phrase>" --all --json

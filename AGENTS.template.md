@@ -51,6 +51,15 @@ gest task list --all --json
 gest iteration list --all --json
 ```
 
+Serialize Gest commands. Current forked Gest builds from June 8, 2026 and later
+prefer `.gest/gest.db` for local projects without explicit `database.url` or
+`storage.data_dir` overrides, which normally keeps SQLite inside the writable
+workspace. Legacy or stock system Gest builds may still use the global database
+at `~/Library/Application Support/gest/gest.db`; in sandboxed environments,
+keep the old workaround for those installs by running mutations with local
+approval and retrying readonly sync-import warnings with the same narrow
+`gest` approval.
+
 Use native Gest `child-of` / `parent-of` links for hierarchy. Tags are filters,
 not hierarchy. Claim one leaf task at a time, verify before completion, and keep
 long-lived outline parents open until the whole subtree is done.

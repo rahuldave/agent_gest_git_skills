@@ -9,7 +9,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_DB = Path.home() / "Library/Application Support/gest/gest.db"
+LEGACY_DB = Path.home() / "Library/Application Support/gest/gest.db"
 DEFAULT_SERVE_URL = "http://127.0.0.1:2300"
 
 
@@ -44,6 +44,13 @@ class Relationship:
     target_type: str
 
 
+def default_db_for(project_root: Path) -> Path:
+    local_db = project_root.resolve() / ".gest" / "gest.db"
+    if local_db.exists():
+        return local_db
+    return LEGACY_DB
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export the current Gest project's iteration/task graph as Mermaid HTML."
@@ -51,8 +58,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--db",
         type=Path,
-        default=DEFAULT_DB,
-        help=f"Gest SQLite database path. Default: {DEFAULT_DB}",
+        default=None,
+        help=(
+            "Gest SQLite database path. Default: <project-root>/.gest/gest.db "
+            f"when present, otherwise {LEGACY_DB}"
+        ),
     )
     parser.add_argument(
         "--project-root",
@@ -628,6 +638,9 @@ def render_html(
 
 def main() -> None:
     args = parse_args()
+    args.project_root = args.project_root.resolve()
+    if args.db is None:
+        args.db = default_db_for(args.project_root)
     with connect_read_only(args.db) as conn:
         project_id = resolve_project_id(conn, args.project_root)
         iteration_ids = resolve_iteration_ids(conn, project_id, args.iteration)
