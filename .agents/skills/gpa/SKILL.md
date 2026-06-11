@@ -234,16 +234,64 @@ gh pr merge <pr> --rebase --delete-branch
 
 After merging:
 
-1. Verify local branch state:
+1. Verify the merged branch actually contained the intended changes. For
+GitButler work especially, inspect the branch/merge diff instead of trusting
+workspace assignments or an empty commit:
 
 ```bash
-git fetch --all --prune
-git checkout <base>
+gh pr diff <pr> --patch
+git show --stat <merge-or-head-sha>
+```
+
+Empty GitButler commits or `WIP Assignments` commits with no file changes are
+red flags: reconcile them before merge or create a follow-up PR from a clean
+checkout.
+
+2. Restore a consistent local state.
+
+For a plain-Git workstream, synchronize the local mainline and prune deleted
+remotes:
+
+```bash
+git fetch --prune origin
+git switch <base>
 git pull --ff-only
 git status --short --branch
 ```
 
-2. Add a Gest note to the parent and relevant leaf:
+For a GitButler workstream, do not run raw branch-mutating Git while GitButler
+owns the workspace. If no further GitButler stack work remains, exit GitButler
+mode first:
+
+```bash
+but teardown
+git status --short --branch
+```
+
+Then, after teardown has left the repository in normal Git mode, synchronize the
+base branch:
+
+```bash
+git fetch --prune origin
+git switch <base>
+git pull --ff-only
+git status --short --branch
+```
+
+Confirm `<base>` and `origin/<base>` point to the same commit. If the PR branch
+is still present locally and is merged or patch-equivalent to `<base>`, delete
+it with `git branch -d <branch>`. This applies to both `session/*` and `gest/*`
+work branches; those names are review/workflow handles, not durable records.
+Do not delete a branch that is checked out in another worktree.
+
+The final handoff should not leave the user on `gitbutler/workspace` unless
+active GitButler work is intentionally continuing. `gitbutler/target` and
+`gitbutler/workspace` are GitButler implementation refs, not normal work
+branches to keep after teardown. If teardown fails, verify the worktree is
+clean, `<base> == origin/<base>`, and the intended PR diff is merged before
+recovering to `<base>`; record the exact recovery in the Gest note.
+
+3. Add a Gest note to the parent and relevant leaf:
 
 ```text
 Done: PR <url> merged with <method>. Merge commit: <sha>.
@@ -251,7 +299,7 @@ Verification: <checks reviewed or run>.
 Follow-up: <real residual issue only>.
 ```
 
-3. Store metadata when useful:
+4. Store metadata when useful:
 
 ```bash
 gest task meta set <task-id> github.pr <number>
@@ -260,7 +308,7 @@ gest task meta set <task-id> github.merge_method <method>
 gest task meta set <task-id> github.merged_commit <sha>
 ```
 
-4. Regenerate checkpoint graphs for durable workflow changes.
+5. Regenerate checkpoint graphs for durable workflow changes.
 
 ## Tag And Dependency Review
 

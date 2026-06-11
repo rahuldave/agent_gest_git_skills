@@ -764,6 +764,19 @@ appendix, human review checklist, merge recommendation, and post-merge
 bookkeeping plan. If the PR body lacks Gest context, offer to update it before
 approval or merge.
 
+Post-merge bookkeeping must restore a consistent local state, not merely mark
+the GitHub PR merged. Before merge, verify the PR branch actually contains the
+intended changes with `gh pr diff` or `git show --stat`; empty GitButler
+commits and zero-change `WIP Assignments` commits are red flags. After merge,
+plain-Git workstreams should fetch/prune remotes, switch to the merged base
+branch, verify the local base and `origin/<base>` are equal, delete merged local
+`session/*` and `gest/*` branches when they are not checked out elsewhere, and
+confirm no open PRs remain for the workstream. GitButler workstreams must not
+run raw branch-mutating Git while GitButler owns the workspace; run
+`but teardown` first when the stack is done, then synchronize the base branch in
+normal Git mode. Do not leave the user's terminal on `gitbutler/workspace`
+unless active GitButler work is explicitly continuing.
+
 ### GCM
 
 Inspect status/diff/log, draft a conventional commit, ask for confirmation when
