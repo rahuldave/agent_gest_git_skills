@@ -30,6 +30,12 @@
       "checks_prerequisites": true
     }
   ],
+  "installer_skill": {
+    "name": "gsu",
+    "description": "Bootstrap or refresh a target repo after skills are installed, including hooks, docs, templates, tools, and AGENTS guidance.",
+    "installs": ["hooks", "docs", "templates", "tools", "agents"],
+    "requires_approval": true
+  },
   "executables": {
     "required": [
       {"name": "git", "check": "git --version"},

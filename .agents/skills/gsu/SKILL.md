@@ -108,10 +108,14 @@ available, use:
 uv run python /Users/rahul/Projects/agent_skill_package_installer/skills/skill-package-installer/scripts/lint_skill_bundle.py .
 ```
 
-Require skill repos to declare their installer and executable prerequisites in
-`skill-package.json`. Installer scripts must report every required workflow
-executable without blocking the skill copy and mention optional executables that
-unlock extra flows. For this Git/GitButler skill repo, required workflow
+Require skill repos to declare their package installer skill, custom installers,
+and executable prerequisites in `skill-package.json`. For packages installed
+with `npx skills`, hooks and templates should be installed by the package's
+explicit installer skill after `npx skills add`, not as a hidden install side
+effect. Installer scripts must report every required workflow executable without
+blocking the skill copy and mention optional executables that unlock extra
+flows. For this Git/GitButler skill repo, `gsu` is the installer skill for
+hooks, docs, templates, tools, and AGENTS guidance. Required workflow
 executables are `git`, `gest`, `just`, and `uv`; optional executables include
 `rsync`, `gh`, `but`, `ast-grep`, `direnv`, and `cx`. Runtime commands should
 re-check tools they actually need.

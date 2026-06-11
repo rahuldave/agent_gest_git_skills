@@ -95,7 +95,10 @@ commands in `AGENTS.md`.
 
 When `gsu` is working on a skill repository and `skill-package-installer` is
 installed, it should run that skill's uv/Python linter against
-`skill-package.json` and installer prerequisite checks before handoff.
+`skill-package.json` and installer-skill prerequisite checks before handoff. In
+an `npx skills` package, hooks and templates should be installed by the
+package's explicit installer skill after `npx skills add`, not as a hidden
+install side effect.
 
 For Just command contracts, prefer native recipe dependencies for ordered
 recipe composition. For example, write
