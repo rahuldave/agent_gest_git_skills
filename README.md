@@ -155,6 +155,12 @@ In GitButler-managed mode, use current `but` CLI write commands such as
 use raw `git commit`, `git switch`, `git checkout`, or branch-mutating git
 commands while GitButler owns the workspace.
 
+After GitButler PRs are merged and no stack work remains, leave GitButler mode
+with `but teardown`, return to the merged base branch, verify it matches its
+remote, and clean merged local `session/*` and `gest/*` branches. The terminal
+should not be left on `gitbutler/workspace` unless active GitButler work is
+continuing.
+
 ## Publishing This Repo
 
 After creating a GitHub token/session:

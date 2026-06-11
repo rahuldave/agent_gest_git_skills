@@ -89,6 +89,17 @@ commands in GitButler mode. If a workflow has explicitly left GitButler mode to
 use physical git worktrees, mark raw worktree commands with
 `GEST_VCS_EXECUTION=git-worktrees`.
 
+After merged PR work, restore a consistent local state. In plain Git mode,
+fetch/prune remotes, switch to the merged base branch, verify `main ==
+origin/main` or the relevant base equality, and delete merged local `session/*`
+and `gest/*` work branches when they are not checked out in another worktree.
+In GitButler mode, do not run raw branch-mutating Git first: when the
+GitButler workstream is finished, run `but teardown`, then synchronize the base
+branch in normal Git mode. Do not leave the handoff on `gitbutler/workspace`
+unless GitButler work is intentionally continuing; `gitbutler/target` and
+`gitbutler/workspace` are GitButler implementation refs, not durable workflow
+branches to keep after teardown.
+
 For non-trivial completed leaf tasks, add a Gest task note before completion:
 
 ```bash

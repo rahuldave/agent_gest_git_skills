@@ -147,6 +147,13 @@ pushed branch.
 After a PR is merged, check the repository's project instructions and command
 contract for deployment or release steps. If the repo defines a deploy command
 for this kind of change, run it or record the concrete blocker before handoff.
+For GitButler-managed workstreams, the merge checkpoint is not complete until
+the local repository is back in a consistent post-merge state: fetch/prune,
+switch to the merged base branch, verify `<base> == origin/<base>`, delete
+merged local `session/*` or `gest/*` work branches when they are not checked out
+elsewhere, and run `but teardown` when no active GitButler stack work remains.
+Do not leave the user on `gitbutler/workspace` at handoff unless continuing
+GitButler work is explicit.
 
 ## Tag And Dependency Context
 
