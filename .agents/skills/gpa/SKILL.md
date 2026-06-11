@@ -102,9 +102,11 @@ workflow safety:
 - GitButler violations such as raw git writes in GitButler mode or shared
   GitButler workspace parallelism
 
-For non-trivial PRs, use adversarial review lenses. Delegate independent
-read-only lenses to review sub-agents when sub-agents are available, authorized,
-and useful; otherwise run the lenses explicitly yourself:
+For non-trivial PRs, use adversarial review lenses. Default to independent
+read-only review sub-agents when sub-agents are available, authorized, and the
+lenses can be checked independently; skip sub-agents only when they are
+unavailable, unsafe, or overkill for a tiny PR. Otherwise run the lenses
+explicitly yourself:
 
 - code behavior and regression risk
 - test adequacy, including whether new tests would fail on the old code
@@ -113,7 +115,8 @@ and useful; otherwise run the lenses explicitly yourself:
 - docs, setup, command-contract, release, and deployment drift
 - security, privacy, data, browser/UI, or language/runtime risk when relevant
 
-Gest mutations, approvals, merges, and post-merge bookkeeping should remain
+Writable sub-agents still require separate physical git worktrees. Gest
+mutations, approvals, merges, and post-merge bookkeeping should remain
 centralized unless deliberately assigned.
 
 For reusable workflow PRs, preserve adapter boundaries: plain Git branches,
@@ -121,6 +124,11 @@ GitButler-managed branches/stacks, physical git worktrees, and JJ
 bookmarks/workspaces must remain distinct. In this Git/GitButler skill family,
 do not weaken `but` write-command guidance or treat GitButler parallel lanes as
 agent isolation.
+
+For `cx` workflow PRs, verify that `cx` is framed as incremental build/pipeline
+infrastructure, not testing. Review `cx` lines for complete `--in`/`--out`
+declarations, durable file outputs, producer/consumer Just ordering, and
+`.cx` runtime-state ignore rules that do not hide future config.
 
 Treat `Findings: None` as a precise statement about blocking or actionable
 code-review findings, not as the whole PR review. If there are no findings, say

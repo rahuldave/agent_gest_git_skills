@@ -44,6 +44,13 @@ exploratory page/interaction inspections during implementation; they should be
 reported in verification notes, but they do not replace durable tests when a
 flow needs regression coverage.
 
+`cx` is not a test runner. When a change adds or modifies `cx`-backed
+incremental build/pipeline stages, verify the build or pipeline target by
+running it once, running it again to confirm expected `up-to-date` behavior,
+changing a source input, and confirming the expected downstream artifacts
+rerun. That build/pipeline verification does not replace focused tests for
+changed callable code.
+
 ## Workflow
 
 1. Identify changed behavior and the smallest meaningful test layer.
@@ -83,10 +90,15 @@ gest search "Follow-up <feature/module>" --all --json --limit 20
 14. Report the strategy, red check when applicable, commands, and results. If a
    layer cannot run, say exactly why.
 
-When sub-agents are available and useful, a read-only test-design sub-agent may
-propose the smallest meaningful failing test and likely edge cases. The main
-agent remains responsible for editing tests, running commands, and recording
-verification.
+For non-trivial test design, prefer a read-only test-design sub-agent when
+sub-agents are available, authorized, and the behavior can be reasoned about
+independently. The main agent remains responsible for editing tests, running
+commands, and recording verification.
+
+For non-trivial verification, default to a clean-slate verification sub-agent
+when sub-agents are available, authorized, and the work can be checked
+independently. If sub-agents are unavailable, unsafe, or overkill for a tiny
+change, run the verification locally and say why.
 
 Prefer `just` targets when the project contract defines them. For the reusable
 Just contract shape, see `docs/just_command_contract.md`. Typical shapes

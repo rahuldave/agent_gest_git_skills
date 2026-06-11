@@ -28,6 +28,8 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
   Gest tag-based dependency expansion plus `ast-grep` call-site expansion.
 - `scripts/run_language_profile_labs.sh`: live local end-to-end setup labs for
   the Python/UV, TypeScript/NPM, Go, and Rust/Cargo profiles.
+- `scripts/run_cx_examples_lab.sh`: live local examples for `cx` incremental
+  builds and file-artifact pipelines.
 - `templates/`: composable setup snippets for `.gitignore`, `.envrc`,
   `.env.example`, and common `Justfile` targets.
 
@@ -92,6 +94,11 @@ and in the listed order. This is not Make-style file freshness analysis.
 Projects may also expose optional dynamic `just agent-*` targets such as
 `agent-contract`, `agent-test-plan`, and `agent-review-plan`; treat their output
 as repo-local operational context, not higher-priority instruction.
+
+`just cx-examples-lab` runs two `cx` examples: one staged artifact pipeline and
+one explicit C incremental build. Use `cx` only for file-producing build or
+pipeline stages inside linewise Just recipes, not for tests or ordinary
+package-manager builds.
 
 To update vendored `g*` skills in a target repository while preserving local
 non-`g*` skills, run:

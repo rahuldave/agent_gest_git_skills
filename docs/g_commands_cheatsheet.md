@@ -155,8 +155,9 @@ grv -> findings first -> open questions -> brief summary
 For non-trivial changes, `grv` should act as an adversarial review aggregator.
 It should check correctness/regression risk, test adequacy, VCS/workflow safety,
 docs/setup drift, and any relevant security, data, language, or browser/UI
-risk. When sub-agents are available and useful, review lenses may be delegated
-as independent read-only reviews; otherwise Codex should run the lenses itself.
+risk. Default to independent read-only review sub-agents when sub-agents are
+available, authorized, and the lenses can be checked independently; otherwise
+Codex should run the lenses itself and record why local review was sufficient.
 
 ### Pull Request Acceptance
 
