@@ -18,22 +18,99 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 target="$1"
 
+warn_missing_workflow_prereqs() {
+  local missing=()
+  if ! command -v git >/dev/null 2>&1; then
+    missing+=("git")
+  fi
+  if ! command -v gest >/dev/null 2>&1; then
+    missing+=("gest")
+  fi
+  if ! command -v just >/dev/null 2>&1; then
+    missing+=("just")
+  fi
+  if ! command -v uv >/dev/null 2>&1; then
+    missing+=("uv")
+  fi
+  if [ "${#missing[@]}" -gt 0 ]; then
+    printf 'Missing workflow executable(s): %s\n' "${missing[*]}" >&2
+    printf 'Installing the skills anyway. Install these before running the Git/GitButler Gest workflow. uv is required by skill-package-installer and Python setup profiles.\n' >&2
+  fi
+}
+
+warn_optional() {
+  if ! command -v rsync >/dev/null 2>&1; then
+    printf 'Optional executable not found: rsync; using cp fallback for installation.\n' >&2
+  fi
+  if ! command -v gh >/dev/null 2>&1; then
+    printf 'Optional executable not found: gh\n' >&2
+  fi
+  if ! command -v but >/dev/null 2>&1; then
+    printf 'Optional executable not found: but\n' >&2
+  fi
+  if ! command -v ast-grep >/dev/null 2>&1; then
+    printf 'Optional executable not found: ast-grep\n' >&2
+  fi
+  if ! command -v direnv >/dev/null 2>&1; then
+    printf 'Optional executable not found: direnv\n' >&2
+  fi
+  if ! command -v cx >/dev/null 2>&1; then
+    printf 'Optional executable not found: cx\n' >&2
+  fi
+}
+
+copy_dir_delete() {
+  local src="$1"
+  local dest="$2"
+  mkdir -p "$dest"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$src/" "$dest/"
+  else
+    cp -R "$src/." "$dest/"
+  fi
+}
+
+copy_dir_merge() {
+  local src="$1"
+  local dest="$2"
+  mkdir -p "$dest"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a "$src/" "$dest/"
+  else
+    cp -R "$src/." "$dest/"
+  fi
+}
+
+copy_file() {
+  local src="$1"
+  local dest="$2"
+  mkdir -p "$(dirname "$dest")"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a "$src" "$dest"
+  else
+    cp "$src" "$dest"
+  fi
+}
+
 if [ ! -d "$target" ]; then
   echo "Target does not exist: $target" >&2
   exit 66
 fi
 
+warn_missing_workflow_prereqs
+warn_optional
+
 mkdir -p "$target/.agents/skills" "$target/docs" "$target/tools" "$target/templates"
 mkdir -p "$target/.claude/hooks" "$target/.codex/hooks"
 
-rsync -a --delete "$repo_root/.agents/skills/" "$target/.agents/skills/"
-rsync -a "$repo_root/.claude/hooks/" "$target/.claude/hooks/"
-rsync -a "$repo_root/.codex/hooks/" "$target/.codex/hooks/"
-rsync -a "$repo_root/.claude/settings.json" "$target/.claude/settings.json"
-rsync -a "$repo_root/.codex/hooks.json" "$target/.codex/hooks.json"
-rsync -a "$repo_root/docs/" "$target/docs/"
-rsync -a --delete "$repo_root/templates/" "$target/templates/"
-rsync -a "$repo_root/tools/gest_mermaid_graph.py" "$target/tools/gest_mermaid_graph.py"
+copy_dir_delete "$repo_root/.agents/skills" "$target/.agents/skills"
+copy_dir_merge "$repo_root/.claude/hooks" "$target/.claude/hooks"
+copy_dir_merge "$repo_root/.codex/hooks" "$target/.codex/hooks"
+copy_file "$repo_root/.claude/settings.json" "$target/.claude/settings.json"
+copy_file "$repo_root/.codex/hooks.json" "$target/.codex/hooks.json"
+copy_dir_merge "$repo_root/docs" "$target/docs"
+copy_dir_delete "$repo_root/templates" "$target/templates"
+copy_file "$repo_root/tools/gest_mermaid_graph.py" "$target/tools/gest_mermaid_graph.py"
 chmod +x "$target/tools/gest_mermaid_graph.py"
 
 if [ ! -f "$target/AGENTS.md" ]; then

@@ -51,10 +51,11 @@ Identify which of these concepts apply to the project:
 2. Initialize Git or Gest only when missing and after confirming the desired
    repository root. Use `git init` and `gest init --local` for this Git-oriented
    skill family; keep jj support in a separate parallel skill repository.
-3. Check required workflow executables: `git`, `gest`, and `just`. Treat
-   `direnv` as recommended unless the project contract requires it. Check
-   `cx` only when the project has or wants explicit file-producing incremental
-   build/pipeline stages.
+3. Check required workflow executables: `git`, `gest`, `just`, and `uv`.
+   Missing tools should be reported clearly without blocking skill
+   installation. Treat `direnv` as recommended unless the project contract
+   requires it. Check `cx` only when the project has or wants explicit
+   file-producing incremental build/pipeline stages.
 4. Infer likely project profiles from files and user context. Examples:
    - Python: `pyproject.toml`, `uv.lock`, `pixi.toml`, notebooks, FastAPI,
      Django, Flask, pytest, ruff, ty, pyright, mypy.
@@ -84,6 +85,40 @@ Identify which of these concepts apply to the project:
 12. Run setup verification: command discovery (`just --list`), the cheapest
    static checks, and targeted commands that prove argument passing works.
 13. Record remaining setup gaps as Gest follow-ups rather than hiding them.
+
+## Skill Repository Packaging
+
+When the target repository is itself a skill repository, look for
+`skill-package.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, and
+`scripts/install.sh`. If the `skill-package-installer` skill is installed or
+available in the current source checkout, use it for packaging checks before
+declaring setup complete.
+
+Preferred checks:
+
+```bash
+uv run python .agents/skills/skill-package-installer/scripts/lint_skill_bundle.py .
+uv run python .agents/skills/skill-package-installer/scripts/render_package_plan.py .
+```
+
+If the skill is not installed in the target repo but the standalone checkout is
+available, use:
+
+```bash
+uv run python /Users/rahul/Projects/agent_skill_package_installer/skills/skill-package-installer/scripts/lint_skill_bundle.py .
+```
+
+Require skill repos to declare their package installer skill, custom installers,
+and executable prerequisites in `skill-package.json`. For packages installed
+with `npx skills`, hooks and templates should be installed by the package's
+explicit installer skill after `npx skills add`, not as a hidden install side
+effect. Installer scripts must report every required workflow executable without
+blocking the skill copy and mention optional executables that unlock extra
+flows. For this Git/GitButler skill repo, `gsu` is the installer skill for
+hooks, docs, templates, tools, and AGENTS guidance. Required workflow
+executables are `git`, `gest`, `just`, and `uv`; optional executables include
+`rsync`, `gh`, `but`, `ast-grep`, `direnv`, and `cx`. Runtime commands should
+re-check tools they actually need.
 
 ## Snippet Templates
 
@@ -176,8 +211,9 @@ Common checks:
 git --version
 gest --version
 just --version
-direnv version
 uv --version
+rsync --version
+direnv version
 node --version
 npm --version
 go version

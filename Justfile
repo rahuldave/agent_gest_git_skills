@@ -1,5 +1,5 @@
 setup:
-  @echo "No repository-local dependencies to install. Ensure gest, but, gh, just, and ast-grep are available."
+  @echo "No repository-local dependencies to install. Ensure git, gest, just, uv, rsync, and optional gh, but, ast-grep, direnv, cx are available."
 
 lint:
   scripts/check_repo.sh
