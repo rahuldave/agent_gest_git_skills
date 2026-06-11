@@ -196,6 +196,15 @@ when one recipe is an ordered composition of other recipes, such as
 same arguments run once per `just` invocation. This is ordered recipe
 composition, not Make-style file freshness analysis.
 
+If this project uses `cx`, treat it as incremental build/pipeline
+infrastructure, not a testing tool. Use it only around individual linewise Just
+recipe commands that read explicit files and write durable outputs, such as
+artifact pipelines, generated-file stages, or hand-written C/C++ compile/link
+steps. Do not wrap tests, lint, format, ordinary `cargo build`, `go build`,
+`tsc`, or commands without durable file outputs. Document the relevant build or
+pipeline target and `cx lint` here, and keep `.cx/state.json`, `.cx/graph.json`,
+and `.cx/tmp/` ignored without hiding a future `.cx/config.toml`.
+
 Use `gfm` for formatting, linting, typechecking, compile/static checks, and
 diff hygiene. Use `gte` for unit tests, API regression tests, smoke checks, and
 integration tests. Use `gdo` to check and update user-facing docs,
