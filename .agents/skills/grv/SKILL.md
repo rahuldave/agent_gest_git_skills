@@ -41,9 +41,11 @@ bugs, behavioral regressions, safety, error handling, and missing tests. Treat
 `Findings: None` as a precise statement about blocking or actionable code-review
 findings, not as the whole review.
 
-For non-trivial changes, act as an adversarial review aggregator. Apply distinct
-review lenses, delegating them to independent read-only review sub-agents when
-sub-agents are available, authorized, and useful:
+For non-trivial changes, act as an adversarial review aggregator. Default to
+independent read-only review sub-agents when sub-agents are available,
+authorized, and the lenses can be checked independently; skip sub-agents only
+when they are unavailable, unsafe, or overkill for a tiny change. Apply distinct
+review lenses:
 
 - correctness and regression risk
 - test adequacy and missing edge cases
@@ -53,9 +55,10 @@ sub-agents are available, authorized, and useful:
 - browser/UI behavior when relevant
 - language/runtime idioms when the project profile is known
 
-If sub-agents are not used, run the lenses explicitly yourself. Gest mutations,
-task completion, commits, pushes, and PR decisions should remain centralized
-unless deliberately assigned.
+If sub-agents are not used, run the lenses explicitly yourself. Writable
+sub-agents still require separate physical git worktrees. Gest mutations, task
+completion, commits, pushes, and PR decisions should remain centralized unless
+deliberately assigned.
 
 Test review should ask:
 
@@ -79,6 +82,13 @@ For workflow changes, review VCS safety as behavior: flag any instruction that
 allows raw `git commit`/`git switch`/`git checkout` in GitButler mode, any plan
 that launches parallel write agents in one GitButler workspace, or any stacked
 branch flow that lacks bottom-up integration/review guidance.
+
+For `cx` workflow changes, review the lines as incremental build/pipeline
+declarations. Flag use of `cx` for tests, lint, format, typecheck, ordinary
+package-manager builds, or commands without durable file outputs. Check that
+all real file inputs are declared with `--in`, all durable outputs are declared
+with `--out`, Just recipe dependencies still order producers before consumers,
+and `.cx` runtime state is ignored without hiding future config.
 
 For reusable Git/GitButler/JJ workflow changes, also verify adapter boundaries:
 plain Git branches, GitButler-managed branches/stacks, physical git worktrees,
