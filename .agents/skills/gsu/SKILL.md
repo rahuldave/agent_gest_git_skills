@@ -51,7 +51,7 @@ Identify which of these concepts apply to the project:
 2. Initialize Git or Gest only when missing and after confirming the desired
    repository root. Use `git init` and `gest init --local` for this Git-oriented
    skill family; keep jj support in a separate parallel skill repository.
-3. Check required workflow executables: `git`, `gest`, and `just`. Treat
+3. Check required workflow executables: `git`, `gest`, `just`, and `uv`. Treat
    `direnv` as recommended unless the project contract requires it. Check
    `cx` only when the project has or wants explicit file-producing incremental
    build/pipeline stages.
@@ -84,6 +84,35 @@ Identify which of these concepts apply to the project:
 12. Run setup verification: command discovery (`just --list`), the cheapest
    static checks, and targeted commands that prove argument passing works.
 13. Record remaining setup gaps as Gest follow-ups rather than hiding them.
+
+## Skill Repository Packaging
+
+When the target repository is itself a skill repository, look for
+`skill-package.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, and
+`scripts/install.sh`. If the `skill-package-installer` skill is installed or
+available in the current source checkout, use it for packaging checks before
+declaring setup complete.
+
+Preferred checks:
+
+```bash
+uv run python .agents/skills/skill-package-installer/scripts/lint_skill_bundle.py .
+uv run python .agents/skills/skill-package-installer/scripts/render_package_plan.py .
+```
+
+If the skill is not installed in the target repo but the standalone checkout is
+available, use:
+
+```bash
+uv run python /Users/rahul/Projects/agent_skill_package_installer/skills/skill-package-installer/scripts/lint_skill_bundle.py .
+```
+
+Require skill repos to declare their installer and executable prerequisites in
+`skill-package.json`. Installer scripts must check every required executable
+before copying files and mention optional executables that unlock extra flows.
+For this Git/GitButler skill repo, required executables are `git`, `gest`,
+`just`, `uv`, and `rsync`; optional executables include `gh`, `but`,
+`ast-grep`, `direnv`, and `cx`.
 
 ## Snippet Templates
 
@@ -176,8 +205,9 @@ Common checks:
 git --version
 gest --version
 just --version
-direnv version
 uv --version
+rsync --version
+direnv version
 node --version
 npm --version
 go version

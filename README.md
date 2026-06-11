@@ -19,6 +19,8 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `tools/gest_mermaid_graph.py`: optional read-only Gest SQLite exporter that
   writes clickable Mermaid/HTML relationship graphs.
 - `scripts/install.sh`: copy-based installer for target repos, including hooks by default.
+- `skill-package.json`: package manifest used by `skill-package-installer` to
+  validate skills, installer scripts, and executable prerequisites.
 - `scripts/run_gitbutler_workflow_lab.sh`: local lab for plain branch,
   multi-commit branch, stacked branch, and physical worktree flows.
 - `scripts/run_gitbutler_github_integration_lab.sh`: live GitHub lab for the
@@ -40,6 +42,10 @@ From this repository:
 ```bash
 scripts/install.sh /path/to/target/repo
 ```
+
+The installer preflights required executables before copying files: `git`,
+`gest`, `just`, `uv`, and `rsync`. It also reports optional executables that
+unlock additional workflows: `gh`, `but`, `ast-grep`, `direnv`, and `cx`.
 
 The installer copies:
 
@@ -84,6 +90,10 @@ It helps choose tools, set up Git/Gest/Just/direnv expectations, create ignore
 rules, install or sync dependencies through the chosen package manager, and map
 project concepts such as lint, typecheck, test, build, smoke, docs, and run-app
 commands in `AGENTS.md`.
+
+When `gsu` is working on a skill repository and `skill-package-installer` is
+installed, it should run that skill's uv/Python linter against
+`skill-package.json` and installer prerequisite checks before handoff.
 
 For Just command contracts, prefer native recipe dependencies for ordered
 recipe composition. For example, write

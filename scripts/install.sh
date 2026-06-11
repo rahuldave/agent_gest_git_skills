@@ -18,10 +18,55 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 target="$1"
 
+check_required() {
+  local missing=()
+  if ! command -v git >/dev/null 2>&1; then
+    missing+=("git")
+  fi
+  if ! command -v gest >/dev/null 2>&1; then
+    missing+=("gest")
+  fi
+  if ! command -v just >/dev/null 2>&1; then
+    missing+=("just")
+  fi
+  if ! command -v uv >/dev/null 2>&1; then
+    missing+=("uv")
+  fi
+  if ! command -v rsync >/dev/null 2>&1; then
+    missing+=("rsync")
+  fi
+  if [ "${#missing[@]}" -gt 0 ]; then
+    printf 'Missing required executable(s): %s\n' "${missing[*]}" >&2
+    printf 'Install these before installing the Git/GitButler Gest skills. uv is required because skill-package-installer and Python setup profiles use uv-managed Python.\n' >&2
+    exit 69
+  fi
+}
+
+warn_optional() {
+  if ! command -v gh >/dev/null 2>&1; then
+    printf 'Optional executable not found: gh\n' >&2
+  fi
+  if ! command -v but >/dev/null 2>&1; then
+    printf 'Optional executable not found: but\n' >&2
+  fi
+  if ! command -v ast-grep >/dev/null 2>&1; then
+    printf 'Optional executable not found: ast-grep\n' >&2
+  fi
+  if ! command -v direnv >/dev/null 2>&1; then
+    printf 'Optional executable not found: direnv\n' >&2
+  fi
+  if ! command -v cx >/dev/null 2>&1; then
+    printf 'Optional executable not found: cx\n' >&2
+  fi
+}
+
 if [ ! -d "$target" ]; then
   echo "Target does not exist: $target" >&2
   exit 66
 fi
+
+check_required
+warn_optional
 
 mkdir -p "$target/.agents/skills" "$target/docs" "$target/tools" "$target/templates"
 mkdir -p "$target/.claude/hooks" "$target/.codex/hooks"

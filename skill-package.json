@@ -1,0 +1,54 @@
+{
+  "schema": "https://rahuldave.github.io/agent_skill_package_installer/schema/skill-package.v1.json",
+  "version": 1,
+  "repository": {
+    "owner": "rahuldave",
+    "name": "agent_gest_git_skills",
+    "url": "https://github.com/rahuldave/agent_gest_git_skills"
+  },
+  "skills": [
+    {"name": "gbs", "path": ".agents/skills/gbs", "installer": "scripts/install.sh"},
+    {"name": "gcm", "path": ".agents/skills/gcm", "installer": "scripts/install.sh"},
+    {"name": "gdo", "path": ".agents/skills/gdo", "installer": "scripts/install.sh"},
+    {"name": "gfm", "path": ".agents/skills/gfm", "installer": "scripts/install.sh"},
+    {"name": "gim", "path": ".agents/skills/gim", "installer": "scripts/install.sh"},
+    {"name": "gis", "path": ".agents/skills/gis", "installer": "scripts/install.sh"},
+    {"name": "gor", "path": ".agents/skills/gor", "installer": "scripts/install.sh"},
+    {"name": "gpa", "path": ".agents/skills/gpa", "installer": "scripts/install.sh"},
+    {"name": "gpl", "path": ".agents/skills/gpl", "installer": "scripts/install.sh"},
+    {"name": "gpr", "path": ".agents/skills/gpr", "installer": "scripts/install.sh"},
+    {"name": "grv", "path": ".agents/skills/grv", "installer": "scripts/install.sh"},
+    {"name": "gsp", "path": ".agents/skills/gsp", "installer": "scripts/install.sh"},
+    {"name": "gsu", "path": ".agents/skills/gsu", "installer": "scripts/install.sh"},
+    {"name": "gte", "path": ".agents/skills/gte", "installer": "scripts/install.sh"},
+    {"name": "gtw", "path": ".agents/skills/gtw", "installer": "scripts/install.sh"}
+  ],
+  "installers": [
+    {
+      "path": "scripts/install.sh",
+      "description": "Copy Git/GitButler Gest skills, hooks, docs, templates, and graph tool into a target repo.",
+      "checks_prerequisites": true
+    }
+  ],
+  "executables": {
+    "required": [
+      {"name": "git", "check": "git --version"},
+      {"name": "gest", "check": "gest --version"},
+      {"name": "just", "check": "just --version"},
+      {"name": "uv", "check": "uv --version"},
+      {"name": "rsync", "check": "rsync --version"}
+    ],
+    "optional": [
+      {"name": "gh", "check": "gh --version"},
+      {"name": "but", "check": "but --version"},
+      {"name": "ast-grep", "check": "ast-grep --version"},
+      {"name": "direnv", "check": "direnv version"},
+      {"name": "cx", "check": "cx --help"}
+    ]
+  },
+  "npx": {
+    "supported": false,
+    "reason": "This repository installs a coordinated .agents/skills, hooks, docs, templates, and tools bundle through scripts/install.sh."
+  }
+}
+
