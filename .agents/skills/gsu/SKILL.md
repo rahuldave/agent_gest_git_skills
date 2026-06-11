@@ -51,10 +51,11 @@ Identify which of these concepts apply to the project:
 2. Initialize Git or Gest only when missing and after confirming the desired
    repository root. Use `git init` and `gest init --local` for this Git-oriented
    skill family; keep jj support in a separate parallel skill repository.
-3. Check required workflow executables: `git`, `gest`, `just`, and `uv`. Treat
-   `direnv` as recommended unless the project contract requires it. Check
-   `cx` only when the project has or wants explicit file-producing incremental
-   build/pipeline stages.
+3. Check required workflow executables: `git`, `gest`, `just`, and `uv`.
+   Missing tools should be reported clearly without blocking skill
+   installation. Treat `direnv` as recommended unless the project contract
+   requires it. Check `cx` only when the project has or wants explicit
+   file-producing incremental build/pipeline stages.
 4. Infer likely project profiles from files and user context. Examples:
    - Python: `pyproject.toml`, `uv.lock`, `pixi.toml`, notebooks, FastAPI,
      Django, Flask, pytest, ruff, ty, pyright, mypy.
@@ -108,11 +109,12 @@ uv run python /Users/rahul/Projects/agent_skill_package_installer/skills/skill-p
 ```
 
 Require skill repos to declare their installer and executable prerequisites in
-`skill-package.json`. Installer scripts must check every required executable
-before copying files and mention optional executables that unlock extra flows.
-For this Git/GitButler skill repo, required executables are `git`, `gest`,
-`just`, `uv`, and `rsync`; optional executables include `gh`, `but`,
-`ast-grep`, `direnv`, and `cx`.
+`skill-package.json`. Installer scripts must report every required workflow
+executable without blocking the skill copy and mention optional executables that
+unlock extra flows. For this Git/GitButler skill repo, required workflow
+executables are `git`, `gest`, `just`, and `uv`; optional executables include
+`rsync`, `gh`, `but`, `ast-grep`, `direnv`, and `cx`. Runtime commands should
+re-check tools they actually need.
 
 ## Snippet Templates
 

@@ -43,9 +43,11 @@ From this repository:
 scripts/install.sh /path/to/target/repo
 ```
 
-The installer preflights required executables before copying files: `git`,
-`gest`, `just`, `uv`, and `rsync`. It also reports optional executables that
-unlock additional workflows: `gh`, `but`, `ast-grep`, `direnv`, and `cx`.
+The installer reports missing workflow executables and still copies the skill
+bundle: `git`, `gest`, `just`, and `uv`. It also reports optional executables
+that unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
+`ast-grep`, `direnv`, and `cx`. If `rsync` is missing, the installer uses a
+`cp` fallback.
 
 The installer copies:
 

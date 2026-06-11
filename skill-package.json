@@ -35,10 +35,10 @@
       {"name": "git", "check": "git --version"},
       {"name": "gest", "check": "gest --version"},
       {"name": "just", "check": "just --version"},
-      {"name": "uv", "check": "uv --version"},
-      {"name": "rsync", "check": "rsync --version"}
+      {"name": "uv", "check": "uv --version"}
     ],
     "optional": [
+      {"name": "rsync", "check": "rsync --version"},
       {"name": "gh", "check": "gh --version"},
       {"name": "but", "check": "but --version"},
       {"name": "ast-grep", "check": "ast-grep --version"},
@@ -51,4 +51,3 @@
     "reason": "This repository installs a coordinated .agents/skills, hooks, docs, templates, and tools bundle through scripts/install.sh."
   }
 }
-
