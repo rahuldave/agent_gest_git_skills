@@ -28,6 +28,9 @@ gest project --json
    - independent code-touching tasks: use physical git worktrees/subagents
    - GitButler-managed workspace tasks: run sequentially unless each task has a
      distinct physical worktree
+   - read-only review, test-design, and reconnaissance tasks: may use
+     sub-agents without separate worktrees when they do not write files or
+     mutate Gest
 5. Claim with:
 
 ```bash
@@ -44,6 +47,25 @@ Exit code 75 means no task is currently available.
 
 Do not parallelize just because there are multiple tasks. Parallelize only when
 task independence and file ownership make it useful.
+
+## Sub-Agent Roles
+
+Distinguish sub-agent roles before dispatch:
+
+- **write agents** implement code/docs and need isolated execution when running
+  concurrently.
+- **review agents** inspect diffs, tests, docs, VCS safety, or PR state and
+  return findings first.
+- **test-design agents** propose the smallest meaningful failing or
+  characterization tests before implementation.
+- **reconnaissance agents** map code, prior Gest memory, or dependency impact
+  without editing.
+
+Gest mutations, task completion, commit/push decisions, and PR decisions should
+remain centralized unless a role is explicitly assigned those responsibilities.
+Writable sub-agents must have disjoint write scopes. In Git/GitButler repos,
+concurrent writable work uses physical git worktrees, not GitButler parallel
+lanes.
 
 ## GitButler Guardrail
 

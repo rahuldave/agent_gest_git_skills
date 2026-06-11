@@ -128,10 +128,12 @@ git push
 git status --short --branch
 ```
 
-Push when the branch has an upstream and the user has not asked for local-only
-work. If the branch is ahead and you do not push, record the exact reason in the
-Gest note and final summary. A checkpoint is not complete while a Codex-created
-commit is silently ahead of its upstream. For reusable workflow/template repo
+Push when the user has not asked for local-only work. If the branch has no
+upstream, set one with the normal repository command such as
+`git push -u origin <branch>`; "no upstream" is not a no-push reason. If the
+branch is ahead and you do not push, record the exact blocker in the Gest note
+and final summary. A checkpoint is not complete while a Codex-created commit is
+silently local or ahead of its upstream. For reusable workflow/template repo
 changes, push is mandatory unless blocked.
 
 After pushing a branch other than the repository's mainline branch, create or
@@ -141,6 +143,10 @@ another question when the user explicitly asked for that merge in the current
 turn. For reusable workflow/template repo changes, PR creation is mandatory
 after push unless blocked; record the exact blocker instead of leaving only a
 pushed branch.
+
+After a PR is merged, check the repository's project instructions and command
+contract for deployment or release steps. If the repo defines a deploy command
+for this kind of change, run it or record the concrete blocker before handoff.
 
 ## Tag And Dependency Context
 

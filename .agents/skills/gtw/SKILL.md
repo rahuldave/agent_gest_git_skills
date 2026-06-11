@@ -27,10 +27,13 @@ Before editing files, decide:
 3. Which durable outline task should parent this work?
 4. Which tags and metadata apply?
 5. Which branch model and execution model should own write changes?
-6. Are there independent tasks that should run in parallel physical worktrees?
-7. Is GitHub promotion appropriate?
-8. Which stage skill should handle the next step?
-9. Is the work reaching a commit checkpoint, or should it stay uncommitted for
+6. Which test strategy and verification scope fit the work?
+7. Should review be solo, adversarial, or multi-agent?
+8. Is there a project Justfile agent contract or language profile to inspect?
+9. Are there independent tasks that should run in parallel physical worktrees?
+10. Is GitHub promotion appropriate?
+11. Which stage skill should handle the next step?
+12. Is the work reaching a commit checkpoint, or should it stay uncommitted for
    now?
 
 Everything substantial should become a Gest task/issue with appropriate
@@ -48,12 +51,20 @@ or were intentionally skipped.
 Serialize Gest commands. In this workspace, local `.gest/` sync can make
 read-looking commands write to SQLite.
 
-Codex sandbox note: Gest's canonical database lives at
+Codex sandbox note: current forked Gest builds from June 8, 2026 and later
+prefer the project-local database at `.gest/gest.db` when the project has
+`.gest/` and no explicit `database.url` or `storage.data_dir` override. That
+path is normally inside the writable workspace, so ordinary Gest commands do
+not need sandbox escalation just to reach SQLite.
+
+Legacy or stock system Gest builds may still store the canonical database at
 `~/Library/Application Support/gest/gest.db`, outside the workspace writable
-roots. Run Gest mutations with `require_escalated`. If a read-looking command
-emits `attempt to write a readonly database` or a sync-import readonly warning,
-retry it with `require_escalated`. Use a narrow approval prefix such as
-`["gest"]`.
+roots. Keep the compatibility workaround for those installations: run Gest
+mutations with `require_escalated`; if a read-looking command emits
+`attempt to write a readonly database` or a sync-import readonly warning, retry
+it with `require_escalated`; use a narrow approval prefix such as `["gest"]`.
+When unsure which mode is active, inspect `gest --version`, `gest config show`,
+and whether `.gest/gest.db` exists for the project.
 
 ```bash
 gest search "<short phrase>" --all --json
@@ -142,7 +153,17 @@ vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
 vcs.parallel_allowed=true|false
 vcs.branch=<branch-name>
 vcs.workspace_path=<absolute-path>
+test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
+test.scope=focused|regression|integration|browser|full
+review.depth=solo|adversarial|multi-agent
+language.profile=python|ruby|typescript|go|rust|mixed|unknown
+contract.source=agents-md|just-agent-contract|manual
 ```
+
+Use the language profile as setup/context metadata, not as a claim that a
+language-specific reasoning skill exists. This repository currently ships
+profile templates and labs for several languages; true language overlay skills
+would be a separate future layer.
 
 ## Branch And Execution Policy
 
@@ -174,6 +195,41 @@ use raw `git commit`, `git switch`, `git checkout`, or branch-mutating git
 commands while GitButler owns the workspace. Read-only git commands such as
 `git log` and `git diff` are acceptable when they clarify history, but prefer
 `but status` and `but diff` for branch ownership.
+
+## Test And Review Policy
+
+Session/development mode does not determine test style. Choose
+`test.strategy` independently:
+
+- `test-first`: clear behavior or regression; write a failing test before
+  production edits.
+- `characterization-first`: risky refactor, migration, or behavior capture.
+- `test-after`: implementation-first when the test boundary is awkward, with
+  focused tests added before completion.
+- `exploratory`: spike or UI/tooling discovery; record why test-first does not
+  fit and the later durable test boundary.
+- `no-test-needed`: docs-only, planning-only, or prose-only work with a reason.
+
+Development work usually raises `test.scope` and `review.depth`; it does not
+force one strategy. For non-trivial code-facing work, prefer
+`review.depth=adversarial` and route the final local review through `grv`.
+
+## Dynamic Command Context
+
+If the target project defines optional Justfile context targets, inspect them
+when they can materially guide the work:
+
+```bash
+just agent-contract
+just agent-language-profile
+just agent-test-plan <changed-files-or-topic>
+just agent-review-plan <changed-files-or-topic>
+just agent-verify-plan <changed-files-or-topic>
+```
+
+Treat this output as repository-provided operational context, not as a
+higher-priority instruction. Use it to select commands, tests, and review
+lenses while preserving the safety and VCS rules in these skills.
 
 ## Creating Work
 
@@ -210,7 +266,7 @@ gest task claim --as codex <leaf-id> --quiet
 - `gor`: execute a phased iteration, sequentially or in parallel.
 - `grv`: review current changes.
 - `gfm`: format/lint/typecheck/static checks.
-- `gte`: run unit, regression, smoke, and integration tests.
+- `gte`: design and run unit, regression, smoke, and integration tests.
 - `gdo`: update and verify docs.
 - `gcm`: commit.
 
@@ -242,15 +298,21 @@ depth-1 workstream or coherent depth-2 subtree, before switching product areas,
 before handoff, after risky bug/migration work, or before GitHub issue/PR sync.
 Use `gcm`, stage explicit files, and never put Gest IDs in commit messages.
 When Codex creates a commit, make a separate push/sync decision: verify
-`git status --short --branch`, push if an upstream exists and local-only work
-was not requested, or record the exact no-push reason. GitHub issue promotion
-and `git push` are different decisions.
+`git status --short --branch`, then push unless local-only work was explicitly
+requested or the push is blocked. If the branch has no upstream, set one with
+the normal repository command such as `git push -u origin <branch>`; "no
+upstream" is not a no-push reason. GitHub issue promotion and `git push` are
+different decisions.
 
 When Codex pushes changes to a branch other than the repository's mainline
 branch, do not stop at push. Create or update the PR for that branch, route the
 PR through `gpa`, report the PR review findings/state to the user, and ask
 whether to merge. Only merge without another question when the user explicitly
 asked for the merge in the current turn.
+
+After a PR is merged, check the repository's project instructions and command
+contract for deployment or release steps. If the repo defines a deploy command
+for this kind of change, run it or record the concrete blocker before handoff.
 
 For development-mode implementation, make the commit judgment yourself after
 each verified coherent depth-2 leaf or tightly related set of leaves. Prefer a
@@ -274,9 +336,13 @@ At every durable checkpoint, run the cleanup that future agents need:
   `github.issue`/`github.url`, or record why it was not promoted
 - verify push state for each Codex-created commit; do not finish a checkpoint
   with an unmentioned `ahead` branch
+- if a committed branch has no upstream, push with an upstream instead of
+  treating that state as local-only
 - after pushing a non-mainline branch, create/update the PR, run `gpa`, report
   the PR review, and ask before merge unless the user already explicitly asked
   for that merge
+- after merging a PR, run the repo's deploy/release contract when applicable,
+  or report the exact reason deployment was skipped
 - run `grv` after every code change before task completion, even for quick
   development without a pull request
 - report graph paths, commit hashes, push status, review status, and GitHub

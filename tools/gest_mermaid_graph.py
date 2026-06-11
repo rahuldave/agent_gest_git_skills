@@ -9,8 +9,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-
-DEFAULT_DB = Path.home() / "Library/Application Support/gest/gest.db"
+LEGACY_DB = Path.home() / "Library/Application Support/gest/gest.db"
 DEFAULT_SERVE_URL = "http://127.0.0.1:2300"
 
 
@@ -45,6 +44,13 @@ class Relationship:
     target_type: str
 
 
+def default_db_for(project_root: Path) -> Path:
+    local_db = project_root.resolve() / ".gest" / "gest.db"
+    if local_db.exists():
+        return local_db
+    return LEGACY_DB
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export the current Gest project's iteration/task graph as Mermaid HTML."
@@ -52,8 +58,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--db",
         type=Path,
-        default=DEFAULT_DB,
-        help=f"Gest SQLite database path. Default: {DEFAULT_DB}",
+        default=None,
+        help=(
+            "Gest SQLite database path. Default: <project-root>/.gest/gest.db "
+            f"when present, otherwise {LEGACY_DB}"
+        ),
     )
     parser.add_argument(
         "--project-root",
@@ -95,7 +104,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--single-diagram",
         action="store_true",
-        help="Render all selected iterations as one Mermaid diagram instead of stacked per-iteration sections.",
+        help=(
+            "Render all selected iterations as one Mermaid diagram instead of "
+            "stacked per-iteration sections."
+        ),
     )
     return parser.parse_args()
 
@@ -307,8 +319,13 @@ def build_mermaid(
     previous_iteration_id: str | None = None
     for iteration in iterations:
         ident = node_id("I", iteration.id)
+        iteration_label = label(
+            iteration.id[:8],
+            wrapped_title(iteration.title),
+            iteration.status,
+        )
         lines.append(
-            f'  {ident}["{label(iteration.id[:8], wrapped_title(iteration.title), iteration.status)}"]'
+            f'  {ident}["{iteration_label}"]'
         )
         lines.append(f"  class {ident} iteration;")
         lines.append(f'  click {ident} "{serve_url.rstrip("/")}/iterations/{iteration.id}" _blank')
@@ -321,15 +338,18 @@ def build_mermaid(
     for task in tasks.values():
         ident = node_id("T", task.id)
         priority = f"P{task.priority}" if task.priority is not None else None
-        lines.append(f'  {ident}["{label(task.id[:8], wrapped_title(task.title), task.status, priority)}"]')
+        task_label = label(task.id[:8], wrapped_title(task.title), task.status, priority)
+        lines.append(f'  {ident}["{task_label}"]')
         lines.append(f"  class {ident} {mermaid_class_for_status(task.status)};")
         lines.append(f'  click {ident} "{serve_url.rstrip("/")}/tasks/{task.id}" _blank')
 
     for row in iteration_tasks:
         if row.task_id not in tasks:
             continue
+        iteration_node = node_id("I", row.iteration_id)
+        task_node = node_id("T", row.task_id)
         lines.append(
-            f'  {node_id("I", row.iteration_id)} -- "phase {row.phase}" --> {node_id("T", row.task_id)}'
+            f'  {iteration_node} -- "phase {row.phase}" --> {task_node}'
         )
 
     for rel in relationships:
@@ -338,12 +358,16 @@ def build_mermaid(
         if rel.source_id not in tasks or rel.target_id not in tasks:
             continue
         if rel.rel_type == "child-of":
+            parent_node = node_id("T", rel.target_id)
+            child_node = node_id("T", rel.source_id)
             lines.append(
-                f'  {node_id("T", rel.target_id)} -- "parent of" --> {node_id("T", rel.source_id)}'
+                f'  {parent_node} -- "parent of" --> {child_node}'
             )
         else:
+            source_node = node_id("T", rel.source_id)
+            target_node = node_id("T", rel.target_id)
             lines.append(
-                f'  {node_id("T", rel.source_id)} -- "{label(rel.rel_type)}" --> {node_id("T", rel.target_id)}'
+                f'  {source_node} -- "{label(rel.rel_type)}" --> {target_node}'
             )
 
     return "\n".join(lines)
@@ -427,6 +451,18 @@ def render_html(
         parts = []
         for iteration, phase_graphs in sections:
             phase_parts = []
+            iteration_url = (
+                f"{html.escape(serve_url.rstrip('/'))}/iterations/"
+                f"{html.escape(iteration.id)}"
+            )
+            iteration_link = (
+                f'<a href="{iteration_url}" target="_blank" rel="noreferrer">'
+                f"{html.escape(iteration.id[:8])}</a>"
+            )
+            iteration_heading = (
+                f"{iteration_link} {html.escape(iteration.title)} "
+                f"<span>{html.escape(iteration.status)}</span>"
+            )
             for phase, section_graph in phase_graphs:
                 phase_parts.append(
                     f"""<div class="phase-section">
@@ -441,11 +477,20 @@ def render_html(
             parts.append(
                 f"""<section class="iteration-section">
         <div class="section-marker" aria-hidden="true"></div>
-        <h2><a href="{html.escape(serve_url.rstrip('/'))}/iterations/{html.escape(iteration.id)}" target="_blank" rel="noreferrer">{html.escape(iteration.id[:8])}</a> {html.escape(iteration.title)} <span>{html.escape(iteration.status)}</span></h2>
+        <h2>{iteration_heading}</h2>
         {''.join(phase_parts)}
       </section>"""
             )
         section_html = "\n".join(parts)
+    body_graph = (
+        f'<div class="iteration-stack">{section_html}</div>'
+        if sections is not None
+        else f"""<div class="graph">
+      <pre class="mermaid">
+{escaped_graph}
+      </pre>
+    </div>"""
+    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -467,7 +512,8 @@ def render_html(
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
     }}
     header {{
       display: flex;
@@ -574,13 +620,12 @@ def render_html(
     <a href="{html.escape(serve_url.rstrip('/'))}" target="_blank" rel="noreferrer">gest serve</a>
   </header>
   <main>
-    <p class="hint">Click any iteration or task node to open it in gest serve. Start it with <code>gest serve</code> if links do not load.</p>
+    <p class="hint">
+      Click any iteration or task node to open it in gest serve. Start it with
+      <code>gest serve</code> if links do not load.
+    </p>
     {render_legend()}
-    {f'<div class="iteration-stack">{section_html}</div>' if sections is not None else f'''<div class="graph">
-      <pre class="mermaid">
-{escaped_graph}
-      </pre>
-    </div>'''}
+    {body_graph}
   </main>
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
@@ -593,6 +638,9 @@ def render_html(
 
 def main() -> None:
     args = parse_args()
+    args.project_root = args.project_root.resolve()
+    if args.db is None:
+        args.db = default_db_for(args.project_root)
     with connect_read_only(args.db) as conn:
         project_id = resolve_project_id(conn, args.project_root)
         iteration_ids = resolve_iteration_ids(conn, project_id, args.iteration)

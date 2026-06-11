@@ -9,13 +9,15 @@ Use the rest only when you need reference material:
 - `g_commands_cheatsheet.md`: quick guide to the `g*` skills.
 - `gest_codex_workflow.md`: advanced workflow playbook for agents.
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
-- `just_command_contract.md`: stable Justfile command contract guidance.
+- `just_command_contract.md`: stable Justfile command contract guidance,
+  including optional dynamic `agent-*` context targets.
 - `cx_incremental_pipelines.md`: `cx` guidance for incremental builds and
   file-artifact pipelines, including one pipeline example and one C build
   example.
 - `gsu_typescript_hello_world.md`: tiny setup example.
-- `gsu_language_profile_labs.md`: live local end-to-end setup labs for Python,
-  TypeScript, Go, and Rust.
+- `gsu_language_profile_labs.md`: live local end-to-end setup labs for the
+  Python, TypeScript, Go, and Rust setup/profile templates. These are command
+  contract profiles, not language reasoning skills.
 - `live_gitbutler_tutorial_transcript_2026-05-07.md`: historical live GitHub
   transcript for the four Git/GitButler tutorial examples.
 
