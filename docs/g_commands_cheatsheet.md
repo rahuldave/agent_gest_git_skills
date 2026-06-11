@@ -82,6 +82,36 @@ Common strategies:
 code-facing work should say which strategy was used, which focused checks ran,
 and whether broader checks were run or intentionally skipped.
 
+## cx Build And Pipeline Stages
+
+`cx` is for incremental builds and file-artifact pipelines inside Just recipes.
+It is not a test runner. Use it when a stage reads explicit files and writes
+durable outputs, especially ML/AI/data pipelines, conversion or generation
+pipelines, and hand-written C/C++ compile-link flows with object files and
+binaries as declared outputs.
+
+Do not use `cx` for tests, lint, format, typecheck, browser verification,
+ordinary `cargo build`, `go build`, `tsc`, package-manager builds, or commands
+without durable file outputs. Those stay ordinary command-contract targets.
+
+Stage responsibilities:
+
+- `gsu`: decide whether a repo needs `cx`-backed build or pipeline targets,
+  check `cx --help` only when relevant, and document the targets in `AGENTS.md`.
+- `gfm`: run `cx lint` or the repo's `just cx-lint` target when `cx` is part of
+  the command contract.
+- `gte`: verify the actual build or pipeline target by running once, running
+  again for expected `up-to-date` lines, changing an input, and confirming only
+  the expected downstream artifacts rerun.
+- `grv`/`gpa`: review `--in`/`--out` completeness, Just recipe ordering, and
+  `.cx` ignore policy.
+
+Use [`cx_incremental_pipelines.md`](cx_incremental_pipelines.md) for the full
+mental model and the two fresh verification examples: an artifact pipeline
+(`data/raw.txt -> build/features.txt -> models/model.txt -> reports/report.txt`)
+and an incremental C build (`src/*.c + include/app.h -> build/*.o -> build/app`).
+Run `just cx-examples-lab` in this repo to exercise both examples end to end.
+
 ## Quick Decision Guide
 
 Use `/gtw` for most real project work. Use a specific g-command when you already
