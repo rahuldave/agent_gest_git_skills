@@ -35,6 +35,11 @@ git diff --check
 If no command contract exists yet, inspect the project manifests and propose or
 route to `gsu` to establish one. Do not substitute smoke checks for `gte`.
 
+If the project uses `cx` in its Justfile, run `cx lint` or the mapped
+`just cx-lint` target as a static declaration check. `cx lint` validates
+incremental build/pipeline lines; it is not a test runner and should not be
+used as a substitute for `gte`.
+
 When a repository is GitButler-managed, use `but status` or `but diff` to
 identify branch-owned changes before running mechanical checks. Read-only git
 diff commands are acceptable, but do not use raw git write commands in

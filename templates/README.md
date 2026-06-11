@@ -9,7 +9,7 @@ with existing project files so local conventions are preserved.
 ## Baseline
 
 - `gitignore/base.gitignore`: project-local installs, caches, secrets, logs,
-  coverage, and editor/OS files.
+  coverage, `.cx` runtime state, and editor/OS files.
 - `env/envrc.local-bin`: `direnv` snippet for adding `.local/bin` to PATH.
 - `env/env.example`: minimal committed `.env.example` placeholder.
 - `env/python-uv.envrc`, `env/typescript-npm.envrc`, `env/go.envrc`, and
@@ -35,3 +35,7 @@ dependencies in the order they should run, for example
 `verify: lint typecheck build test diff-check`. Just dependencies run before
 the depending recipe and in the listed order; they are ordered recipe
 composition, not Make-style file freshness analysis.
+
+Use `cx` only for explicit file-producing build or pipeline stages inside
+linewise Just recipes. See `docs/cx_incremental_pipelines.md` before adding
+`cx` to a project command contract.

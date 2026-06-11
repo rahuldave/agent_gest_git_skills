@@ -35,6 +35,7 @@ Identify which of these concepts apply to the project:
 - smoke checks
 - browser spot checks
 - browser/UI verification
+- incremental build or artifact pipeline
 - database/migration checks
 - API docs
 - user docs
@@ -51,13 +52,18 @@ Identify which of these concepts apply to the project:
    repository root. Use `git init` and `gest init --local` for this Git-oriented
    skill family; keep jj support in a separate parallel skill repository.
 3. Check required workflow executables: `git`, `gest`, and `just`. Treat
-   `direnv` as recommended unless the project contract requires it.
+   `direnv` as recommended unless the project contract requires it. Check
+   `cx` only when the project has or wants explicit file-producing incremental
+   build/pipeline stages.
 4. Infer likely project profiles from files and user context. Examples:
    - Python: `pyproject.toml`, `uv.lock`, `pixi.toml`, notebooks, FastAPI,
      Django, Flask, pytest, ruff, ty, pyright, mypy.
    - TypeScript/JavaScript: `package.json`, lockfiles, Vite, Next, ESLint,
      Biome, TypeScript, Vitest, Jest, Playwright.
    - Rust: `Cargo.toml`, Cargo workspaces, clippy, rustfmt, rustdoc.
+   - C/C++ or native build: `Makefile`, `CMakeLists.txt`,
+     `compile_commands.json`, `src/*.c`, `src/*.cc`, `include/`, object files,
+     custom compile/link recipes.
 5. Ask the user to choose when multiple plausible tools exist, when profile
    tradeoffs affect committed files, or when installation
    would change the machine or repository. Prefer one concise question at a
@@ -177,6 +183,7 @@ npm --version
 go version
 cargo --version
 rustc --version
+cx --help
 ```
 
 Profile install prompts should be concrete:
@@ -232,6 +239,43 @@ setup action that may require approval in sandboxed environments.
 Do not silently rely on ambient global tools when the project contract says a
 local toolchain is required. If installation needs network or writes outside
 the sandbox, request approval and explain the tool being installed.
+
+## cx Incremental Build And Pipeline Setup
+
+`cx` is for incremental builds and file-artifact pipelines in linewise Just
+recipes. It is not a test runner. Use it only when a command reads explicit
+files and writes durable output files.
+
+Good setup candidates:
+
+- ML/AI or data pipelines with intermediate artifacts, such as raw data to
+  features to model to report.
+- Generated artifact workflows where schemas, prompts, scripts, or configs
+  produce generated files.
+- Document, book, image, audio, or data conversion pipelines.
+- Hand-written C/C++ compile/link recipes with object files and binaries as
+  explicit outputs.
+
+Do not add `cx` for tests, lint, format, typecheck, browser checks, ordinary
+`cargo build`, `go build`, `tsc`, or commands without durable file outputs.
+Those stay ordinary project command-contract targets.
+
+When adding `cx`:
+
+- keep Just recipe dependencies for recipe ordering;
+- wrap only individual file-producing command lines with
+  `cx --in ... --out ... -- COMMAND ...`;
+- include scripts, schemas, prompts, config, and parameter files in `--in`
+  when they affect outputs;
+- add `cx lint` or `just cx-lint` to the static/check contract when useful;
+- ignore `.cx/state.json`, `.cx/graph.json`, and `.cx/tmp/`, but leave
+  `.cx/config.toml` committable unless the project decides otherwise;
+- verify the pipeline/build by running once, running again to observe
+  `up-to-date`, then changing one input and confirming the expected downstream
+  artifacts rerun.
+
+For reusable examples, read `docs/cx_incremental_pipelines.md` and run
+`just cx-examples-lab` in this skill repository.
 
 For npm projects, prefer a project-local cache when the user wants explicit
 per-project tooling or the global npm cache is unreliable:

@@ -11,6 +11,9 @@ Use the rest only when you need reference material:
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
 - `just_command_contract.md`: stable Justfile command contract guidance,
   including optional dynamic `agent-*` context targets.
+- `cx_incremental_pipelines.md`: `cx` guidance for incremental builds and
+  file-artifact pipelines, including one pipeline example and one C build
+  example.
 - `gsu_typescript_hello_world.md`: tiny setup example.
 - `gsu_language_profile_labs.md`: live local end-to-end setup labs for the
   Python, TypeScript, Go, and Rust setup/profile templates. These are command
