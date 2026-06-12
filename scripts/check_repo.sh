@@ -102,7 +102,7 @@ required_text=(
   "live local end-to-end"
   "cx Incremental Builds"
   "cx-examples-lab"
-  "skill-package-installer"
+  "skill-package-maker"
   "skill-package.json"
   "uv --version"
   "rsync --version"

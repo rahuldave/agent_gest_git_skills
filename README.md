@@ -21,7 +21,7 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `tools/gest_mermaid_graph.py`: optional read-only Gest SQLite exporter that
   writes clickable Mermaid/HTML relationship graphs.
 - `scripts/install.sh`: source-checkout installer for target repos, including hooks by default.
-- `skill-package.json`: package manifest used by `skill-package-installer` to
+- `skill-package.json`: package manifest used by `skill-package-maker` to
   validate skills, installer scripts, and executable prerequisites.
 - `scripts/run_gitbutler_workflow_lab.sh`: local lab for plain branch,
   multi-commit branch, stacked branch, and physical worktree flows.
@@ -112,7 +112,7 @@ rules, install or sync dependencies through the chosen package manager, and map
 project concepts such as lint, typecheck, test, build, smoke, docs, and run-app
 commands in `AGENTS.md`.
 
-When `gsu` is working on a skill repository and `skill-package-installer` is
+When `gsu` is working on a skill repository and `skill-package-maker` is
 installed, it should run that skill's uv/Python linter against
 `skill-package.json` and installer-skill prerequisite checks before handoff. In
 an `npx skills` package, hooks and templates should be installed by the
