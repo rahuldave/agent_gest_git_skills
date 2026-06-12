@@ -67,6 +67,12 @@ Writable sub-agents must have disjoint write scopes. In Git/GitButler repos,
 concurrent writable work uses physical git worktrees, not GitButler parallel
 lanes.
 
+Agentic Just targets add a mandatory delegation case: an emitted `AGENT_TASK v1`
+block is a subagent handoff packet. The current agent validates the packet and
+delegates the parsed task rather than running it inline. Nested agentic Just
+calls, agentic dependencies, hook-triggered packets, and agentic verification
+targets inherit the same recursive subagent boundary.
+
 ## GitButler Guardrail
 
 GitButler parallel branches and stacked branches share one managed workspace.

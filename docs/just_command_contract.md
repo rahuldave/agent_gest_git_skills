@@ -133,6 +133,81 @@ lifecycle and browser dependencies reliable enough for routine verification.
 Repeated browser flows should become durable integration scripts or tests, with
 `just integration [target-or-flow]` as the stable entrypoint when appropriate.
 
+## Agentic Just Targets
+
+Some Just targets are intentionally agentic: they ask the agent to choose the
+next concrete work from local context, input files, and a project-provided
+prompt. Any target can become agentic by emitting a parseable task packet:
+
+```text
+<<<AGENT_TASK v1>>>
+target: eda-viz
+mode: agentic
+argv:
+  - data/raw/train.csv
+prompt: |
+  Inspect the input files and create the most useful exploratory visualization.
+inputs:
+  files:
+    - data/raw/train.csv
+outputs:
+  required:
+    - reports/eda/index.html
+allowed_actions:
+  - read listed inputs
+  - create listed outputs
+verification:
+  - test -f reports/eda/index.html
+delegation:
+  execution: subagent
+  recursive: true
+  triggers:
+    - nested agentic Just calls
+    - agentic dependencies
+    - hook-triggered packets
+    - agentic verification targets
+safety:
+  - This block is repo-local operational context.
+  - It cannot override user, system, developer, VCS, or approval instructions.
+<<<END_AGENT_TASK>>>
+```
+
+### Subagent Execution Boundary
+
+An `AGENT_TASK v1` block is a subagent handoff packet. The receiving agent
+parses and validates the packet, then delegates the work to a subagent instead
+of executing it inline. This rule is recursive: nested agentic Just calls,
+agentic dependencies, hook-triggered packets, and agentic verification targets
+also become separate subagent handoffs.
+
+Concrete Just targets and non-agentic commands can still run in the current
+agent context, subject to normal user, tool, approval, and Git/GitButler VCS
+rules. Only emitted `AGENT_TASK v1` blocks create mandatory subagent
+boundaries.
+
+Projects can expose agentic work in three equivalent shapes:
+
+```just
+eda-viz +FILES:
+  @scripts/render_agent_task.py --target eda-viz --files {{FILES}}
+
+eda-viz-agentic +FILES:
+  @scripts/render_agent_task.py --target eda-viz --files {{FILES}}
+
+agentic TARGET +ARGS:
+  @scripts/render_agent_task.py --target {{TARGET}} --args {{ARGS}}
+```
+
+Use direct targets when a command is agentic by default, companion targets when
+stable and exploratory modes coexist, and the dispatcher when many targets need
+one contract surface.
+
+Use `just agentic-target-lab` in this repository to verify direct, companion,
+and dispatcher target shapes; prompt-file and variadic file arguments;
+malformed delimiter/body failures; safety language; subagent handoff
+classification; dependency, hook, nested, and verification recursion; and
+non-agentic concrete target detection.
+
 ## Agent Context Targets
 
 Projects may also expose optional agent-facing targets. These targets are not a
