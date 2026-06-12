@@ -27,6 +27,8 @@ required_files=(
   "scripts/run_tag_dependency_typescript_lab.sh"
   "scripts/run_language_profile_labs.sh"
   "scripts/run_cx_examples_lab.sh"
+  ".agents/skills/gest_git_installer/SKILL.md"
+  ".agents/skills/gest_git_installer/scripts/install_gest_git_package.sh"
   "templates/README.md"
   "tools/gest_mermaid_graph.py"
 )
@@ -38,7 +40,7 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-for skill in gbs gcm gdo gfm gim gis gor gpa gpl gpr grv gsp gsu gte gtw; do
+for skill in gbs gcm gdo gfm gest_git_installer gim gis gor gpa gpl gpr grv gsp gsu gte gtw; do
   if [ ! -f "$repo_root/.agents/skills/$skill/SKILL.md" ]; then
     echo "missing g skill: $skill" >&2
     exit 1
@@ -47,7 +49,7 @@ done
 
 while IFS= read -r script; do
   bash -n "$script"
-done < <(find "$repo_root/scripts" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" -type f -name '*.sh' | sort)
+done < <(find "$repo_root/scripts" "$repo_root/.agents/skills" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" -type f -name '*.sh' | sort)
 
 if command -v python3 >/dev/null 2>&1; then
   python3 -m json.tool "$repo_root/.claude/settings.json" >/dev/null

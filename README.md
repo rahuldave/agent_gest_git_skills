@@ -12,13 +12,15 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `.agents/skills/g*`: project-local agent skills for setup, Gest workflow routing,
   planning, implementation, review, formatting, testing, docs, promotion,
   pull request acceptance, orchestration, and commits.
+- `.agents/skills/gest_git_installer`: package-specific installer skill for
+  hooks, docs, templates, tools, and AGENTS guidance after `npx skills add`.
 - `AGENTS.template.md`: starter agent instructions to copy into a target repo.
 - `docs/README.md`: documentation map.
 - `docs/TUTORIAL.md`: the deterministic beginner tutorial. Start here.
 - `docs/*.md`: reference docs and setup examples for users who need details.
 - `tools/gest_mermaid_graph.py`: optional read-only Gest SQLite exporter that
   writes clickable Mermaid/HTML relationship graphs.
-- `scripts/install.sh`: copy-based installer for target repos, including hooks by default.
+- `scripts/install.sh`: source-checkout installer for target repos, including hooks by default.
 - `skill-package.json`: package manifest used by `skill-package-installer` to
   validate skills, installer scripts, and executable prerequisites.
 - `scripts/run_gitbutler_workflow_lab.sh`: local lab for plain branch,
@@ -37,6 +39,23 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 
 ## Install Into A Repo
 
+Fresh users should install the skill package directly with `npx skills` from
+inside the target repository:
+
+```bash
+npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
+```
+
+That installs the skills only. It does not run hooks or copy root-level docs,
+templates, tools, or `AGENTS.md`. After the `npx` install, ask the agent to use
+`gest_git_installer` to install the Git/GitButler Gest package extras in the
+current repo. `gest_git_installer` carries a bundled helper that fetches this
+repository and runs the source-checkout installer with clear prerequisite
+messages and overwrite approval. Use `gsu` afterward for normal repository
+setup and command-contract refresh work.
+
+Source checkout alternative:
+
 From this repository:
 
 ```bash
@@ -52,7 +71,7 @@ that unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
 The installer copies:
 
 ```text
-.agents/skills/g*
+.agents/skills/g* and .agents/skills/gest_git_installer
 docs/*.md
 tools/gest_mermaid_graph.py
 AGENTS.template.md -> AGENTS.md, only if AGENTS.md does not already exist
