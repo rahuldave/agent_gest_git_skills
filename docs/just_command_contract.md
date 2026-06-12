@@ -213,22 +213,36 @@ structured parser, but it must preserve the same boundary: if subagents are not
 available, the agent should report that blocker or use an approved
 orchestration path instead of silently doing the agentic work inline.
 
-Projects can expose agentic work in three equivalent shapes:
+Projects can expose agentic work in three shapes. The third shape uses
+`agentic` as the literal Just recipe name; it is not just descriptive prose.
 
 ```just
+# Shape 1: direct target. Running `just eda-viz ...` emits AGENT_TASK v1.
 eda-viz +FILES:
   @scripts/render_agent_task.py --target eda-viz --files {{FILES}}
 
+# Shape 2: companion target. The stable target can stay `eda-viz`; the
+# exploratory handoff lives at `eda-viz-agentic`.
 eda-viz-agentic +FILES:
   @scripts/render_agent_task.py --target eda-viz --files {{FILES}}
 
+# Shape 3: dispatcher target. Running `just agentic eda-viz ...` invokes the
+# literal recipe named `agentic`, which then emits AGENT_TASK v1 for `eda-viz`.
 agentic TARGET +ARGS:
   @scripts/render_agent_task.py --target {{TARGET}} --args {{ARGS}}
 ```
 
-Use direct targets when a command is agentic by default, companion targets when
-stable and exploratory modes coexist, and the dispatcher when many targets need
-one contract surface.
+Choose the shape based on what the user should type:
+
+- Direct target: use `just eda-viz data.csv` when `eda-viz` is always an
+  agentic handoff and there is no same-named deterministic command to preserve.
+- Companion target: use `just eda-viz-agentic data.csv` when
+  `just eda-viz data.csv` already means "run the stable deterministic recipe"
+  and the exploratory version should be opt-in.
+- Dispatcher target: use `just agentic eda-viz data.csv` when the project wants
+  one generic entrypoint for many agentic handoffs. In this form, `agentic` is
+  the Just target name, `eda-viz` is the requested work target, and
+  `data.csv` is passed through as an argument.
 
 ### Minimal Worked Example
 
