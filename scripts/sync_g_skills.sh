@@ -6,9 +6,10 @@ usage() {
 Usage: scripts/sync_g_skills.sh [--dry-run] [--hooks] <target-repo>
 
 Sync reusable g* skills from this repository into a target repository. Non-g
-skills in the target are left alone. Shared docs/templates/tools are refreshed.
-Hooks install by default through scripts/install.sh; pass --hooks here to refresh
-.claude and .codex hook adapters in an existing repository.
+skills in the target are left alone. Skill-local references, scripts, and assets
+travel inside each synced skill. Hooks install by default through
+scripts/install.sh; pass --hooks here to refresh .claude and .codex hook
+adapters in an existing repository.
 USAGE
 }
 
@@ -72,9 +73,6 @@ ensure_dir() {
 }
 
 ensure_dir "$target/.agents/skills" || true
-ensure_dir "$target/docs" || true
-ensure_dir "$target/templates" || true
-ensure_dir "$target/tools" || true
 
 for source_dir in "$repo_root"/.agents/skills/g*; do
   [ -d "$source_dir" ] || continue
@@ -83,16 +81,6 @@ for source_dir in "$repo_root"/.agents/skills/g*; do
     rsync "${delete_rsync_args[@]}" "$source_dir/" "$target/.agents/skills/$skill_name/"
   fi
 done
-
-if [ "$dry_run" -eq 0 ] || [ -d "$target/docs" ]; then
-  rsync "${merge_rsync_args[@]}" "$repo_root/docs/" "$target/docs/"
-fi
-if [ "$dry_run" -eq 0 ] || [ -d "$target/templates" ]; then
-  rsync "${delete_rsync_args[@]}" "$repo_root/templates/" "$target/templates/"
-fi
-if [ "$dry_run" -eq 0 ] || [ -d "$target/tools" ]; then
-  rsync "${merge_rsync_args[@]}" "$repo_root/tools/gest_mermaid_graph.py" "$target/tools/gest_mermaid_graph.py"
-fi
 
 if [ "$sync_hooks" -eq 1 ]; then
   ensure_dir "$target/.claude/hooks" || true

@@ -5,8 +5,8 @@ usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/install.sh /path/to/target/repo
 
-Install the Git/GitButler Gest agent skills, hooks, docs, templates, and graph
-tool into a target repository. Existing AGENTS.md is preserved.
+Install the Git/GitButler Gest agent skills, hooks/settings, and AGENTS starter
+guidance into a target repository. Existing AGENTS.md is preserved.
 USAGE
 }
 
@@ -100,7 +100,7 @@ fi
 warn_missing_workflow_prereqs
 warn_optional
 
-mkdir -p "$target/.agents/skills" "$target/docs" "$target/tools" "$target/templates"
+mkdir -p "$target/.agents/skills"
 mkdir -p "$target/.claude/hooks" "$target/.codex/hooks"
 
 for source_skill in "$repo_root"/.agents/skills/*; do
@@ -112,10 +112,6 @@ copy_dir_merge "$repo_root/.claude/hooks" "$target/.claude/hooks"
 copy_dir_merge "$repo_root/.codex/hooks" "$target/.codex/hooks"
 copy_file "$repo_root/.claude/settings.json" "$target/.claude/settings.json"
 copy_file "$repo_root/.codex/hooks.json" "$target/.codex/hooks.json"
-copy_dir_merge "$repo_root/docs" "$target/docs"
-copy_dir_delete "$repo_root/templates" "$target/templates"
-copy_file "$repo_root/tools/gest_mermaid_graph.py" "$target/tools/gest_mermaid_graph.py"
-chmod +x "$target/tools/gest_mermaid_graph.py"
 
 if [ ! -f "$target/AGENTS.md" ]; then
   cp "$repo_root/AGENTS.template.md" "$target/AGENTS.md"

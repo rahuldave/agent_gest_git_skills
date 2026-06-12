@@ -13,7 +13,7 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
   planning, implementation, review, formatting, testing, docs, promotion,
   pull request acceptance, orchestration, and commits.
 - `.agents/skills/gest_git_installer`: package-specific installer skill for
-  hooks, docs, templates, tools, and AGENTS guidance after `npx skills add`.
+  hooks/settings and AGENTS guidance after `npx skills add`.
 - `AGENTS.template.md`: starter agent instructions to copy into a target repo.
 - `docs/README.md`: documentation map.
 - `docs/TUTORIAL.md`: the deterministic beginner tutorial. Start here.
@@ -61,11 +61,12 @@ npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
 ```
 
 Second, ask the agent to use `gest_git_installer` to install the Git/GitButler
-Gest hooks, docs, templates, tools, and AGENTS guidance in the current repo.
-`npx skills add` installs skill folders only; it does not run hooks or copy
-root-level package extras. `gest_git_installer` carries a bundled helper that
-fetches this repository and runs the source-checkout installer with clear
-prerequisite messages and overwrite approval.
+Gest hooks/settings and AGENTS guidance in the current repo. `npx skills add`
+installs skill folders only; it does not run hooks or copy root-level package
+extras. Runtime references, helper scripts, and setup templates are vendored
+inside the installed skill folders. `gest_git_installer` carries a bundled
+helper that fetches this repository and runs the source-checkout installer with
+clear prerequisite messages and overwrite approval.
 
 Third, use `gsu` for normal repository setup and command-contract refresh work.
 
@@ -77,9 +78,9 @@ From this repository:
 scripts/install.sh /path/to/target/repo
 ```
 
-The installer reports missing workflow executables and still copies the skill
-bundle: `git`, `gest`, `just`, and `uv`. It also reports optional executables
-that unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
+The installer copies the skill bundle and reports missing workflow executables:
+`git`, `gest`, `just`, and `uv`. It also reports optional executables that
+unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
 `ast-grep`, `direnv`, and `cx`. If `rsync` is missing, the installer uses a
 `cp` fallback.
 
@@ -87,15 +88,15 @@ The installer copies:
 
 ```text
 .agents/skills/g* and .agents/skills/gest_git_installer
-docs/*.md
-tools/gest_mermaid_graph.py
+.claude/hooks and .codex/hooks settings
 AGENTS.template.md -> AGENTS.md, only if AGENTS.md does not already exist
 ```
 
 Review `AGENTS.md` after installing and replace placeholders such as project
 name, verification commands, and GitHub policy.
-Use `templates/` as `gsu` inputs when creating `.gitignore`, `.envrc`,
-`.env.example`, or `Justfile` command contracts.
+Use `gsu`'s skill-local `assets/templates/` as inputs when creating
+`.gitignore`, `.envrc`, `.env.example`, or `Justfile` command contracts. The
+installer does not populate target-root `docs/`, `templates/`, or `tools/`.
 
 If you are new, read [`docs/TUTORIAL.md`](docs/TUTORIAL.md) next. It is the
 only beginner tutorial. It uses ordinary git for simple PRs, GitButler only for
