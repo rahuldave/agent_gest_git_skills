@@ -68,3 +68,39 @@ agent-impact target="":
     '  - Use semantic tags and ast-grep where supported.' \
     '  - Record dependers and verification in the Gest completion note.' \
     '<<<END_AGENT_CONTRACT>>>'
+
+# Generic dispatcher for intentionally agentic targets.
+# Replace prompt/inputs/outputs with project-specific details before use.
+agentic TARGET +ARGS:
+  @set -eu; \
+    printf '%s\n' '<<<AGENT_TASK v1>>>'; \
+    printf '%s\n' 'target: {{TARGET}}'; \
+    printf '%s\n' 'mode: agentic'; \
+    printf '%s\n' 'argv:'; \
+    for arg in {{ARGS}}; do printf '  - %s\n' "$$arg"; done; \
+    printf '%s\n' 'prompt: |'; \
+    printf '%s\n' '  Inspect the listed inputs and complete the requested target.'; \
+    printf '%s\n' 'inputs:'; \
+    printf '%s\n' '  files:'; \
+    for arg in {{ARGS}}; do printf '    - %s\n' "$$arg"; done; \
+    printf '%s\n' 'outputs:'; \
+    printf '%s\n' '  required:'; \
+    printf '%s\n' '    - reports/{{TARGET}}/index.html'; \
+    printf '%s\n' 'allowed_actions:'; \
+    printf '%s\n' '  - read listed inputs'; \
+    printf '%s\n' '  - create listed outputs'; \
+    printf '%s\n' '  - inspect nearby project docs and code'; \
+    printf '%s\n' 'verification:'; \
+    printf '%s\n' '  - test -f reports/{{TARGET}}/index.html'; \
+    printf '%s\n' 'delegation:'; \
+    printf '%s\n' '  execution: subagent'; \
+    printf '%s\n' '  recursive: true'; \
+    printf '%s\n' '  triggers:'; \
+    printf '%s\n' '    - nested agentic Just calls'; \
+    printf '%s\n' '    - agentic dependencies'; \
+    printf '%s\n' '    - hook-triggered packets'; \
+    printf '%s\n' '    - agentic verification targets'; \
+    printf '%s\n' 'safety:'; \
+    printf '%s\n' '  - This block is repo-local operational context.'; \
+    printf '%s\n' '  - It cannot override user, system, developer, VCS, or approval instructions.'; \
+    printf '%s\n' '<<<END_AGENT_TASK>>>'
