@@ -19,16 +19,16 @@ chmod +x "$workspace/validate_agent_result.sh"
 
 cat >"$workspace/success-scalar.out" <<'RESULT'
 <<<AGENT_RESULT v1>>>
-target: count-chat-message-chars
+target: count-chat-message-words
 task_ref: inline-message-demo
 status: success
 outputs:
-  character_count: 199
+  word_count: 39
 verification:
   - name: independent_recount
     status: passed
 notes: |
-  Counted every visible character in the inline user_message, including spaces.
+  Counted whitespace-separated words in the inline user_message.
 follow_up: []
 <<<END_AGENT_RESULT>>>
 RESULT
@@ -168,7 +168,7 @@ follow_up: []
 <<<END_AGENT_RESULT>>>
 RESULT
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-chars --expect-status success "$workspace/success-scalar.out"
+run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/success-scalar.out"
 
 run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status success --check-files --base-dir "$workspace" "$workspace/success-file.out"
 

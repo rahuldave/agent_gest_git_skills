@@ -239,37 +239,37 @@ input is escaped safely:
 ```just
 count-message-agentic MESSAGE:
   @scripts/render_agent_task.sh \
-    --target count-chat-message-chars \
+    --target count-chat-message-words \
     --inline "user_message={{MESSAGE}}"
 ```
 
 For the message:
 
 ```text
-how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of words in this chat message i am sending
 ```
 
 the target should emit a handoff packet like:
 
 ```text
 <<<AGENT_TASK v1>>>
-target: count-chat-message-chars
+target: count-chat-message-words
 mode: agentic
 argv:
   - inline:user-message
 prompt: |
-  Count the number of characters in the exact chat message supplied.
-  Count visible characters including spaces and punctuation.
+  Count the number of words in the exact chat message supplied.
+  Treat whitespace-separated tokens as words.
 inputs:
   files: []
   inline:
-    user_message: how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+    user_message: how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of words in this chat message i am sending
 outputs:
   required:
-    - character_count
+    - word_count
 allowed_actions:
   - read listed inline input
-  - compute deterministic character count
+  - compute deterministic word count
 verification:
   - recompute the count once independently before returning
 delegation:
@@ -291,18 +291,23 @@ and expects the subagent result as an `AGENT_RESULT v1` report, such as:
 
 ```text
 <<<AGENT_RESULT v1>>>
-target: count-chat-message-chars
+target: count-chat-message-words
 status: success
 outputs:
-  character_count: 199
+  word_count: 39
 verification:
   - name: independent_recount
     status: passed
+notes: |
+  Counted whitespace-separated words in the inline user_message.
 follow_up: []
 <<<END_AGENT_RESULT>>>
 ```
 
-The parent agent does not do the count inline, even though the task is simple.
+Read the result as: the subagent is reporting back for the same target, the
+delegated work succeeded, the computed output is `word_count: 39`, the count was
+checked independently, and there is no follow-up work. The parent agent does
+not do the count inline, even though the task is simple.
 
 Use `just agentic-target-lab` in this repository to verify direct, companion,
 and dispatcher target shapes; prompt-file and variadic file arguments;
