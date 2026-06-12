@@ -11,6 +11,7 @@
     {"name": "gcm", "path": ".agents/skills/gcm", "installer": "scripts/install.sh"},
     {"name": "gdo", "path": ".agents/skills/gdo", "installer": "scripts/install.sh"},
     {"name": "gfm", "path": ".agents/skills/gfm", "installer": "scripts/install.sh"},
+    {"name": "gest_git_installer", "path": ".agents/skills/gest_git_installer", "installer": "scripts/install.sh"},
     {"name": "gim", "path": ".agents/skills/gim", "installer": "scripts/install.sh"},
     {"name": "gis", "path": ".agents/skills/gis", "installer": "scripts/install.sh"},
     {"name": "gor", "path": ".agents/skills/gor", "installer": "scripts/install.sh"},
@@ -31,8 +32,8 @@
     }
   ],
   "installer_skill": {
-    "name": "gsu",
-    "description": "Bootstrap or refresh a target repo after skills are installed, including hooks, docs, templates, tools, and AGENTS guidance.",
+    "name": "gest_git_installer",
+    "description": "Bootstrap or refresh a target repo after npx installs the skills, including hooks, docs, templates, tools, and AGENTS guidance.",
     "installs": ["hooks", "docs", "templates", "tools", "agents"],
     "requires_approval": true
   },
@@ -53,7 +54,7 @@
     ]
   },
   "npx": {
-    "supported": false,
-    "reason": "This repository installs a coordinated .agents/skills, hooks, docs, templates, and tools bundle through scripts/install.sh."
+    "supported": true,
+    "install": "npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y"
   }
 }

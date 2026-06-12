@@ -1,6 +1,6 @@
 ---
 name: gim
-description: Gest Implement. Implement one concrete Gest task end to end: read, claim, split if too broad, edit, verify, review/format as appropriate, and complete.
+description: Gest Implement. Implement one concrete Gest task end to end by reading, claiming, splitting if too broad, editing, verifying, reviewing, formatting as appropriate, and completing it.
 ---
 
 # GIM: Gest Implement

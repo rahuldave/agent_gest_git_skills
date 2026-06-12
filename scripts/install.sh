@@ -34,7 +34,7 @@ warn_missing_workflow_prereqs() {
   fi
   if [ "${#missing[@]}" -gt 0 ]; then
     printf 'Missing workflow executable(s): %s\n' "${missing[*]}" >&2
-    printf 'Installing the skills anyway. Install these before running the Git/GitButler Gest workflow. uv is required by skill-package-installer and Python setup profiles.\n' >&2
+    printf 'Installing the skills anyway. Install these before running the Git/GitButler Gest workflow. uv is required by Python setup profiles and package authoring checks.\n' >&2
   fi
 }
 
@@ -103,7 +103,11 @@ warn_optional
 mkdir -p "$target/.agents/skills" "$target/docs" "$target/tools" "$target/templates"
 mkdir -p "$target/.claude/hooks" "$target/.codex/hooks"
 
-copy_dir_delete "$repo_root/.agents/skills" "$target/.agents/skills"
+for source_skill in "$repo_root"/.agents/skills/*; do
+  [ -d "$source_skill" ] || continue
+  skill_name="$(basename "$source_skill")"
+  copy_dir_delete "$source_skill" "$target/.agents/skills/$skill_name"
+done
 copy_dir_merge "$repo_root/.claude/hooks" "$target/.claude/hooks"
 copy_dir_merge "$repo_root/.codex/hooks" "$target/.codex/hooks"
 copy_file "$repo_root/.claude/settings.json" "$target/.claude/settings.json"
