@@ -42,6 +42,8 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `scripts/run_agent_result_lab.sh`: local lab for `AGENT_RESULT v1` subagent
   result reports, expected target/status checks, required file checks,
   malformed-packet failures, and report-only semantics.
+- `scripts/run_agent_result_recursive_live_lab.sh`: transcript validator for
+  the two-subagent live recursive `AGENT_RESULT v1` lab.
 - `scripts/validate_agent_result.sh`: small validator for `AGENT_RESULT v1`
   blocks returned by subagents after agentic Just work.
 - `templates/`: composable setup snippets for `.gitignore`, `.envrc`,
@@ -158,7 +160,10 @@ work is returned as `outputs.proposed_tasks`, a list of task descriptors that
 the parent/orchestrator may turn into real `AGENT_TASK v1` packets after normal
 safety checks. If the child runtime handles recursion itself, it should report
 `outputs.recursion_trace.mode: local-recursion-supported`. The reusable
-`just agent-result-lab` proves that contract.
+`just agent-result-lab` proves the static envelope contract. The live recursive
+lab in `docs/live_agent_result_recursive_lab.md` uses two successive subagents,
+and `just agent-result-recursive-live-lab <transcript-dir>` validates the saved
+transcript.
 
 `just cx-examples-lab` runs two `cx` examples: one staged artifact pipeline and
 one explicit C incremental build. Use `cx` only for file-producing build or

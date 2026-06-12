@@ -251,7 +251,11 @@ list of task descriptors that the parent/orchestrator may turn into real
 recursion itself, it should report
 `outputs.recursion_trace.mode: local-recursion-supported`. If the result is
 missing or malformed, ask the subagent to restate it in `AGENT_RESULT v1` form
-or record a protocol failure.
+or record a protocol failure. For recursive orchestration changes, run the live
+recursive lab in `docs/live_agent_result_recursive_lab.md`: the parent
+delegates to a planner subagent, validates its partial result, delegates the
+approved child task to a worker subagent, validates the worker result, and
+records a final recursion trace.
 
 Use `gfm` for formatting, linting, typechecking, compile/static checks, and
 diff hygiene. Use `gte` for unit tests, API regression tests, smoke checks, and

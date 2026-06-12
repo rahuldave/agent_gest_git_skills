@@ -33,6 +33,9 @@ agentic-target-lab:
 agent-result-lab:
   scripts/run_agent_result_lab.sh
 
+agent-result-recursive-live-lab TRANSCRIPT_DIR:
+  scripts/run_agent_result_recursive_live_lab.sh "{{TRANSCRIPT_DIR}}"
+
 workflow-lab:
   scripts/run_gitbutler_workflow_lab.sh
 
