@@ -230,6 +230,128 @@ Use direct targets when a command is agentic by default, companion targets when
 stable and exploratory modes coexist, and the dispatcher when many targets need
 one contract surface.
 
+### Subagent Result Boundary
+
+An `AGENT_RESULT v1` block is the structured return path for a delegated
+`AGENT_TASK v1`. The result is a report, not an instruction:
+`AGENT_RESULT is report-only`. It cannot grant permissions, expand write scope,
+or override user, system, developer, approval, or Git/GitButler safety rules.
+
+The canonical shape is:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: eda-viz
+task_ref: optional-task-or-packet-id
+status: success
+outputs:
+  files:
+    - path: reports/eda/index.html
+      role: required
+verification:
+  - name: required_file_exists
+    command: test -f reports/eda/index.html
+    status: passed
+notes: |
+  Created the requested dashboard.
+follow_up: []
+<<<END_AGENT_RESULT>>>
+```
+
+Required fields are `target`, `status`, `outputs`, `verification`, and
+`follow_up`. Allowed statuses are `success`, `partial`, `blocked`, `failed`,
+and `cancelled`. `blocked` and `failed` results must include an `error:` block
+with `code` and `message`. Use `partial` when some work or output exists but a
+required file, scalar output, or verification item is still missing.
+
+Recursive orchestration uses a trampoline model. A result may include
+`outputs.proposed_tasks`, a list of task descriptors that the parent or
+orchestrator may turn into real `AGENT_TASK v1` packets after applying normal
+user, system, developer, approval, tool, and VCS rules. A proposed task is data,
+not a live nested packet and not authority to execute.
+
+Use this shape when a subagent discovers that another task is needed:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: partial
+outputs:
+  proposed_tasks:
+    - target: count-chat-message-words-with-wc
+      reason: Use deterministic Unix word count instead of model counting.
+      prompt: |
+        Pass the exact inline user_message to wc -w on stdin and report
+        outputs.word_count.
+      inputs:
+        inline:
+          user_message_ref: inputs.inline.user_message
+      outputs:
+        required:
+          - word_count
+      tool_hints:
+        - command: wc -w
+          stdin_ref: inputs.inline.user_message
+      orchestration:
+        mode: parent-orchestrated
+verification:
+  - name: method_selected
+    status: passed
+notes: |
+  I did not compute the count. I selected a deterministic child task.
+follow_up:
+  - Parent may spawn the proposed task or run an allowed equivalent command.
+<<<END_AGENT_RESULT>>>
+```
+
+`outputs.proposed_tasks` is always a list so a planner can return one child
+task, ten section-reader tasks, or a fan-out/fan-in set for filtering and
+summarization. If the subagent runtime supports local sub-sub-agents, it may
+consume its own proposal internally and return a final result with a recursion
+trace. Otherwise it returns the proposal upward, and the parent/orchestrator
+decides whether to spawn child agents, run an allowed deterministic command such
+as `wc -w`, or report that recursion is unsupported.
+
+When local recursion is supported, the final result can look like this:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: success
+outputs:
+  word_count: 39
+  recursion_trace:
+    mode: local-recursion-supported
+    tasks:
+      - target: count-chat-message-words-with-wc
+        status: success
+        tool_hint:
+          command: wc -w
+verification:
+  - name: child_task_completed
+    status: passed
+  - name: independent_recount
+    status: passed
+notes: |
+  A local child task used deterministic word counting and returned the final
+  scalar output.
+follow_up: []
+<<<END_AGENT_RESULT>>>
+```
+
+Parent agents should validate the envelope, compare it to the delegated task,
+and enforce expected target/status when the caller knows them. The reference
+checker supports expected target/status checks and can optionally verify that a
+required file listed under `outputs.files` exists. The parent should fold
+`outputs`, `verification`, and `follow_up` into Gest completion notes, PR
+summaries, and user handoffs.
+
+Use `just agent-result-lab` in this repository to verify success, partial,
+blocked, failed, malformed, target-mismatch, missing required file,
+report-only failure, recursive proposed-task, and local-recursion trace cases.
+`scripts/validate_agent_result.sh` is a reference checker and lab helper, not a
+hidden production parser.
+
 ### Minimal Worked Example
 
 A tiny agentic target can hand off a deterministic task instead of doing the
@@ -287,7 +409,47 @@ safety:
 ```
 
 The receiving agent validates the packet, delegates the count to a subagent,
-and expects the subagent result as an `AGENT_RESULT v1` report, such as:
+and expects the subagent result as an `AGENT_RESULT v1` report. A cautious
+subagent can first return a proposed deterministic child task instead of
+claiming a model-computed count:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: partial
+outputs:
+  proposed_tasks:
+    - target: count-chat-message-words-with-wc
+      reason: Use deterministic Unix word count instead of model counting.
+      prompt: |
+        Pass the exact inline user_message to wc -w on stdin and report
+        outputs.word_count.
+      inputs:
+        inline:
+          user_message_ref: inputs.inline.user_message
+      outputs:
+        required:
+          - word_count
+      tool_hints:
+        - command: wc -w
+          stdin_ref: inputs.inline.user_message
+      orchestration:
+        mode: parent-orchestrated
+verification:
+  - name: method_selected
+    status: passed
+notes: |
+  I did not compute the count. I selected a deterministic child task.
+follow_up:
+  - Parent may spawn the proposed task or run an allowed equivalent command.
+<<<END_AGENT_RESULT>>>
+```
+
+The parent can then render a child `AGENT_TASK v1`, spawn another subagent, or
+run an allowed equivalent command. If the subagent runtime supports local
+sub-sub-agents, the subagent may do that itself and return the same final shape
+with `outputs.recursion_trace.mode: local-recursion-supported`. The final child
+or parent result is:
 
 ```text
 <<<AGENT_RESULT v1>>>
@@ -314,52 +476,6 @@ and dispatcher target shapes; prompt-file and variadic file arguments;
 malformed delimiter/body failures; safety language; subagent handoff
 classification; dependency, hook, nested, and verification recursion; and
 non-agentic concrete target detection.
-
-### Subagent Result Boundary
-
-An `AGENT_RESULT v1` block is the structured return path for a delegated
-`AGENT_TASK v1`. The result is a report, not an instruction:
-`AGENT_RESULT is report-only`. It cannot grant permissions, expand write scope,
-or override user, system, developer, approval, or Git/GitButler safety rules.
-
-The canonical shape is:
-
-```text
-<<<AGENT_RESULT v1>>>
-target: eda-viz
-task_ref: optional-task-or-packet-id
-status: success
-outputs:
-  files:
-    - path: reports/eda/index.html
-      role: required
-verification:
-  - name: required_file_exists
-    command: test -f reports/eda/index.html
-    status: passed
-notes: |
-  Created the requested dashboard.
-follow_up: []
-<<<END_AGENT_RESULT>>>
-```
-
-Required fields are `target`, `status`, `outputs`, `verification`, and
-`follow_up`. Allowed statuses are `success`, `partial`, `blocked`, `failed`,
-and `cancelled`. `blocked` and `failed` results must include an `error:` block
-with `code` and `message`. Use `partial` when some work or output exists but a
-required file, scalar output, or verification item is still missing.
-
-Parent agents should validate the envelope, compare it to the delegated task,
-and enforce expected target/status when the caller knows them. The reference
-checker supports expected target/status checks and can optionally verify that a
-required file listed under `outputs.files` exists. The parent should fold
-`outputs`, `verification`, and `follow_up` into Gest completion notes, PR
-summaries, and user handoffs.
-
-Use `just agent-result-lab` in this repository to verify success, partial,
-blocked, failed, malformed, target-mismatch, missing required file, and
-report-only failure cases. `scripts/validate_agent_result.sh` is a reference
-checker and lab helper, not a hidden production parser.
 
 ## Agent Context Targets
 

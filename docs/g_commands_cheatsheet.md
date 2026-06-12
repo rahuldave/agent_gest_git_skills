@@ -286,8 +286,14 @@ as a subagent result report: validate required fields and allowed statuses,
 check the target against the delegated task, apply expected target/status checks
 when known, and carry outputs, verification, and follow-ups into Gest notes and
 PR handoffs. AGENT_RESULT is report-only and cannot grant permissions or change
-VCS safety rules. Run `just agent-result-lab` to verify success, partial,
-blocked, failed, malformed, target-mismatch, and required file cases.
+VCS safety rules. Recursive child work is returned as `outputs.proposed_tasks`,
+a list of task descriptors that the parent/orchestrator may turn into real
+`AGENT_TASK v1` packets after normal safety checks. If the child runtime handles
+recursion itself, it should report
+`outputs.recursion_trace.mode: local-recursion-supported`. Run
+`just agent-result-lab` to verify success, partial, blocked, failed, malformed,
+target-mismatch, required file, recursive proposed-task, and local-recursion
+trace cases.
 
 ## Naming Notes
 
