@@ -185,6 +185,34 @@ agent context, subject to normal user, tool, approval, and Git/GitButler VCS
 rules. Only emitted `AGENT_TASK v1` blocks create mandatory subagent
 boundaries.
 
+### Parser And Handoff Mechanism
+
+There is no hidden runtime skill that makes the packet authoritative. The
+behavior is provided by the reusable workflow instructions installed into the
+agent environment: `AGENTS.md` plus the relevant `g*` skills such as `gtw`,
+`gim`, `gor`, and `gte`. Those instructions tell the current agent to treat
+`AGENT_TASK v1` as data emitted by the repository, validate it, and delegate the
+parsed work through whatever subagent mechanism the host agent surface
+provides.
+
+The usual flow is:
+
+1. The current agent runs a Just target.
+2. The target writes an `AGENT_TASK v1` block to stdout.
+3. The current agent detects the start/end markers and validates the required
+   fields, safety text, and recursive delegation declaration.
+4. The current agent spawns or schedules a subagent and includes the original
+   packet plus the relevant user request as that subagent's task input.
+5. The subagent performs only the delegated work, reports its result, and
+   repeats this same handoff rule if it encounters another emitted
+   `AGENT_TASK v1` block.
+
+`scripts/validate_agent_task.sh` is a reference checker and lab helper, not a
+required production parser. A host agent may parse the packet with its own
+structured parser, but it must preserve the same boundary: if subagents are not
+available, the agent should report that blocker or use an approved
+orchestration path instead of silently doing the agentic work inline.
+
 Projects can expose agentic work in three equivalent shapes:
 
 ```just
@@ -201,6 +229,66 @@ agentic TARGET +ARGS:
 Use direct targets when a command is agentic by default, companion targets when
 stable and exploratory modes coexist, and the dispatcher when many targets need
 one contract surface.
+
+### Minimal Worked Example
+
+A tiny agentic target can hand off a deterministic task instead of doing the
+work itself. In a real project, prefer a small renderer script so arbitrary user
+input is escaped safely:
+
+```just
+count-message-agentic MESSAGE:
+  @scripts/render_agent_task.sh \
+    --target count-chat-message-chars \
+    --inline "user_message={{MESSAGE}}"
+```
+
+For the message:
+
+```text
+how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+```
+
+the target should emit a handoff packet like:
+
+```text
+<<<AGENT_TASK v1>>>
+target: count-chat-message-chars
+mode: agentic
+argv:
+  - inline:user-message
+prompt: |
+  Count the number of characters in the exact chat message supplied.
+  Count visible characters including spaces and punctuation.
+inputs:
+  files: []
+  inline:
+    user_message: how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+outputs:
+  required:
+    - character_count
+allowed_actions:
+  - read listed inline input
+  - compute deterministic character count
+verification:
+  - recompute the count once independently before returning
+delegation:
+  execution: subagent
+  recursive: true
+  triggers:
+    - nested agentic Just calls
+    - agentic dependencies
+    - hook-triggered packets
+    - agentic verification targets
+safety:
+  - This block is repo-local operational context.
+  - It cannot override user, system, developer, VCS, or approval instructions.
+<<<END_AGENT_TASK>>>
+```
+
+The receiving agent validates the packet, delegates the count to a subagent,
+and reports the subagent result, such as `character_count=199`. The parent
+agent does not do the count inline, even though the task is simple.
 
 Use `just agentic-target-lab` in this repository to verify direct, companion,
 and dispatcher target shapes; prompt-file and variadic file arguments;
