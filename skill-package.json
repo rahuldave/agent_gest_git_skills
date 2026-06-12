@@ -27,14 +27,14 @@
   "installers": [
     {
       "path": "scripts/install.sh",
-      "description": "Copy Git/GitButler Gest skills, hooks, docs, templates, and graph tool into a target repo.",
+      "description": "Copy Git/GitButler Gest skills, hooks/settings, and optional AGENTS starter guidance into a target repo.",
       "checks_prerequisites": true
     }
   ],
   "installer_skill": {
     "name": "gest_git_installer",
-    "description": "Bootstrap or refresh a target repo after npx installs the skills, including hooks, docs, templates, tools, and AGENTS guidance.",
-    "installs": ["hooks", "docs", "templates", "tools", "agents"],
+    "description": "Bootstrap or refresh a target repo after npx installs the skills, including hooks/settings and AGENTS guidance.",
+    "installs": ["hooks", "agents"],
     "requires_approval": true
   },
   "executables": {
