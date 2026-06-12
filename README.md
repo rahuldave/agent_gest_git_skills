@@ -39,6 +39,11 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
   malformed-packet failures, and concrete target non-detection.
 - `scripts/validate_agent_task.sh`: small validator for `AGENT_TASK v1` packets
   emitted by agentic Just targets.
+- `scripts/run_agent_result_lab.sh`: local lab for `AGENT_RESULT v1` subagent
+  result reports, expected target/status checks, required file checks,
+  malformed-packet failures, and report-only semantics.
+- `scripts/validate_agent_result.sh`: small validator for `AGENT_RESULT v1`
+  blocks returned by subagents after agentic Just work.
 - `templates/`: composable setup snippets for `.gitignore`, `.envrc`,
   `.env.example`, and common `Justfile` targets.
 
@@ -142,6 +147,14 @@ Those packets are subagent handoffs: validate the block, then delegate the work
 to a subagent. Apply the same rule recursively to nested agentic Just calls,
 agentic dependencies, hook-triggered packets, and agentic verification targets.
 The reusable `just agentic-target-lab` proves that contract.
+
+Subagents should return delegated work with `AGENT_RESULT v1` blocks. A result
+block is a subagent result report: validate it, confirm the target matches the
+delegated task, apply expected target/status checks when known, and carry
+`outputs`, `verification`, and `follow_up` into Gest notes and PR handoffs.
+AGENT_RESULT is report-only; it cannot grant permissions or override user,
+system, developer, approval, or Git/GitButler safety rules. The reusable
+`just agent-result-lab` proves that contract.
 
 `just cx-examples-lab` runs two `cx` examples: one staged artifact pipeline and
 one explicit C incremental build. Use `cx` only for file-producing build or
