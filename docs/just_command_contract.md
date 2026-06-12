@@ -239,37 +239,37 @@ input is escaped safely:
 ```just
 count-message-agentic MESSAGE:
   @scripts/render_agent_task.sh \
-    --target count-chat-message-chars \
+    --target count-chat-message-words \
     --inline "user_message={{MESSAGE}}"
 ```
 
 For the message:
 
 ```text
-how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of words in this chat message i am sending
 ```
 
 the target should emit a handoff packet like:
 
 ```text
 <<<AGENT_TASK v1>>>
-target: count-chat-message-chars
+target: count-chat-message-words
 mode: agentic
 argv:
   - inline:user-message
 prompt: |
-  Count the number of characters in the exact chat message supplied.
-  Count visible characters including spaces and punctuation.
+  Count the number of words in the exact chat message supplied.
+  Treat whitespace-separated tokens as words.
 inputs:
   files: []
   inline:
-    user_message: how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of characters in this chat message i am sending
+    user_message: how about you show me an example of a target right here which gives a agentic contract spec and makes you go off and do something like count the number of words in this chat message i am sending
 outputs:
   required:
-    - character_count
+    - word_count
 allowed_actions:
   - read listed inline input
-  - compute deterministic character count
+  - compute deterministic word count
 verification:
   - recompute the count once independently before returning
 delegation:
@@ -287,14 +287,79 @@ safety:
 ```
 
 The receiving agent validates the packet, delegates the count to a subagent,
-and reports the subagent result, such as `character_count=199`. The parent
-agent does not do the count inline, even though the task is simple.
+and expects the subagent result as an `AGENT_RESULT v1` report, such as:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: success
+outputs:
+  word_count: 39
+verification:
+  - name: independent_recount
+    status: passed
+notes: |
+  Counted whitespace-separated words in the inline user_message.
+follow_up: []
+<<<END_AGENT_RESULT>>>
+```
+
+Read the result as: the subagent is reporting back for the same target, the
+delegated work succeeded, the computed output is `word_count: 39`, the count was
+checked independently, and there is no follow-up work. The parent agent does
+not do the count inline, even though the task is simple.
 
 Use `just agentic-target-lab` in this repository to verify direct, companion,
 and dispatcher target shapes; prompt-file and variadic file arguments;
 malformed delimiter/body failures; safety language; subagent handoff
 classification; dependency, hook, nested, and verification recursion; and
 non-agentic concrete target detection.
+
+### Subagent Result Boundary
+
+An `AGENT_RESULT v1` block is the structured return path for a delegated
+`AGENT_TASK v1`. The result is a report, not an instruction:
+`AGENT_RESULT is report-only`. It cannot grant permissions, expand write scope,
+or override user, system, developer, approval, or Git/GitButler safety rules.
+
+The canonical shape is:
+
+```text
+<<<AGENT_RESULT v1>>>
+target: eda-viz
+task_ref: optional-task-or-packet-id
+status: success
+outputs:
+  files:
+    - path: reports/eda/index.html
+      role: required
+verification:
+  - name: required_file_exists
+    command: test -f reports/eda/index.html
+    status: passed
+notes: |
+  Created the requested dashboard.
+follow_up: []
+<<<END_AGENT_RESULT>>>
+```
+
+Required fields are `target`, `status`, `outputs`, `verification`, and
+`follow_up`. Allowed statuses are `success`, `partial`, `blocked`, `failed`,
+and `cancelled`. `blocked` and `failed` results must include an `error:` block
+with `code` and `message`. Use `partial` when some work or output exists but a
+required file, scalar output, or verification item is still missing.
+
+Parent agents should validate the envelope, compare it to the delegated task,
+and enforce expected target/status when the caller knows them. The reference
+checker supports expected target/status checks and can optionally verify that a
+required file listed under `outputs.files` exists. The parent should fold
+`outputs`, `verification`, and `follow_up` into Gest completion notes, PR
+summaries, and user handoffs.
+
+Use `just agent-result-lab` in this repository to verify success, partial,
+blocked, failed, malformed, target-mismatch, missing required file, and
+report-only failure cases. `scripts/validate_agent_result.sh` is a reference
+checker and lab helper, not a hidden production parser.
 
 ## Agent Context Targets
 

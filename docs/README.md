@@ -10,7 +10,8 @@ Use the rest only when you need reference material:
 - `gest_codex_workflow.md`: advanced workflow playbook for agents.
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
 - `just_command_contract.md`: stable Justfile command contract guidance,
-  including optional dynamic `agent-*` context targets.
+  including optional dynamic `agent-*` context targets, `AGENT_TASK v1`
+  handoff packets, and `AGENT_RESULT v1` subagent reports.
 - `cx_incremental_pipelines.md`: `cx` guidance for incremental builds and
   file-artifact pipelines, including one pipeline example and one C build
   example.

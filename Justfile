@@ -13,6 +13,7 @@ test:
   scripts/run_language_profile_labs.sh
   scripts/run_cx_examples_lab.sh
   scripts/run_agentic_target_lab.sh
+  scripts/run_agent_result_lab.sh
 
 tag-dependency-dry-run:
   scripts/run_tag_dependency_agent_dry_run.sh
@@ -28,6 +29,9 @@ cx-examples-lab:
 
 agentic-target-lab:
   scripts/run_agentic_target_lab.sh
+
+agent-result-lab:
+  scripts/run_agent_result_lab.sh
 
 workflow-lab:
   scripts/run_gitbutler_workflow_lab.sh
