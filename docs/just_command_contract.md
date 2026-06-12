@@ -352,6 +352,58 @@ report-only failure, recursive proposed-task, and local-recursion trace cases.
 `scripts/validate_agent_result.sh` is a reference checker and lab helper, not a
 hidden production parser.
 
+Use `docs/live_agent_result_recursive_lab.md` for the live recursive lab. That
+lab requires two successive subagents: a planner subagent returns a partial
+result with `outputs.proposed_tasks`, the parent validates and renders the
+approved child `AGENT_TASK v1`, and a worker subagent returns the deterministic
+child result. The saved transcript is checked with
+`just agent-result-recursive-live-lab <transcript-dir>`.
+
+The second task is spawned by the parent/orchestrator after it has validated
+the first result. It is not spawned by `scripts/validate_agent_result.sh`, by a
+Just recipe, or by the `AGENT_RESULT` block itself. The reusable skills define
+the parent-agent procedure:
+
+1. Validate the first subagent result with `scripts/validate_agent_result.sh`
+   and expected target/status checks.
+2. Inspect `outputs.proposed_tasks` as data and reject anything outside the
+   current user, system, developer, approval, tool, or Git/GitButler safety
+   rules.
+3. Render the approved proposal as a fresh `AGENT_TASK v1` packet.
+4. Delegate that packet through the agent runtime's normal subagent mechanism.
+   In Codex, this is the available subagent/delegation tool; in another host it
+   is that host's equivalent worker-agent path.
+5. Validate the worker's `AGENT_RESULT v1` and record a final parent result
+   with `outputs.recursion_trace`.
+
+This is why the live lab stores transcript artifacts instead of pretending a
+shell script can launch portable agents. The shell validator proves the parent
+did the required validation, second delegation, worker-result validation, final
+trace, and unsafe-proposal refusal.
+
+The skills involved are deliberately transparent:
+
+- `gtw` classifies the work, creates or reuses the Gest parent/leaf tasks, and
+  chooses the branch/execution model before any file edits.
+- `gor` is the natural skill for a phased or parallel orchestration pass. If an
+  implementation phase receives `outputs.proposed_tasks`, `gor` or the current
+  parent agent applies the same policy: validate first, then decide whether to
+  create child leaves, spawn worker agents, run an approved deterministic
+  command, or stop for approval.
+- `gim` owns a concrete implementation leaf. When the active implementation
+  work discovers an agentic child task, `gim` stays inside the current leaf
+  boundary and asks the parent/orchestrator to handle the child task rather
+  than silently widening scope.
+- `gte`, `gfm`, `grv`, and `gpa` do not spawn recursive work by themselves;
+  they verify, format/check, review, or PR-review the artifacts produced by the
+  parent/worker flow.
+
+In other words, the `g*` skills define when spawning is appropriate, how it is
+tracked in Gest, and what must be validated before and after. The actual worker
+launch uses the host agent runtime's subagent facility. In Codex, that is the
+subagent/delegation tool available to the parent agent; in another host, use
+that host's equivalent worker-agent path.
+
 ### Minimal Worked Example
 
 A tiny agentic target can hand off a deterministic task instead of doing the
