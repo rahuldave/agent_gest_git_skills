@@ -90,36 +90,44 @@ Identify which of these concepts apply to the project:
 
 When the target repository is itself a skill repository, look for
 `skill-package.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, and
-`scripts/install.sh`. If the `skill-package-installer` skill is installed or
+`scripts/install.sh`. If the `skill-package-maker` skill is installed or
 available in the current source checkout, use it for packaging checks before
 declaring setup complete.
 
 Preferred checks:
 
 ```bash
-uv run python .agents/skills/skill-package-installer/scripts/lint_skill_bundle.py .
-uv run python .agents/skills/skill-package-installer/scripts/render_package_plan.py .
+uv run python ~/.agents/skills/skill-package-maker/scripts/lint_skill_bundle.py .
+uv run python ~/.agents/skills/skill-package-maker/scripts/render_package_plan.py .
 ```
 
-If the skill is not installed in the target repo but the standalone checkout is
-available, use:
+If the skill was installed project-locally instead of globally, use the same
+script paths under `.agents/skills/skill-package-maker/`. If the standalone
+checkout is available, use:
 
 ```bash
-uv run python /Users/rahul/Projects/agent_skill_package_installer/skills/skill-package-installer/scripts/lint_skill_bundle.py .
+uv run python /Users/rahul/Projects/agent_skill_package_maker/skills/skill-package-maker/scripts/lint_skill_bundle.py .
 ```
 
-Require skill repos to declare their package installer skill, custom installers,
-and executable prerequisites in `skill-package.json`. For packages installed
-with `npx skills`, hooks and templates should be installed by the package's
-explicit installer skill after `npx skills add`, not as a hidden install side
-effect. Installer scripts must report every required workflow executable without
-blocking the skill copy and mention optional executables that unlock extra
-flows. For this Git/GitButler skill repo, `gest_git_installer` is the
-package-specific installer skill for hooks, docs, templates, tools, and AGENTS
-guidance. `gsu` remains the general repo setup skill after the package is
-installed. Required workflow executables are `git`, `gest`, `just`, and `uv`;
-optional executables include `rsync`, `gh`, `but`, `ast-grep`, `direnv`, and
-`cx`. Runtime commands should re-check tools they actually need.
+Require skill repos to declare their package-specific installer skill, custom
+installers, and executable prerequisites in `skill-package.json`. For packages
+installed with `npx skills`, hooks and templates should be installed by the
+package's explicit installer skill after `npx skills add`, not as a hidden
+install side effect. Installer scripts must report every required workflow
+executable without blocking the skill copy and mention optional executables
+that unlock extra flows.
+
+For this Git/GitButler skill repo, the natural fresh-install sequence is:
+
+1. `npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y`
+2. use `gest_git_installer` to install hooks, docs, templates, tools, and
+   AGENTS guidance;
+3. use `gsu` for ordinary project setup: tool checks, ignore rules, dependency
+   setup, command contracts, Justfile targets, and follow-up tasks.
+
+Required workflow executables are `git`, `gest`, `just`, and `uv`; optional
+executables include `rsync`, `gh`, `but`, `ast-grep`, `direnv`, and `cx`.
+Runtime commands should re-check tools they actually need.
 
 ## Snippet Templates
 
