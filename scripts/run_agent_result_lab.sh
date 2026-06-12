@@ -54,6 +54,63 @@ follow_up: []
 <<<END_AGENT_RESULT>>>
 RESULT
 
+cat >"$workspace/recursive-proposal.out" <<'RESULT'
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: partial
+outputs:
+  proposed_tasks:
+    - target: count-chat-message-words-with-wc
+      reason: Use deterministic Unix word count instead of model counting.
+      prompt: |
+        Pass the exact inline user_message to wc -w on stdin and report
+        outputs.word_count.
+      inputs:
+        inline:
+          user_message_ref: inputs.inline.user_message
+      outputs:
+        required:
+          - word_count
+      tool_hints:
+        - command: wc -w
+          stdin_ref: inputs.inline.user_message
+      orchestration:
+        mode: parent-orchestrated
+verification:
+  - name: method_selected
+    status: passed
+notes: |
+  I did not compute the count. I selected a deterministic child task.
+follow_up:
+  - Parent may spawn the proposed task or run an allowed equivalent command.
+<<<END_AGENT_RESULT>>>
+RESULT
+
+cat >"$workspace/local-recursion-success.out" <<'RESULT'
+<<<AGENT_RESULT v1>>>
+target: count-chat-message-words
+status: success
+outputs:
+  word_count: 39
+  recursion_trace:
+    mode: local-recursion-supported
+    tasks:
+      - target: count-chat-message-words-with-wc
+        status: success
+        tool_hint:
+          command: wc -w
+verification:
+  - name: child_task_completed
+    status: passed
+  - name: independent_recount
+    status: passed
+notes: |
+  A local child task used deterministic word counting and returned the final
+  scalar output.
+follow_up: []
+<<<END_AGENT_RESULT>>>
+RESULT
+
 cat >"$workspace/partial.out" <<'RESULT'
 <<<AGENT_RESULT v1>>>
 target: eda-viz
@@ -171,6 +228,16 @@ RESULT
 run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/success-scalar.out"
 
 run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status success --check-files --base-dir "$workspace" "$workspace/success-file.out"
+
+run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status partial "$workspace/recursive-proposal.out"
+grep -q '^  proposed_tasks:$' "$workspace/recursive-proposal.out"
+grep -q '^    - target: count-chat-message-words-with-wc$' "$workspace/recursive-proposal.out"
+grep -q '^        - command: wc -w$' "$workspace/recursive-proposal.out"
+grep -q '^        mode: parent-orchestrated$' "$workspace/recursive-proposal.out"
+
+run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/local-recursion-success.out"
+grep -q '^    mode: local-recursion-supported$' "$workspace/local-recursion-success.out"
+grep -q '^          command: wc -w$' "$workspace/local-recursion-success.out"
 
 run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status partial "$workspace/partial.out"
 
