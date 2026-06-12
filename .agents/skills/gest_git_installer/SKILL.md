@@ -21,6 +21,10 @@ this skill directory:
 bash .agents/skills/gest_git_installer/scripts/install_gest_git_package.sh .
 ```
 
+For a normal fresh install, explain the flow plainly: `npx skills add` got the
+skills, this installer adds the repository extras, and `gsu` handles ordinary
+project setup afterward.
+
 Resolve the script relative to the installed `gest_git_installer` skill if it
 is installed globally or in another agent skill root. The helper fetches this
 package repository into a temporary directory and runs its source-checkout
