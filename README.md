@@ -39,20 +39,23 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 
 ## Install Into A Repo
 
-Fresh users should install the skill package directly with `npx skills` from
-inside the target repository:
+For a fresh machine or a fresh project, use three steps from inside the target
+repository.
+
+First, install the skills:
 
 ```bash
 npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
 ```
 
-That installs the skills only. It does not run hooks or copy root-level docs,
-templates, tools, or `AGENTS.md`. After the `npx` install, ask the agent to use
-`gest_git_installer` to install the Git/GitButler Gest package extras in the
-current repo. `gest_git_installer` carries a bundled helper that fetches this
-repository and runs the source-checkout installer with clear prerequisite
-messages and overwrite approval. Use `gsu` afterward for normal repository
-setup and command-contract refresh work.
+Second, ask the agent to use `gest_git_installer` to install the Git/GitButler
+Gest hooks, docs, templates, tools, and AGENTS guidance in the current repo.
+`npx skills add` installs skill folders only; it does not run hooks or copy
+root-level package extras. `gest_git_installer` carries a bundled helper that
+fetches this repository and runs the source-checkout installer with clear
+prerequisite messages and overwrite approval.
+
+Third, use `gsu` for normal repository setup and command-contract refresh work.
 
 Source checkout alternative:
 
