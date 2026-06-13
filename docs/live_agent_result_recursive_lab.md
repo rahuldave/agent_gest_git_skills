@@ -69,7 +69,7 @@ safety:
 Validate it:
 
 ```bash
-scripts/validate_agent_task.sh --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
+scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
 ```
 
 ## 2. First Subagent: Planner
@@ -94,7 +94,7 @@ The result must have:
 Validate it:
 
 ```bash
-scripts/validate_agent_result.sh \
+scripts/jagt_lint_agent_result.sh \
   --expect-count 1 \
   --expect-target count-chat-message-words \
   --expect-status partial \
@@ -118,7 +118,7 @@ must tell the worker to run `wc -w` on the exact message in
 Validate it:
 
 ```bash
-scripts/validate_agent_task.sh --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
+scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
 ```
 
 ## 4. Second Subagent: Worker
@@ -141,7 +141,7 @@ The result must have:
 Validate it:
 
 ```bash
-scripts/validate_agent_result.sh \
+scripts/jagt_lint_agent_result.sh \
   --expect-count 1 \
   --expect-target count-chat-message-words-with-wc \
   --expect-status success \
@@ -195,4 +195,3 @@ just agent-result-recursive-live-lab "$lab_dir"
 The validator checks both `AGENT_TASK v1` packets, all three successful-path
 `AGENT_RESULT v1` envelopes, the word count against `wc -w`, the recursion
 trace, and the unsafe-proposal refusal record.
-
