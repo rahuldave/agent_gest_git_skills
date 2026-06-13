@@ -14,8 +14,7 @@ run() {
   "$@"
 }
 
-cp "$repo_root/scripts/validate_agent_result.sh" "$workspace/validate_agent_result.sh"
-chmod +x "$workspace/validate_agent_result.sh"
+agent_result_lint=(bash "$repo_root/scripts/jagt_lint_agent_result.sh")
 
 cat >"$workspace/success-scalar.out" <<'RESULT'
 <<<AGENT_RESULT v1>>>
@@ -225,54 +224,54 @@ follow_up: []
 <<<END_AGENT_RESULT>>>
 RESULT
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/success-scalar.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/success-scalar.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status success --check-files --base-dir "$workspace" "$workspace/success-file.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target eda-viz --expect-status success --check-files --base-dir "$workspace" "$workspace/success-file.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status partial "$workspace/recursive-proposal.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target count-chat-message-words --expect-status partial "$workspace/recursive-proposal.out"
 grep -q '^  proposed_tasks:$' "$workspace/recursive-proposal.out"
 grep -q '^    - target: count-chat-message-words-with-wc$' "$workspace/recursive-proposal.out"
 grep -q '^        - command: wc -w$' "$workspace/recursive-proposal.out"
 grep -q '^        mode: parent-orchestrated$' "$workspace/recursive-proposal.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/local-recursion-success.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target count-chat-message-words --expect-status success "$workspace/local-recursion-success.out"
 grep -q '^    mode: local-recursion-supported$' "$workspace/local-recursion-success.out"
 grep -q '^          command: wc -w$' "$workspace/local-recursion-success.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status partial "$workspace/partial.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target eda-viz --expect-status partial "$workspace/partial.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status blocked "$workspace/blocked.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target eda-viz --expect-status blocked "$workspace/blocked.out"
 
-run "$workspace/validate_agent_result.sh" --expect-count 1 --expect-target eda-viz --expect-status failed "$workspace/failed.out"
+run "${agent_result_lint[@]}" --expect-count 1 --expect-target eda-viz --expect-status failed "$workspace/failed.out"
 
-run "$workspace/validate_agent_result.sh" --expect-none "$workspace/commentary.txt"
+run "${agent_result_lint[@]}" --expect-none "$workspace/commentary.txt"
 
-if "$workspace/validate_agent_result.sh" "$workspace/missing-status.out" >/tmp/agent-result-missing-status.log 2>&1; then
+if "${agent_result_lint[@]}" "$workspace/missing-status.out" >/tmp/agent-result-missing-status.log 2>&1; then
   echo "missing status unexpectedly validated" >&2
   exit 1
 fi
 
-if "$workspace/validate_agent_result.sh" "$workspace/invalid-status.out" >/tmp/agent-result-invalid-status.log 2>&1; then
+if "${agent_result_lint[@]}" "$workspace/invalid-status.out" >/tmp/agent-result-invalid-status.log 2>&1; then
   echo "invalid status unexpectedly validated" >&2
   exit 1
 fi
 
-if "$workspace/validate_agent_result.sh" "$workspace/blocked-no-error.out" >/tmp/agent-result-blocked-no-error.log 2>&1; then
+if "${agent_result_lint[@]}" "$workspace/blocked-no-error.out" >/tmp/agent-result-blocked-no-error.log 2>&1; then
   echo "blocked result without error unexpectedly validated" >&2
   exit 1
 fi
 
-if "$workspace/validate_agent_result.sh" --expect-target other-target "$workspace/success-scalar.out" >/tmp/agent-result-target-mismatch.log 2>&1; then
+if "${agent_result_lint[@]}" --expect-target other-target "$workspace/success-scalar.out" >/tmp/agent-result-target-mismatch.log 2>&1; then
   echo "target mismatch unexpectedly validated" >&2
   exit 1
 fi
 
-if "$workspace/validate_agent_result.sh" --check-files --base-dir "$workspace" "$workspace/missing-file.out" >/tmp/agent-result-missing-file.log 2>&1; then
+if "${agent_result_lint[@]}" --check-files --base-dir "$workspace" "$workspace/missing-file.out" >/tmp/agent-result-missing-file.log 2>&1; then
   echo "missing required file unexpectedly validated" >&2
   exit 1
 fi
 
-if "$workspace/validate_agent_result.sh" "$workspace/report-only.out" >/tmp/agent-result-report-only.log 2>&1; then
+if "${agent_result_lint[@]}" "$workspace/report-only.out" >/tmp/agent-result-report-only.log 2>&1; then
   echo "task-like instruction fields unexpectedly validated" >&2
   exit 1
 fi

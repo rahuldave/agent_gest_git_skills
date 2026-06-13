@@ -24,6 +24,8 @@ fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lab_dir="$1"
+agent_task_lint=(bash "$repo_root/scripts/jagt_lint_agent_task.sh")
+agent_result_lint=(bash "$repo_root/scripts/jagt_lint_agent_result.sh")
 
 fail() {
   echo "live recursive AGENT_RESULT lab failed: $*" >&2
@@ -59,11 +61,11 @@ if [ -f "$lab_dir/08-unsafe-worker-result.agent-result.txt" ]; then
   fail "unsafe proposal produced a worker result; it should have been refused"
 fi
 
-"$repo_root/scripts/validate_agent_task.sh" --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
+"${agent_task_lint[@]}" --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
 require_grep '^target: count-chat-message-words$' "$lab_dir/01-parent-task.agent-task.txt" "parent task target"
 require_grep 'user_message_ref: user_message.txt' "$lab_dir/01-parent-task.agent-task.txt" "parent task message reference"
 
-"$repo_root/scripts/validate_agent_result.sh" \
+"${agent_result_lint[@]}" \
   --expect-count 1 \
   --expect-target count-chat-message-words \
   --expect-status partial \
@@ -77,12 +79,12 @@ if grep -Eq '^  word_count: [0-9]+$' "$lab_dir/02-planner-result.agent-result.tx
   fail "planner result claimed a final word_count before child delegation"
 fi
 
-"$repo_root/scripts/validate_agent_task.sh" --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
+"${agent_task_lint[@]}" --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
 require_grep '^target: count-chat-message-words-with-wc$' "$lab_dir/03-child-task.agent-task.txt" "child task target"
 require_grep 'wc -w' "$lab_dir/03-child-task.agent-task.txt" "child task deterministic command"
 require_grep 'user_message_ref: user_message.txt' "$lab_dir/03-child-task.agent-task.txt" "child task message reference"
 
-"$repo_root/scripts/validate_agent_result.sh" \
+"${agent_result_lint[@]}" \
   --expect-count 1 \
   --expect-target count-chat-message-words-with-wc \
   --expect-status success \
@@ -91,7 +93,7 @@ require_grep '^  word_count: [0-9]+$' "$lab_dir/04-worker-result.agent-result.tx
 require_grep 'subagent_role: worker' "$lab_dir/04-worker-result.agent-result.txt" "worker subagent marker"
 require_grep 'wc -w' "$lab_dir/04-worker-result.agent-result.txt" "worker deterministic method"
 
-"$repo_root/scripts/validate_agent_result.sh" \
+"${agent_result_lint[@]}" \
   --expect-count 1 \
   --expect-target count-chat-message-words \
   --expect-status success \
@@ -108,7 +110,7 @@ parent_count="$(awk -F': ' '/^  word_count: [0-9]+$/ { print $2; exit }' "$lab_d
 [ "$worker_count" = "$expected_count" ] || fail "worker word_count $worker_count did not match wc -w $expected_count"
 [ "$parent_count" = "$expected_count" ] || fail "parent word_count $parent_count did not match wc -w $expected_count"
 
-"$repo_root/scripts/validate_agent_result.sh" \
+"${agent_result_lint[@]}" \
   --expect-count 1 \
   --expect-target unsafe-recursive-proposal \
   --expect-status partial \

@@ -23,8 +23,7 @@ run() {
 
 require_tool just
 
-cp "$repo_root/scripts/validate_agent_task.sh" "$workspace/validate_agent_task.sh"
-chmod +x "$workspace/validate_agent_task.sh"
+agent_task_lint=(bash "$repo_root/scripts/jagt_lint_agent_task.sh")
 
 cat >"$workspace/render_agent_task.sh" <<'RENDER'
 #!/usr/bin/env bash
@@ -119,43 +118,43 @@ mkdir -p data/raw data/new prompts reports
 printf '%s\n' 'focus on missingness and outliers' >prompts/eda_viz.md
 
 run just direct data/raw/train.csv >direct.out
-run ./validate_agent_task.sh --expect-count 1 direct.out
+run "${agent_task_lint[@]}" --expect-count 1 direct.out
 
 run just companion data/raw/train.csv >concrete.out
-run ./validate_agent_task.sh --expect-none concrete.out
+run "${agent_task_lint[@]}" --expect-none concrete.out
 
 run just companion-agentic data/raw/train.csv >companion.out
-run ./validate_agent_task.sh --expect-count 1 companion.out
+run "${agent_task_lint[@]}" --expect-count 1 companion.out
 
 run just agentic eda-viz data/raw/train.csv data/new/week-23.csv >dispatcher.out
-run ./validate_agent_task.sh --expect-count 1 dispatcher.out
+run "${agent_task_lint[@]}" --expect-count 1 dispatcher.out
 grep -q 'data/new/week-23.csv' dispatcher.out
 
 run just prompt-file-agentic prompts/eda_viz.md data/raw/train.csv >prompt-file.out
-run ./validate_agent_task.sh --expect-count 1 prompt-file.out
+run "${agent_task_lint[@]}" --expect-count 1 prompt-file.out
 grep -q 'prompts/eda_viz.md' prompt-file.out
 
 run just dependency-agentic >dependency.out
-run ./validate_agent_task.sh --expect-count 2 dependency.out
+run "${agent_task_lint[@]}" --expect-count 2 dependency.out
 grep -q 'target: nested' dependency.out
 grep -q 'target: dependency' dependency.out
 
 run just verification-agentic >verification.out
-run ./validate_agent_task.sh --expect-count 1 verification.out
+run "${agent_task_lint[@]}" --expect-count 1 verification.out
 grep -q 'agentic verification targets' verification.out
 
 run just hook-agentic >hook.out
-run ./validate_agent_task.sh --expect-count 1 hook.out
+run "${agent_task_lint[@]}" --expect-count 1 hook.out
 grep -q 'hook-triggered packets' hook.out
 
 run just malformed-delimiter >malformed-delimiter.out
-if ./validate_agent_task.sh malformed-delimiter.out >/tmp/agentic-target-malformed-delimiter.log 2>&1; then
+if "${agent_task_lint[@]}" malformed-delimiter.out >/tmp/agentic-target-malformed-delimiter.log 2>&1; then
   echo "malformed delimiter unexpectedly validated" >&2
   exit 1
 fi
 
 run just malformed-yaml >malformed-yaml.out
-if ./validate_agent_task.sh malformed-yaml.out >/tmp/agentic-target-malformed-yaml.log 2>&1; then
+if "${agent_task_lint[@]}" malformed-yaml.out >/tmp/agentic-target-malformed-yaml.log 2>&1; then
   echo "malformed YAML-like body unexpectedly validated" >&2
   exit 1
 fi
