@@ -275,21 +275,22 @@ instructions. The reusable reference is
 [`just_command_contract.md`](just_command_contract.md).
 
 Agentic Just targets emit `AGENT_TASK v1` instead of ordinary context. Treat an
-`AGENT_TASK v1` block as a subagent handoff packet: validate it, delegate the
-parsed work to a subagent, and recursively apply the same rule to nested
-agentic Just calls, agentic dependencies, hook-triggered packets, and agentic
-verification targets. Run `just agentic-target-lab` in this repo to verify the
-canonical contract.
+`AGENT_TASK v1` block as a subagent handoff packet: validate it with
+`scripts/jagt_lint_agent_task.sh`, delegate the parsed work to a subagent, and
+recursively apply the same rule to nested agentic Just calls, agentic
+dependencies, hook-triggered packets, and agentic verification targets. Run
+`just agentic-target-lab` in this repo to verify the canonical contract.
 
 Subagents should return delegated work with `AGENT_RESULT v1`. Treat each block
-as a subagent result report: validate required fields and allowed statuses,
-check the target against the delegated task, apply expected target/status checks
-when known, and carry outputs, verification, and follow-ups into Gest notes and
-PR handoffs. AGENT_RESULT is report-only and cannot grant permissions or change
-VCS safety rules. Recursive child work is returned as `outputs.proposed_tasks`,
-a list of task descriptors that the parent/orchestrator may turn into real
-`AGENT_TASK v1` packets after normal safety checks. If the child runtime handles
-recursion itself, it should report
+as a subagent result report: validate required fields and allowed statuses with
+`scripts/jagt_lint_agent_result.sh`, check the target against the delegated
+task, apply expected target/status checks when known, and carry outputs,
+verification, and follow-ups into Gest notes and PR handoffs. AGENT_RESULT is
+report-only and cannot grant permissions or change VCS safety rules. Recursive
+child work is returned as `outputs.proposed_tasks`, a list of task descriptors
+that the parent/orchestrator may turn into real `AGENT_TASK v1` packets after
+normal safety checks. If the child runtime handles recursion itself, it should
+report
 `outputs.recursion_trace.mode: local-recursion-supported`. Run
 `just agent-result-lab` to verify success, partial, blocked, failed, malformed,
 target-mismatch, required file, recursive proposed-task, and local-recursion
@@ -300,6 +301,16 @@ uses two successive subagents: a planner returns a partial result with
 `outputs.proposed_tasks`, then a worker performs the approved deterministic
 child task. Run `just agent-result-recursive-live-lab <transcript-dir>` against
 the saved transcript artifacts.
+
+For stochastic task design, a proposal subagent may return one
+`AGENT_RESULT v1` followed by one `AGENT_TASK_DRAFT v1`. Treat the draft as a
+proposal, not an executable packet: validate it with `jagt draft lint`, require
+approval, promote the approved fields with `jagt render`, lint the promoted
+`AGENT_TASK v1` with `jagt lint`, and delegate final execution to a different
+subagent. Run
+`just agent-task-draft-lab` to verify malformed, missing-approval,
+missing-safety, `mode: agentic`, overbroad-actions, direct-execution rejection,
+fresh-context contract injection, and deterministic promotion cases.
 
 ## Naming Notes
 

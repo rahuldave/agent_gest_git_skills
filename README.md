@@ -37,15 +37,26 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `scripts/run_agentic_target_lab.sh`: local lab for generic `AGENT_TASK v1`
   agentic Just targets, subagent handoff classification, recursive delegation,
   malformed-packet failures, and concrete target non-detection.
-- `scripts/validate_agent_task.sh`: small validator for `AGENT_TASK v1` packets
-  emitted by agentic Just targets.
+- `scripts/jagt_lint_agent_task.sh`: maintained `jagt`-backed verifier for
+  `AGENT_TASK v1` packets emitted by agentic Just targets.
+- `scripts/validate_agent_task.sh`: legacy shell reference validator for
+  `AGENT_TASK v1` packets.
 - `scripts/run_agent_result_lab.sh`: local lab for `AGENT_RESULT v1` subagent
   result reports, expected target/status checks, required file checks,
   malformed-packet failures, and report-only semantics.
 - `scripts/run_agent_result_recursive_live_lab.sh`: transcript validator for
   the two-subagent live recursive `AGENT_RESULT v1` lab.
-- `scripts/validate_agent_result.sh`: small validator for `AGENT_RESULT v1`
-  blocks returned by subagents after agentic Just work.
+- `scripts/jagt_lint_agent_result.sh`: maintained `jagt`-backed verifier for
+  `AGENT_RESULT v1` blocks returned by subagents after agentic Just work.
+- `scripts/validate_agent_result.sh`: legacy shell reference validator for
+  `AGENT_RESULT v1` blocks.
+- `scripts/run_agent_task_draft_lab.sh`: local lab for `AGENT_TASK_DRAFT v1`
+  stochastic task proposals, mandatory approval, deterministic promotion
+  through `jagt render`/`jagt lint`, and direct-execution rejection.
+- `scripts/jagt_lint_agent_task_draft.sh`: maintained `jagt`-backed verifier
+  for `AGENT_TASK_DRAFT v1` proposal envelopes.
+- `scripts/validate_agent_task_draft.sh`: legacy shell reference validator for
+  `AGENT_TASK_DRAFT v1` proposal envelopes.
 - `templates/`: composable setup snippets for `.gitignore`, `.envrc`,
   `.env.example`, and common `Justfile` targets.
 
@@ -106,6 +117,33 @@ slices.
 For a map of the remaining reference docs, read
 [`docs/README.md`](docs/README.md).
 
+## Protocol Verification Labs
+
+The maintained protocol checks are the `jagt`-backed wrappers:
+
+```bash
+scripts/jagt_lint_agent_task.sh
+scripts/jagt_lint_agent_result.sh
+scripts/jagt_lint_agent_task_draft.sh
+```
+
+They delegate to `jagt lint`, `jagt result lint`, and `jagt draft lint`.
+Set `JAGT_BIN=/path/to/jagt` when testing against a local checkout. The older
+`scripts/validate_agent_*.sh` files are intentionally still present as legacy
+shell references, but new labs and docs should use the `jagt_lint_*` wrappers.
+
+The local packet labs are:
+
+```bash
+just agentic-target-lab
+just agent-result-lab
+just agent-task-draft-lab
+```
+
+Together they cover executable task packets, subagent result packets,
+recursive result transcripts, stochastic draft proposals, approval-gated
+promotion, and malformed/direct-execution rejection cases.
+
 ## Workflow Shape
 
 Use `gtw` as the default router for substantial project work. It decides:
@@ -165,6 +203,15 @@ safety checks. If the child runtime handles recursion itself, it should report
 lab in `docs/live_agent_result_recursive_lab.md` uses two successive subagents,
 and `just agent-result-recursive-live-lab <transcript-dir>` validates the saved
 transcript.
+
+When the task shape itself is stochastic, a design subagent may return an
+`AGENT_TASK_DRAFT v1` proposal after its normal `AGENT_RESULT v1`. A draft is
+not executable: validate it, require approval, promote approved fields through
+deterministic tooling such as `jagt render`, lint the promoted packet with
+`jagt lint`, and then delegate the final `AGENT_TASK v1` to a different
+subagent. The reusable `just agent-task-draft-lab` proves the static draft
+contract, rejection cases, fresh-context contract injection, and promotion
+boundary. See `docs/agent_task_draft_workflow.md`.
 
 `just cx-examples-lab` runs two `cx` examples: one staged artifact pipeline and
 one explicit C incremental build. Use `cx` only for file-producing build or

@@ -11,7 +11,11 @@ Use the rest only when you need reference material:
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
 - `just_command_contract.md`: stable Justfile command contract guidance,
   including optional dynamic `agent-*` context targets, `AGENT_TASK v1`
-  handoff packets, and `AGENT_RESULT v1` subagent reports.
+  handoff packets, `AGENT_RESULT v1` subagent reports, and
+  `AGENT_TASK_DRAFT v1` stochastic proposals.
+- `agent_task_draft_workflow.md`: user-facing guide for stochastic task
+  proposals, approval, deterministic promotion with `jagt`, and fresh
+  subagent contract delivery.
 - `cx_incremental_pipelines.md`: `cx` guidance for incremental builds and
   file-artifact pipelines, including one pipeline example and one C build
   example.
