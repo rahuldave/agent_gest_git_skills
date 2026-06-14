@@ -9,6 +9,12 @@ Use the rest only when you need reference material:
 - `g_commands_cheatsheet.md`: quick guide to the `g*` skills.
 - `gest_codex_workflow.md`: advanced workflow playbook for agents.
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
+- `protocol_flows.md`: agentic Just packet flow guide and lab map for
+  `AGENT_TASK v1`, `AGENT_RESULT v1`, recursive results, and
+  `AGENT_TASK_DRAFT v1` with the standard `g*` skills.
+- `live_protocol_flow_transcript_2026-06-14.md`: real parent/subagent protocol
+  transcript with validation failures, corrections, recursive refusal, draft
+  promotion, and final validator output.
 - `just_command_contract.md`: stable Justfile command contract guidance,
   including optional dynamic `agent-*` context targets, `AGENT_TASK v1`
   handoff packets, `AGENT_RESULT v1` subagent reports, and
@@ -35,3 +41,8 @@ The beginner tutorial is the source of truth for the supported review shapes:
 
 It also includes a deterministic tag classification and ast-grep dependency
 check. Only the third review-shape step uses GitButler as the main tool.
+
+For the agentic packet flow itself, read `protocol_flows.md`, then the live
+transcript. They explain the same protocol surface that the static labs verify
+through `just protocol-flow-labs`, plus the opt-in recursive transcript
+validator.
