@@ -40,6 +40,8 @@ agent-task-draft-lab:
 agent-result-recursive-live-lab TRANSCRIPT_DIR:
   scripts/run_agent_result_recursive_live_lab.sh "{{TRANSCRIPT_DIR}}"
 
+protocol-flow-labs: agentic-target-lab agent-result-lab agent-task-draft-lab
+
 workflow-lab:
   scripts/run_gitbutler_workflow_lab.sh
 
