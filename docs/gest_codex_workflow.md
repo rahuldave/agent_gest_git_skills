@@ -773,9 +773,10 @@ the GitHub PR merged. Before merge, verify the PR branch actually contains the
 intended changes with `gh pr diff` or `git show --stat`; empty GitButler
 commits and zero-change `WIP Assignments` commits are red flags. After merge,
 plain-Git workstreams should fetch/prune remotes, switch to the merged base
-branch, verify the local base and `origin/<base>` are equal, delete merged local
-`session/*` and `gest/*` branches when they are not checked out elsewhere, and
-confirm no open PRs remain for the workstream. GitButler workstreams must not
+branch, verify the local base and `origin/<base>` are equal, and delete only
+verified merged temporary topic branches with no worktree or stack dependents.
+Preserve persistent integration branches regardless of name. Confirm remaining
+PRs belong to intentional follow-on work. GitButler workstreams must not
 run raw branch-mutating Git while GitButler owns the workspace; run
 `but teardown` first when the stack is done, then synchronize the base branch in
 normal Git mode. Do not leave the user's terminal on `gitbutler/workspace`
