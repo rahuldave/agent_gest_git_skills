@@ -119,20 +119,35 @@ def source_files(source, pinned):
     return Path(temp.name), temp
 
 
+def reject_symlinks(root, relative):
+    """Reject links in every managed path, including dangling links."""
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            fail(f'Symlinked managed path is not allowed: {current}')
+
+
 def gather_files(source, mode, hooks):
     files = {}
     pattern = 'g*' if mode == 'sync' else '*'
+    reject_symlinks(source, Path('.agents/skills'))
     for folder in sorted((source / '.agents/skills').glob(pattern)):
+        reject_symlinks(source, folder.relative_to(source))
         if folder.is_dir():
             for path in folder.rglob('*'):
+                reject_symlinks(source, path.relative_to(source))
                 if path.is_file():
                     files[path.relative_to(source)] = path.read_bytes()
     if hooks:
         for base in ('.claude/hooks', '.codex/hooks'):
+            reject_symlinks(source, Path(base))
             for path in sorted((source / base).glob('*')):
+                reject_symlinks(source, path.relative_to(source))
                 if path.is_file():
                     files[path.relative_to(source)] = path.read_bytes()
     if mode == 'install':
+        reject_symlinks(source, Path('AGENTS.template.md'))
         files[Path('AGENTS.md')] = (source / 'AGENTS.template.md').read_bytes()
     return files
 
@@ -162,6 +177,8 @@ def main():
     parser.add_argument('--hooks', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
+    if args.target.is_symlink() or args.source.is_symlink():
+        fail('Source and target repository roots must not be symlinks')
     target = args.target.resolve()
     source = args.source.resolve()
     if not target.is_dir():
@@ -172,6 +189,7 @@ def main():
     selected, temp = source_files(source, revision if args.source_commit else None)
     try:
         files = gather_files(selected, args.mode, args.mode == 'install' or args.hooks)
+        reject_symlinks(target, PROVENANCE)
         old = read_json(target / PROVENANCE)
         old_hashes = old.get('managed_files', {})
         if not isinstance(old_hashes, dict):
@@ -179,19 +197,22 @@ def main():
         planned = {}
         for relative, data in files.items():
             destination = target / relative
+            reject_symlinks(target, relative)
             if relative == Path('AGENTS.md') and destination.exists():
                 continue
             if destination.exists() and destination.is_dir():
                 fail(f'Destination is a directory: {destination}')
-            if destination.exists() and relative.as_posix().startswith(('.claude/hooks/', '.codex/hooks/')):
+            if destination.exists() and relative != Path('AGENTS.md'):
                 previous = old_hashes.get(relative.as_posix())
                 current = digest(destination.read_bytes())
                 if current != digest(data) and current != previous:
-                    fail(f'Existing hook script differs from managed version: {destination}')
+                    fail(f'Existing managed file differs from source and previous install: {destination}')
             planned[relative] = data
         configs = {}
         if args.mode == 'install' or args.hooks:
             for relative in CONFIGS:
+                reject_symlinks(selected, relative)
+                reject_symlinks(target, relative)
                 incoming = read_json(selected / relative)
                 existing = read_json(target / relative)
                 merged = merge_config(existing, incoming, target / relative)

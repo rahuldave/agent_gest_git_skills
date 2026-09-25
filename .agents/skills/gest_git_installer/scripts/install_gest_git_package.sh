@@ -29,6 +29,15 @@ if [ "${#optional_missing[@]}" -gt 0 ]; then
   printf 'Optional executable(s) not found: %s\n' "${optional_missing[*]}" >&2
 fi
 
+if [ -z "$source_dir" ] && [ -z "$source_commit" ]; then
+  printf 'Set AGENT_GEST_GIT_SKILLS_COMMIT to an exact source commit before fetching the package.\n' >&2
+  exit 64
+fi
+if [ -n "$source_commit" ] && ! [[ "$source_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  printf 'AGENT_GEST_GIT_SKILLS_COMMIT must be a full 40-character Git commit SHA.\n' >&2
+  exit 64
+fi
+
 tmp_dir=""
 if [ -z "$source_dir" ]; then
   if ! command -v git >/dev/null 2>&1; then
@@ -37,11 +46,8 @@ if [ -z "$source_dir" ]; then
   fi
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/agent-gest-git-skills.XXXXXX")"
   trap 'if [ -n "$tmp_dir" ]; then rm -rf "$tmp_dir"; fi' EXIT
-  if [ -n "$source_commit" ]; then
-    git clone "$repo_url" "$tmp_dir/repo" >/dev/null
-  else
-    git clone --depth 1 "$repo_url" "$tmp_dir/repo" >/dev/null
-  fi
+  git clone --no-checkout "$repo_url" "$tmp_dir/repo" >/dev/null
+  git -C "$tmp_dir/repo" checkout --detach "$source_commit" >/dev/null
   source_dir="$tmp_dir/repo"
 fi
 
