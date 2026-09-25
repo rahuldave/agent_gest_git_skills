@@ -83,7 +83,9 @@ installs skill folders only; it does not run hooks or copy root-level package
 extras. Runtime references, helper scripts, and setup templates are vendored
 inside the installed skill folders. `gest_git_installer` carries a bundled
 helper that fetches this repository and runs the source-checkout installer with
-clear prerequisite messages and overwrite approval.
+clear prerequisite messages, an explicit source revision, and conflict-safe
+configuration merging. The helper refreshes the full package, including skills;
+use the same reviewed revision as the intended installation.
 
 Third, use `gsu` for normal repository setup and command-contract refresh work.
 
@@ -98,8 +100,10 @@ scripts/install.sh /path/to/target/repo
 The installer copies the skill bundle and reports missing workflow executables:
 `git`, `gest`, `just`, and `uv`. It also reports optional executables that
 unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
-`ast-grep`, `direnv`, and `cx`. If `rsync` is missing, the installer uses a
-`cp` fallback.
+`ast-grep`, `direnv`, and `cx`. Installation uses Python 3 and preflights
+configuration and managed-file conflicts before writing. Existing project
+instructions and unrelated settings are preserved. Exact source revision and
+managed file hashes are recorded in `.agents/gest-git-install.json`.
 
 The installer copies:
 
@@ -319,3 +323,22 @@ execution, and keep tag/dependency checks in view. When a planned flow has
 left GitButler mode and is intentionally creating physical worktrees, prefix raw
 git worktree commands with `GEST_VCS_EXECUTION=git-worktrees`. Existing repos
 can refresh hooks with `scripts/sync_g_skills.sh --hooks /path/to/repo`.
+
+
+## Automatic checks and delivery
+
+GitHub runs `verify-skill-package` on PRs to any branch and on branch pushes.
+It checks shell/JSON contracts, hook behavior, canonical reference mirrors,
+installer regression tests and the package manifest, then exercises GitButler
+0.19.9 against both mainline and a distinct persistent integration target.
+It builds and verifies a source archive and uploads it as a CI artifact.
+`just ci-local` runs the directly available local subset; `just verify` also
+runs the broader language/protocol labs with their documented prerequisites.
+Automatic CI does not claim that those additional local labs ran.
+
+The authenticated live GitHub lab is manual-only. It requires explicit typed
+confirmation and a separately configured `GEST_GITHUB_LAB_TOKEN`; ordinary PR
+checks receive no such credential. A merge integrates source. A versioned/tagged
+release is a separate request, with package validation, scratch installation,
+reviewed source and published artifact verification. No release occurs merely
+because an experimental target receives a PR.
