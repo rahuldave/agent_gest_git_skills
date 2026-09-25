@@ -774,9 +774,12 @@ Post-merge bookkeeping must restore a consistent local state, not merely mark
 the GitHub PR merged. Before merge, verify the PR branch actually contains the
 intended changes with `gh pr diff` or `git show --stat`; empty GitButler
 commits and zero-change `WIP Assignments` commits are red flags. After merge,
-plain-Git workstreams should fetch/prune remotes, switch to the merged base
-branch, verify the local base and `origin/<base>` are equal, and delete only
-verified merged temporary topic branches with no worktree or stack dependents.
+plain-Git workstreams should fetch/prune remotes, update the selected base in
+an appropriate clean checkout when available, verify it against
+`origin/<base>`, and delete only verified merged temporary topic branches with
+no worktree or stack dependents. They must preserve the separately recorded
+primary checkout branch even when the PR base is a different integration
+branch.
 Preserve persistent integration branches regardless of name. Retire only
 worker-owned physical worktrees after confirming their changes reached the
 intended target, all valuable files are accounted for and no task/stack depends

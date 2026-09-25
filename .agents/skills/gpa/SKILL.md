@@ -254,42 +254,48 @@ Empty GitButler commits or `WIP Assignments` commits with no file changes are
 red flags: reconcile them before merge or create a follow-up PR from a clean
 checkout.
 
-2. Restore a consistent local state.
+2. Restore a consistent local state without moving the primary checkout off
+its recorded branch. Before cleanup, record `<primary-path>` and
+`<primary-branch>` independently of the selected PR `<base>`, and inspect
+`git worktree list --porcelain` for a checkout already on `<base>`.
 
-For a plain-Git workstream, synchronize the selected integration target and prune deleted
-remotes:
+For plain Git, fetch the selected target from a normal-Git checkout:
 
 ```bash
 git fetch --prune origin
-git switch <base>
-git pull --ff-only
-git status --short --branch
+git rev-parse origin/<base>
 ```
+
+If `<base>` is checked out in a known clean normal-Git checkout, run:
+
+```bash
+git -C <base-checkout> status --short --branch
+git -C <base-checkout> pull --ff-only origin <base>
+git -C <base-checkout> rev-parse HEAD
+git -C <base-checkout> rev-parse origin/<base>
+```
+
+Confirm the two SHAs match. If `<base>` is not checked out,
+use the fetched remote-tracking ref as integration evidence and defer moving
+the local `<base>` branch until an appropriate checkout is available. Do not
+`git switch <base>` in the primary checkout merely to perform cleanup.
 
 For a GitButler workstream, do not run raw branch-mutating Git while GitButler
-owns the workspace. If no further GitButler stack work remains, exit GitButler
-mode first:
+owns its checkout. When no further stack work remains, run `but teardown` in
+that owned checkout, verify normal Git mode and its branch, then perform the
+same target fetch/fast-forward procedure above from an appropriate checkout.
+Do not assume teardown should put the primary on `<base>`.
 
-```bash
-but teardown
-git status --short --branch
-```
-
-Then, after teardown has left the repository in normal Git mode, synchronize the
-base branch:
-
-```bash
-git fetch --prune origin
-git switch <base>
-git pull --ff-only
-git status --short --branch
-```
-
-Confirm `<base>` and `origin/<base>` point to the same commit. Only delete the PR branch when its role is temporary, it is verified merged,
-and no open stack PR or worktree depends on it. Preserve all persistent
-integration branches, including an experimental head promoted into mainline.
-Use `git branch -d <branch>` only after this check; a squash may require a
-separate verified patch-equivalence decision before any forced deletion.
+Only delete a temporary PR/topic branch after its role, integration and
+worktree/stack dependencies are verified. For a normal merge, independently
+check `git merge-base --is-ancestor <branch> <target-ref>`; `git branch -d`
+may compare against the branch's configured upstream instead of HEAD and is
+not integration proof. Prefer a clean checkout on the actual merged target (or
+immediate stack parent) when running `git branch -d <branch>` so its HEAD
+fallback is meaningful. If no suitable checkout exists or deletion is refused,
+retain the branch. A squash/cherry-pick needs a separate patch-equivalence and disposal decision,
+not automatic forced deletion. Preserve persistent integration branches,
+including an experimental head promoted into mainline.
 
 If this PR used worker-owned physical worktrees, retire each one only after its
 worker and owned processes stop, its tracked/untracked and valuable ignored
@@ -302,12 +308,15 @@ primary checkout, persistent integration branches and unrelated or
 user-retained worktrees. Follow the full retirement policy in
 `references/integration_delivery_workflow.md`.
 
-The final handoff should not leave the user on `gitbutler/workspace` unless
-active GitButler work is intentionally continuing. `gitbutler/target` and
-`gitbutler/workspace` are GitButler implementation refs, not normal work
-branches to keep after teardown. If teardown fails, verify the worktree is
-clean, `<base> == origin/<base>`, and the intended PR diff is merged before
-recovering to `<base>`; record the exact recovery in the Gest note.
+At handoff, verify `git -C <primary-path> symbolic-ref --short HEAD` equals the
+recorded `<primary-branch>`. If GitButler teardown changed it, switch back only
+when that checkout is clean and the branch is not checked out elsewhere; stop
+and report a blocker rather than disturbing another checkout. Do not leave the
+user on `gitbutler/workspace` unless active GitButler work is intentionally
+continuing. `gitbutler/target` and `gitbutler/workspace` are implementation
+refs, not normal work branches to keep after teardown. If teardown fails,
+verify the intended PR diff is merged before recovery and record the exact
+state in the Gest note.
 
 3. Add a Gest note to the parent and relevant leaf:
 
