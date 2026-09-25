@@ -54,8 +54,7 @@ jobs:
           git archive --format=tar.gz --prefix=agent_gest_git_skills/ -o dist/agent_gest_git_skills-source.tar.gz HEAD
           tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/skill-package.json'
           tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/.agents/skills/gest_git_installer/SKILL.md'
-          sha256sum dist/agent_gest_git_skills-source.tar.gz > dist/SHA256SUMS
-          (cd dist && sha256sum -c SHA256SUMS)
+          (cd dist && sha256sum agent_gest_git_skills-source.tar.gz > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: verified-source-package
