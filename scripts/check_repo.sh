@@ -16,6 +16,7 @@ required_files=(
   "docs/TUTORIAL.md"
   "docs/live_gitbutler_tutorial_transcript_2026-05-07.md"
   "docs/gest_codex_workflow.md"
+  "docs/integration_delivery_workflow.md"
   "docs/tag_dependency_workflow.md"
   "docs/protocol_flows.md"
   "docs/live_protocol_flow_transcript_2026-06-14.md"
@@ -52,7 +53,6 @@ required_files=(
   ".agents/skills/gest_git_installer/SKILL.md"
   ".agents/skills/gest_git_installer/scripts/install_gest_git_package.sh"
   "templates/README.md"
-  "tools/gest_mermaid_graph.py"
 )
 
 for file in "${required_files[@]}"; do
@@ -60,6 +60,22 @@ for file in "${required_files[@]}"; do
     echo "missing required file: $file" >&2
     exit 1
   fi
+done
+
+# Canonical public guidance must match each installed skill copy byte for byte.
+check_mirror() {
+  local source="$1" mirror="$2"
+  [ -f "$repo_root/$source" ] || { echo "missing canonical file: $source" >&2; exit 1; }
+  [ -f "$repo_root/$mirror" ] || { echo "missing mirror file: $mirror" >&2; exit 1; }
+  cmp -s "$repo_root/$source" "$repo_root/$mirror" || {
+    echo "stale mirror: $mirror differs from $source" >&2
+    exit 1
+  }
+}
+check_mirror "AGENTS.template.md" ".agents/skills/gsu/assets/templates/AGENTS.template.md"
+check_mirror "docs/gest_codex_workflow.md" ".agents/skills/gtw/references/gest_codex_workflow.md"
+for skill in gtw gpl gcm gpa gpr grv gsu gte; do
+  check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
 done
 
 for skill in gbs gcm gdo gfm gest_git_installer gim gis gor gpa gpl gpr grv gsp gsu gte gtw; do
@@ -97,7 +113,7 @@ required_text=(
   "PR acceptance checkpoint"
   "gh pr diff <number> --patch"
   "gh pr checks <number>"
-  "gh pr merge <number> --merge --delete-branch"
+  "gh pr merge <pr> --merge --match-head-commit <reviewed-head-sha>"
   "state MERGED"
   "existing-tags.txt"
   "new dynamic tags: none"

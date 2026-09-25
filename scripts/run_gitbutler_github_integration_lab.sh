@@ -2,13 +2,13 @@
 set -euo pipefail
 
 run_id="${AGENT_GEST_GITBUTLER_GITHUB_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-lab_root="${AGENT_GEST_GITBUTLER_GITHUB_LAB:-/tmp/agent-gest-gitbutler-live-github-lab-$run_id}"
+lab_root=""
 owner="${AGENT_GEST_GITBUTLER_GITHUB_OWNER:-}"
 visibility="${AGENT_GEST_GITBUTLER_GITHUB_VISIBILITY:-private}"
 repo_prefix="${AGENT_GEST_GITBUTLER_GITHUB_REPO_PREFIX:-agent-gest-gitbutler-live}"
 keep_repos="${AGENT_GEST_GITBUTLER_KEEP_GITHUB_REPOS:-0}"
-logs_dir="$lab_root/logs"
-tutorial="$lab_root/gitbutler-live-github-workflow-tutorial.md"
+logs_dir=""
+tutorial=""
 
 created_repos=()
 created_dirs=()
@@ -32,7 +32,7 @@ because it destroys the temporary repos with `gh repo delete --yes`.
 Optional environment:
   AGENT_GEST_GITBUTLER_GITHUB_OWNER=<owner>        GitHub user/org for temp repos
   AGENT_GEST_GITBUTLER_GITHUB_VISIBILITY=private  private|public, default private
-  AGENT_GEST_GITBUTLER_GITHUB_LAB=/tmp/path       output/log directory
+  AGENT_GEST_GITBUTLER_GITHUB_LAB=/new/path       new output/log directory
   AGENT_GEST_GITBUTLER_KEEP_GITHUB_REPOS=1        keep repos for debugging
 USAGE
 }
@@ -79,6 +79,15 @@ case "${1:-}" in
     ;;
 esac
 
+# Allocate a directory only after --help, and require exclusive ownership for overrides.
+lab_root="${AGENT_GEST_GITBUTLER_GITHUB_LAB:-}"
+if [ -n "$lab_root" ]; then
+  mkdir "$lab_root" || die "lab directory must not already exist: $lab_root"
+else
+  lab_root="$(mktemp -d "${TMPDIR:-/tmp}/agent-gest-gitbutler-live.XXXXXXXX")"
+fi
+logs_dir="$lab_root/logs"
+tutorial="$lab_root/gitbutler-live-github-workflow-tutorial.md"
 trap cleanup EXIT
 
 case "$visibility" in
@@ -143,7 +152,7 @@ make_repo() {
   local full_repo="$owner/$repo_name"
   local dir="$lab_root/$slug"
 
-  mkdir -p "$dir"
+  mkdir "$dir"
   created_dirs+=("$dir")
   created_repos+=("$full_repo")
 

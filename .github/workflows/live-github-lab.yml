@@ -1,0 +1,40 @@
+name: Manual live GitHub lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RUN LIVE LAB to create and delete temporary private GitHub repositories'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-lab:
+    if: inputs.confirm == 'RUN LIVE LAB'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GEST_GITHUB_LAB_TOKEN }}
+      AGENT_GEST_GITBUTLER_GITHUB_VISIBILITY: private
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check manually supplied credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo 'GEST_GITHUB_LAB_TOKEN is required for manual lab' >&2; exit 1; }
+      - name: Install GitButler CLI at tested version
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://gitbutler.com/install.sh -o /tmp/gitbutler-install.sh
+          sh /tmp/gitbutler-install.sh
+          rm -f /tmp/gitbutler-install.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/but" update install 0.19.9
+          "$HOME/.local/bin/but" --version | grep -Fx 'but 0.19.9'
+      - name: Run temporary private-repository GitHub integration lab
+        run: scripts/run_gitbutler_github_integration_lab.sh
