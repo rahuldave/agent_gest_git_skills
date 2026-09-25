@@ -225,7 +225,7 @@ Before creating or splitting tasks, classify the request against the existing
 Gest tag vocabulary. Record `classification.tags.reviewed=true`,
 `classification.tags.new=<comma-separated-new-tags>`, and
 `impact.ast_grep.required=true|false` where relevant. Use
-`docs/tag_dependency_workflow.md`.
+[tag dependency workflow](tag_dependency_workflow.md).
 
 For code-facing work, use `ast-grep` to inspect semantic dependers of changed
 contracts. If a tag or dependency search reveals coupled surfaces, expand the
@@ -596,7 +596,7 @@ Hook ideas to revisit:
   session/development classification, outline parenting, GitHub promotion, and
   serialized Gest commands.
 - **Pre-edit**: inject project-local style and testing guidance before source
-  edits, for example `docs/dev/code-style.md`, `docs/dev/testing.md`, and
+  edits, for example the project's code-style and testing guides, and
   project-specific invariants.
 - **Pre-commit**: inject commit conventions, remind Codex never to include Gest
   IDs in commit messages, and only use GitHub issue footers when metadata

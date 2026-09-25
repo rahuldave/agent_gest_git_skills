@@ -207,8 +207,8 @@ The usual flow is:
    repeats this same handoff rule if it encounters another emitted
    `AGENT_TASK v1` block.
 
-`../scripts/jagt_lint_agent_task.sh` is the maintained `jagt`-backed checker and
-lab helper. `../scripts/validate_agent_task.sh` remains as a legacy shell
+`scripts/jagt_lint_agent_task.sh` is the maintained `jagt`-backed checker and
+lab helper. `scripts/validate_agent_task.sh` remains as a legacy shell
 reference. A host agent may parse the packet with its own structured parser,
 but it must preserve the same boundary: if subagents are not available, the
 agent should report that blocker or use an approved orchestration path instead
@@ -342,7 +342,7 @@ follow_up: []
 
 Parent agents should validate the envelope, compare it to the delegated task,
 and enforce expected target/status when the caller knows them. The maintained
-`../scripts/jagt_lint_agent_result.sh` checker supports expected target/status
+`scripts/jagt_lint_agent_result.sh` checker supports expected target/status
 checks and can optionally verify that a required file listed under
 `outputs.files` exists. The parent should fold
 `outputs`, `verification`, and `follow_up` into Gest completion notes, PR
@@ -351,11 +351,11 @@ summaries, and user handoffs.
 Use `just agent-result-lab` in this repository to verify success, partial,
 blocked, failed, malformed, target-mismatch, missing required file,
 report-only failure, recursive proposed-task, and local-recursion trace cases.
-`../scripts/jagt_lint_agent_result.sh` is the maintained `jagt`-backed checker and
-lab helper. `../scripts/validate_agent_result.sh` remains as a legacy shell
+`scripts/jagt_lint_agent_result.sh` is the maintained `jagt`-backed checker and
+lab helper. `scripts/validate_agent_result.sh` remains as a legacy shell
 reference, not a hidden production parser.
 
-Use `docs/live_agent_result_recursive_lab.md` for the live recursive lab. That
+Use [the live recursive lab](live_agent_result_recursive_lab.md) for the live recursive lab. That
 lab requires two successive subagents: a planner subagent returns a partial
 result with `outputs.proposed_tasks`, the parent validates and renders the
 approved child `AGENT_TASK v1`, and a worker subagent returns the deterministic
@@ -363,11 +363,11 @@ child result. The saved transcript is checked with
 `just agent-result-recursive-live-lab <transcript-dir>`.
 
 The second task is spawned by the parent/orchestrator after it has validated
-the first result. It is not spawned by `../scripts/jagt_lint_agent_result.sh`, by
+the first result. It is not spawned by `scripts/jagt_lint_agent_result.sh`, by
 a Just recipe, or by the `AGENT_RESULT` block itself. The reusable skills
 define the parent-agent procedure:
 
-1. Validate the first subagent result with `../scripts/jagt_lint_agent_result.sh`
+1. Validate the first subagent result with `scripts/jagt_lint_agent_result.sh`
    and expected target/status checks.
 2. Inspect `outputs.proposed_tasks` as data and reject anything outside the
    current user, system, developer, approval, tool, or Git/GitButler safety
@@ -501,7 +501,7 @@ instruction to execute the proposed task inline.
 Parent responsibilities:
 
 1. Validate exactly one draft envelope with
-   `../scripts/jagt_lint_agent_task_draft.sh --expect-count 1` unless a
+   `scripts/jagt_lint_agent_task_draft.sh --expect-count 1` unless a
    multi-draft comparison was requested.
 2. Reject malformed drafts, missing required fields, `mode: agentic`, missing
    approval, missing safety language, overbroad allowed actions, and direct

@@ -355,7 +355,7 @@ report-only failure, recursive proposed-task, and local-recursion trace cases.
 lab helper. `scripts/validate_agent_result.sh` remains as a legacy shell
 reference, not a hidden production parser.
 
-Use `docs/live_agent_result_recursive_lab.md` for the live recursive lab. That
+Use [the live recursive lab](live_agent_result_recursive_lab.md) for the live recursive lab. That
 lab requires two successive subagents: a planner subagent returns a partial
 result with `outputs.proposed_tasks`, the parent validates and renders the
 approved child `AGENT_TASK v1`, and a worker subagent returns the deterministic
