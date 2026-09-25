@@ -164,6 +164,9 @@ vcs.base_branch=<immediate-PR-base>
 vcs.base_sha=<resolved-commit>
 vcs.branch_role=topic|stack-topic|integration
 vcs.workspace_path=<absolute-path>
+vcs.workspace_owner=<task-or-worker-id>
+vcs.primary_path=<absolute-path>
+vcs.primary_branch=<recorded-primary-branch>
 test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
 test.scope=focused|regression|integration|browser|full
 review.depth=solo|adversarial|multi-agent
@@ -197,8 +200,10 @@ for sequential branch curation, but shared GitButler workspaces are not an
 agent-parallelism primitive. If `vcs.tool=git-butler` and
 `vcs.execution=gitbutler-workspace`, set `vcs.parallel_allowed=false` and run
 write tasks sequentially. If work must run in parallel, use physical
-`git-worktrees` first; each writable task needs its own `vcs.workspace_path`.
-Afterward, integrate the results into a normal branch or stack.
+`git-worktrees` first; each writable task needs its own `vcs.workspace_path`,
+recorded owner and topic branch. Afterward, integrate the results into the
+selected branch or stack and follow the owned-worktree retirement procedure in
+`references/integration_delivery_workflow.md`.
 
 In GitButler-managed mode, use current `but` CLI write commands such as
 `but branch new`, `but stage`, `but commit`, `but push`, and `but pr`. Do not
@@ -364,7 +369,8 @@ At every durable checkpoint, run the cleanup that future agents need:
   issue decision
 - report the final branch/execution mode for substantial write work, including
   whether GitButler stack work was sequential or whether parallel work used
-  physical worktrees
+  physical worktrees; reconcile every owned worktree before handoff and report
+  any retained worktree and its reason
 
 ## Template Sync
 

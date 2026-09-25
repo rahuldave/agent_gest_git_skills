@@ -21,4 +21,7 @@ curation and physical worktrees for parallel writers.
   request; never claim installed copies updated merely because source merged.
 - Preserve settings/instructions when installing into another repository; record
   exact source revision. Stop only owned test processes and remove only owned
-  temporary paths.
+  temporary paths. For worker worktrees, record owner/path/topic branch and
+  separate primary path/branch, verify clean state and intended integration,
+  then use ordinary `git worktree remove`; preserve the primary on its branch
+  and any unrelated or user-retained checkout.

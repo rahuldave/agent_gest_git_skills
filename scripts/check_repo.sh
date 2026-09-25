@@ -74,7 +74,7 @@ check_mirror() {
 }
 check_mirror "AGENTS.template.md" ".agents/skills/gsu/assets/templates/AGENTS.template.md"
 check_mirror "docs/gest_codex_workflow.md" ".agents/skills/gtw/references/gest_codex_workflow.md"
-for skill in gtw gpl gcm gpa gpr grv gsu gte; do
+for skill in gor gtw gpl gcm gpa gpr grv gsu gte; do
   check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
 done
 

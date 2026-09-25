@@ -527,4 +527,8 @@ for all supported PR bases and relevant integration pushes; define stable
 required checks and explicit release triggers. Do not conflate experimental
 merges with publication. Test installation into an existing project, preserve
 its instructions/settings, and record source revision. Record ownership and
-cleanup for temporary servers, ports, children and directories.
+cleanup for temporary servers, ports, children and directories. For parallel
+physical worktrees, set up an owner/path/topic-branch record and separately
+record the selected primary checkout path and branch. Use the worktree retirement procedure in
+`references/integration_delivery_workflow.md`; setup must not teach blanket
+worktree pruning or force removal.

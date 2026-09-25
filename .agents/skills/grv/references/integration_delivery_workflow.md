@@ -144,12 +144,63 @@ user's server to make a test pass or reuse an occupied port silently.
 GPA verifies the intended base, reviewed head/base, checks, finding dispositions,
 and existing merge authorization immediately before integration. Preserve user
 authorization across turns; ask only when the particular merge is not authorized.
-After a confirmed merge, sync the actual integration target, leaving persistent
-branches intact. Delete only verified merged temporary topics with no worktree
-or stack dependents. Do not apply `--delete-branch` to a persistent experimental
+After a confirmed merge, fetch the actual integration target. If that branch is
+checked out in a known clean checkout, update it there with `git pull --ff-only`
+and verify it matches `origin/<base>`. Otherwise verify the fetched
+`origin/<base>` ref and leave its local branch untouched until it can be
+fast-forwarded in an appropriate checkout. Never switch the primary checkout
+to `<base>` solely for cleanup; record and verify its separate path and branch.
+Leave persistent branches intact. Delete only verified merged temporary topics
+with no worktree or stack dependents. Do not apply `--delete-branch` to a persistent experimental
 branch when promoting it to mainline. Prefer merging first and deciding cleanup
 separately. Report source integration, artifact installation, issue state and
 publication state distinctly.
+
+### Retire an owned physical worktree
+
+A physical worktree created for a worker is a separate checkout, not a
+GitButler branch lane. Before dispatch, record its absolute path, topic branch,
+owner/task, selected integration branch and immediate stack parent (if any),
+and the primary checkout's absolute path **and current branch** separately.
+The primary branch is selected by the project and may be `main` or another
+persistent target; it need not equal this task's integration branch. Use
+`git worktree list --porcelain` to reconcile that record; never infer ownership
+from a path prefix or delete the primary, an unrelated checkout, or one the
+user chose to retain.
+
+After the worker finishes, wait for its agent and any processes it started to
+exit. Confirm no active task, child worktree, or open stack/PR depends on its
+branch. From the owned worktree, inspect `git status --porcelain=v1
+--untracked-files=all` and `git status --short --ignored`; account for tracked,
+untracked, and valuable ignored files before removing the checkout. Preserve
+valuable files deliberately or leave the worktree in place and report why.
+
+Verify that the worker's intended commits reached the selected integration
+branch or immediate stack parent before retirement. A normal merge can use
+commit ancestry; cherry-picks and squash merges need a reviewed
+patch-equivalence/diff judgment because their commit IDs change. An open PR, a
+push, or a completed Gest task is not integration evidence. If integration or
+dependency state is uncertain, retain the worktree and topic branch.
+
+From another checkout, use `git worktree remove <owned-absolute-path>` without
+`--force`, then verify that `git worktree list --porcelain` no longer lists it.
+Do not use routine `rm -rf`, forced worktree removal, or pruning to bypass dirty
+state. Only afterward consider an eligible temporary topic branch. Independently
+verify `git merge-base --is-ancestor <topic> <target-ref>` for a normal merge;
+`git branch -d` is not proof of target integration because Git may compare the
+topic with its configured upstream instead of the current HEAD. Prefer a clean
+checkout on the actual merged target or immediate stack parent for
+`git branch -d <topic>` so the HEAD fallback is meaningful. If that context is
+unavailable or deletion is refused, retain the topic and report why. For
+cherry-pick/squash integration, make an explicit reviewed
+patch-equivalence and disposal decision; do not force-delete automatically when
+`git branch -d` rejects it. Finally, verify `git -C <primary-path>
+symbolic-ref --short HEAD` still names the recorded primary branch. If a
+GitButler teardown changed it, restore that branch only in the clean primary
+checkout after checking it is not held elsewhere; otherwise retain state and
+report the blocker. Keep persistent integration branches, stack parents with
+dependents, primary branches, and user-retained
+worktrees intact. Record what was removed and what remains.
 
 ## References
 
