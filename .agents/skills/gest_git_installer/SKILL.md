@@ -31,6 +31,12 @@ is installed globally or in another agent skill root. The helper fetches this
 package repository into a temporary directory and runs the repo-level installer
 script against the target repo.
 
-Ask for approval before overwriting repo files. Missing workflow tools should
-be reported clearly; they should not be treated as a reason that
-`npx skills add` itself failed.
+The installer preserves existing AGENTS.md and unrelated Claude/Codex settings
+and hooks. It fails with a clear conflict if an existing hook script or managed
+hook command differs. Re-run after resolving the conflict. To install a
+particular source revision, set `AGENT_GEST_GIT_SKILLS_COMMIT` to its commit SHA;
+for a local clone also set `AGENT_GEST_GIT_SKILLS_SOURCE`. The installed revision
+and source dirty status are recorded in `.agents/gest-git-install.json`.
+
+Missing workflow tools should be reported clearly; they should not be treated
+as a reason that `npx skills add` itself failed.

@@ -4,6 +4,7 @@ set -euo pipefail
 target="${1:-$PWD}"
 repo_url="${AGENT_GEST_GIT_SKILLS_REPO:-https://github.com/rahuldave/agent_gest_git_skills.git}"
 source_dir="${AGENT_GEST_GIT_SKILLS_SOURCE:-}"
+source_commit="${AGENT_GEST_GIT_SKILLS_COMMIT:-}"
 
 missing_required=()
 for exe in git gest just uv; do
@@ -36,7 +37,11 @@ if [ -z "$source_dir" ]; then
   fi
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/agent-gest-git-skills.XXXXXX")"
   trap 'if [ -n "$tmp_dir" ]; then rm -rf "$tmp_dir"; fi' EXIT
-  git clone --depth 1 "$repo_url" "$tmp_dir/repo" >/dev/null
+  if [ -n "$source_commit" ]; then
+    git clone "$repo_url" "$tmp_dir/repo" >/dev/null
+  else
+    git clone --depth 1 "$repo_url" "$tmp_dir/repo" >/dev/null
+  fi
   source_dir="$tmp_dir/repo"
 fi
 
@@ -45,4 +50,8 @@ if [ ! -x "$source_dir/scripts/install.sh" ] && [ ! -f "$source_dir/scripts/inst
   exit 1
 fi
 
-bash "$source_dir/scripts/install.sh" "$target"
+if [ -n "$source_commit" ]; then
+  bash "$source_dir/scripts/install.sh" --source-commit "$source_commit" "$target"
+else
+  bash "$source_dir/scripts/install.sh" "$target"
+fi
