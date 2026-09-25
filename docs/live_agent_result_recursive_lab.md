@@ -7,6 +7,16 @@ transcript, but it does not simulate the agents.
 Use it when changing the `AGENT_TASK v1` / `AGENT_RESULT v1` contract,
 subagent delegation guidance, or recursive orchestration docs.
 
+## Execution location
+
+Run this maintainer lab from the root of an `agent_gest_git_skills` source
+checkout. All `scripts/` commands below are relative to that checkout and
+include the source-only transcript runner. An installed skill includes this
+reference for context; the target project does not receive root-level lab
+scripts. To run it from an installed workflow, use a disposable source checkout
+at the revision recorded in `.agents/gest-git-install.json`, with the lab's
+prerequisites and delegation authorization. Remove the owned checkout afterward.
+
 ## Transcript Directory
 
 Create a fresh transcript directory:
