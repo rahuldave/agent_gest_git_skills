@@ -25,6 +25,8 @@ jobs:
         run: just lint
       - name: Check installer behavior in disposable target repositories
         run: python3 -m unittest scripts/test_install_package.py -q
+      - name: Verify live-lab cleanup without GitHub credentials
+        run: just lab-safety-test
       - name: Validate package manifest with skill-package-maker
         shell: bash
         run: |

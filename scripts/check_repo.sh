@@ -221,41 +221,11 @@ for stale_tutorial_text in "Latest Live Run" "422 Unprocessable Entity" "live_gi
   fi
 done
 
-claude_deny="$(printf '{"command":"git commit -m nope"}' | "$repo_root/.claude/hooks/raw-git-write-guard.sh" || true)"
-if ! printf '%s' "$claude_deny" | grep -q 'permissionDecision'; then
-  echo "Claude raw git guard did not deny git commit" >&2
-  exit 1
-fi
-
-claude_allow="$(printf '{"command":"but commit demo -m ok"}' | "$repo_root/.claude/hooks/raw-git-write-guard.sh" || true)"
-if [ -n "$claude_allow" ]; then
-  echo "Claude raw git guard denied but commit" >&2
-  exit 1
-fi
-
-codex_deny="$(printf '{"tool_input":{"command":"git commit -m nope"}}' | "$repo_root/.codex/hooks/raw-git-write-guard.sh" || true)"
-if ! printf '%s' "$codex_deny" | grep -q 'permissionDecision'; then
-  echo "Codex raw git guard did not deny git commit" >&2
-  exit 1
-fi
-
-codex_allow="$(printf '{"tool_input":{"command":"but commit demo -m ok"}}' | "$repo_root/.codex/hooks/raw-git-write-guard.sh" || true)"
-if [ -n "$codex_allow" ]; then
-  echo "Codex raw git guard denied but commit" >&2
-  exit 1
-fi
-
-claude_worktree_allow="$(printf '{"command":"GEST_VCS_EXECUTION=git-worktrees git worktree add -b demo /tmp/demo main"}' | "$repo_root/.claude/hooks/raw-git-write-guard.sh" || true)"
-if [ -n "$claude_worktree_allow" ]; then
-  echo "Claude raw git guard denied explicit physical worktree command" >&2
-  exit 1
-fi
-
-codex_worktree_allow="$(printf '{"tool_input":{"command":"GEST_VCS_EXECUTION=git-worktrees git worktree add -b demo /tmp/demo main"}}' | "$repo_root/.codex/hooks/raw-git-write-guard.sh" || true)"
-if [ -n "$codex_worktree_allow" ]; then
-  echo "Codex raw git guard denied explicit physical worktree command" >&2
-  exit 1
-fi
+# Exercise both hook payload formats in disposable plain and managed checkouts.
+(
+  cd "$repo_root"
+  python3 -m unittest scripts/test_raw_git_guards.py -q
+)
 
 if [ "$mode" = "--diff" ]; then
   git -C "$repo_root" diff --check

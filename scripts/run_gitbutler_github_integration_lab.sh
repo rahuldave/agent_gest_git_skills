@@ -154,7 +154,6 @@ make_repo() {
 
   mkdir "$dir"
   created_dirs+=("$dir")
-  created_repos+=("$full_repo")
 
   (
     cd "$dir"
@@ -164,6 +163,9 @@ make_repo() {
     log_cmd gh repo create "$full_repo" "--$visibility" --source=. --remote=origin --disable-issues --disable-wiki
   )
 
+  # A failed create may mean the name already belongs to someone else. Only a
+  # successful create authorizes this run to delete the remote during cleanup.
+  created_repos+=("$full_repo")
   made_full_repo="$full_repo"
   made_dir="$dir"
 }

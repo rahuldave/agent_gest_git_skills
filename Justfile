@@ -48,7 +48,10 @@ workflow-lab:
 installer-test:
   python3 -m unittest scripts/test_install_package.py -q
 
-ci-local: lint installer-test workflow-lab
+lab-safety-test:
+  python3 -m unittest scripts/test_gitbutler_live_cleanup.py -q
+
+ci-local: lint installer-test lab-safety-test workflow-lab
 
 integration-live:
   scripts/run_gitbutler_github_integration_lab.sh
