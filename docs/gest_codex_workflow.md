@@ -1,6 +1,10 @@
 # Gest-Codex Workflow
 
-Last updated: 2026-05-04.
+Last updated: 2026-09-25.
+
+Read [Integration branches, review, and delivery](integration_delivery_workflow.md)
+for the shared contract governing selected bases, independent review, CI, issues,
+installation and cleanup.
 
 This document defines how Codex should use Gest, GitHub, and the local skill
 family while working in a Gest-tracked repository. The goal is to preserve
@@ -45,7 +49,7 @@ it does not force one test strategy.
 
 ## Branch, Stack, And Worktree Policy
 
-Main should stay integration-ready. Any Gest-tracked workflow that writes files
+Mainline and persistent integration branches should stay integration-ready. Any Gest-tracked workflow that writes files
 should choose an explicit VCS execution mode before editing. Keep two decisions
 separate:
 
@@ -109,7 +113,10 @@ tiny local edit:
 
 ```text
 vcs.tool=git|git-butler|jj
-vcs.base_branch=main
+vcs.default_branch=<repository-default>
+vcs.integration_branch=<selected-persistent-target>
+vcs.base_branch=<immediate-PR-base>
+vcs.branch_role=topic|stack-topic|integration
 vcs.base_sha=<sha>
 vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-development|parallel-worktrees
 vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
@@ -404,12 +411,10 @@ the repo's equivalent; "no upstream" is not a no-push reason. If the branch is
 still local or `ahead` at handoff, the checkpoint is incomplete unless a real
 push blocker is explicit in the task note/final summary.
 
-When Codex pushes changes to a branch other than the repository's mainline
-branch, that push must be followed by a pull-request checkpoint: create or
+When Codex pushes a topic or stack branch, that push must be followed by a pull-request checkpoint: create or
 update the PR for the branch, run `gpa` on that PR, report the PR review
-findings/state to the user, and ask whether to merge. Only merge without a
-second question when the user explicitly asked for the merge in the current
-turn. For reusable workflow/template repo changes, push and PR creation are
+findings/state to the user, and ask whether to merge. Only merge when the particular merge is already authorized; authorization
+persists across turns. For reusable workflow/template repo changes, push and PR creation are
 required unless blocked; record the exact blocker instead of leaving the branch
 only pushed.
 
@@ -434,9 +439,8 @@ oriented. Durable checkpoints include:
 
 Checkpoint steps:
 
-1. Regenerate the overall Gest graph and a focused graph for the latest relevant
-   iteration. Treat graph generation as a Gest database operation: do not run it
-   in parallel with any `gest` command.
+1. Keep native task hierarchy and dependency links current. Gest maintains
+   graphs automatically; inspect them as needed without an export checkpoint.
 2. For user-visible, architecture-relevant, multi-session, or release-worthy
    work, decide whether GitHub promotion is appropriate. For development
    depth-1 parents and development iterations, this decision is mandatory. Use
@@ -447,7 +451,7 @@ Checkpoint steps:
    `git status --short --branch`. If an upstream exists and the branch is
    ahead, push it or record the explicit local-only/blocker reason. Report the
    final branch relationship separately from the GitHub issue decision.
-4. If Codex pushed a non-mainline branch, create/update its PR, run `gpa`,
+4. If Codex pushed a topic or stack branch, create/update its PR, run `gpa`,
    report the PR review findings/state, and ask before merge unless the user
    already explicitly asked for that merge.
 5. For every code change, run an explicit review pass before task completion.
@@ -455,14 +459,14 @@ Checkpoint steps:
    record any findings before closing the leaf, parent, or iteration. Missing
    focused tests for changed callable code or APIs are review findings.
 6. Verify the final Gest status after closing the parent or iteration and report
-   the graph paths, commit hashes, push status, review status, and GitHub issue
+   the selected base, commit hashes, push status, review status, and GitHub issue
    decision.
 
 ## Template Sync
 
 Reusable workflow changes should not live only in one target workspace. When
 changing the `g*` skills, `AGENTS.md` workflow guidance, Gest/Codex playbook, or
-reusable tools such as `gest_mermaid_graph.py`, copy the reusable parts into the
+reusable tools, copy the reusable parts into the
 version-controlled workflow template repository. Then check, commit, and push
 that repository. The template repo is the source for workflow material that
 should be mixed into other projects. Keep project-specific details out of the

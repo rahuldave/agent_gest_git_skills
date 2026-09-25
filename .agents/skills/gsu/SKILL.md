@@ -14,6 +14,13 @@ manager, or test runner into the reusable skills. Instead, it helps the user
 choose tools, records those choices in `AGENTS.md`, and creates or updates the
 executable command interface, preferably a `Justfile`.
 
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
+
 ## Core Concepts
 
 Identify which of these concepts apply to the project:
@@ -100,7 +107,6 @@ Before ordinary setup work, verify that the expected package handoff is present:
 - skill-local support material under `.agents/skills/*/references/`,
   `.agents/skills/*/scripts/`, and `.agents/skills/*/assets/` as needed
 - `.agents/skills/gsu/assets/templates/`
-- `.agents/skills/gsu/scripts/gest_mermaid_graph.py`
 - `.claude/settings.json` and `.claude/hooks/`
 - `.codex/hooks.json` and `.codex/hooks/`
 - `AGENTS.md`, or a clear note that an existing `AGENTS.md` was preserved and
@@ -512,3 +518,13 @@ Report:
 ## Setup For Dependency Impact
 
 When refreshing repository setup, check whether `ast-grep` is available or documented for dependency-impact checks. If setup changes shared tooling, hooks, generated code, or command contracts, use `ast-grep` or targeted structured searches to find dependent surfaces.
+
+## Branch, CI and installation setup
+
+Declare mainline and persistent integration branches in project instructions.
+Select the work's target before creating a topic. Map local verification to CI
+for all supported PR bases and relevant integration pushes; define stable
+required checks and explicit release triggers. Do not conflate experimental
+merges with publication. Test installation into an existing project, preserve
+its instructions/settings, and record source revision. Record ownership and
+cleanup for temporary servers, ports, children and directories.

@@ -23,8 +23,9 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `docs/live_protocol_flow_transcript_2026-06-14.md`: real live LLM transcript
   for plain, recursive, unsafe, draft, promotion, and worker result flows.
 - `docs/*.md`: reference docs and setup examples for users who need details.
-- `tools/gest_mermaid_graph.py`: optional read-only Gest SQLite exporter that
-  writes clickable Mermaid/HTML relationship graphs.
+- `docs/integration_delivery_workflow.md`: branch roles, adversarial review,
+  CI, delivery, issue completion and installation policy. Gest maintains its
+  graphs automatically; no separate graph exporter is shipped.
 - `scripts/install.sh`: source-checkout installer for target repos, including hooks by default.
 - `skill-package.json`: package manifest used by `skill-package-maker` to
   validate skills, installer scripts, and executable prerequisites.
@@ -251,19 +252,24 @@ changes. Before final response for substantial work, inspect
 `git status --short --branch`; if Codex-owned changes remain and one of those
 triggers applies, run `gcm` or record the concrete no-commit reason.
 
-After Codex pushes a branch other than the repository's mainline branch, the
+After Codex pushes a topic or stack branch, the
 checkpoint continues through GitHub review: create or update the pull request,
 run `gpa`, report the PR review findings/state to the user, and ask whether to
 merge. Do not merge without explicit user approval unless the user already asked
-for that merge in the current turn.
+for that particular merge; authorization persists across turns.
 
 If a committed branch has no upstream, push with an upstream instead of stopping
 locally. After a PR is merged, run any deploy/release command defined by the
 target repository's instructions, or report the exact blocker.
 
+See [Integration branches, review, and delivery](docs/integration_delivery_workflow.md)
+for the governing policy and references. Mainline and persistent experimental
+branches both receive reviewed PRs; experimental integration does not publish
+a stable release.
+
 ## Branch, Stack, And Worktree Policy
 
-For Gest-tracked writes, keep `main` integration-ready and choose both a branch
+For Gest-tracked writes, keep the selected integration target buildable and choose both a branch
 model and an execution model before editing. Normal session or development work
 uses `session/<task-id>-summary` or `gest/<task-id>-summary` branches. Multiple
 meaty dependent slices should use stacked branches or stacked PRs. Multiple

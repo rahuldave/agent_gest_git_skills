@@ -7,6 +7,8 @@ Start with one document:
 Use the rest only when you need reference material:
 
 - `g_commands_cheatsheet.md`: quick guide to the `g*` skills.
+- `integration_delivery_workflow.md`: integration targets, independent review, CI,
+  release milestones, issue completion and installation provenance.
 - `gest_codex_workflow.md`: advanced workflow playbook for agents.
 - `tag_dependency_workflow.md`: tag classification and ast-grep dependency checks.
 - `protocol_flows.md`: agentic Just packet flow guide and lab map for

@@ -12,16 +12,23 @@ context, merged, or held for changes.
 reviews a pull request as an integration object with GitHub state, branch state,
 checks, review history, and Gest task/artifact context.
 
-`gpa` is mandatory after Codex pushes changes to a branch other than the
-repository's mainline branch. The normal handoff is: create/update the PR, run
+`gpa` is mandatory after Codex pushes a topic or stack branch for integration
+into either mainline or a persistent non-default target. The normal handoff is: create/update the PR, run
 this skill, report the review packet to the user, and ask whether to merge.
-Only merge without another question when the user explicitly asked for that
-merge in the current turn.
+Only merge when that particular merge is already authorized; authorization
+persists across turns.
 
 After a PR is merged, inspect the repository instructions and command contract
 for required deployment or release work. Run the applicable deploy/release step
 or report the concrete blocker; a merge alone is not a completed handoff when
 the project expects deployment.
+
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
 
 ## Inputs
 
@@ -38,7 +45,7 @@ Inspect the PR before reviewing:
 
 ```bash
 gh pr view <pr> --json \
-  number,url,state,isDraft,title,body,author,headRefName,baseRefName,mergeable,reviewDecision,labels,commits,files,statusCheckRollup,latestReviews
+  number,url,state,isDraft,title,body,author,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,reviewDecision,labels,commits,files,statusCheckRollup,latestReviews
 
 gh pr diff <pr> --patch
 gh pr checks <pr>
@@ -82,7 +89,7 @@ Look for:
 - `github.issue`, `github.url`, `github.pr`, `github.pr_url`
 - `vcs.*` metadata such as branch mode, execution mode, workspace path, and
   integration method
-- checkpoint graph paths
+- selected integration target and actual reviewed base/head commits
 
 ## Review
 
@@ -168,7 +175,7 @@ Gest Context:
 - Verification notes:
 - Follow-ups:
 - GitHub metadata:
-- Graph links:
+- Reviewed base/head commits and reviewer identity:
 
 Human Checklist:
 - <what the user should inspect manually>
@@ -204,9 +211,9 @@ Suggested PR body section:
 - Artifacts/specs: <none or list>
 - Verification: <commands/checks>
 - Follow-ups: <none or list>
-- Graphs:
-  - overall: <path-or-url>
-  - focused: <path-or-url>
+- Integration target: <branch>
+- Reviewed commits: <base SHA> / <head SHA>
+- Independent reviewer and findings: <evidence>
 ```
 
 If the PR body lacks this context, offer to update it:
@@ -227,9 +234,9 @@ gh pr checkout <pr>
 gh pr review <pr> --approve --body-file <file>
 gh pr review <pr> --request-changes --body-file <file>
 gh pr review <pr> --comment --body-file <file>
-gh pr merge <pr> --merge --delete-branch
-gh pr merge <pr> --squash --delete-branch
-gh pr merge <pr> --rebase --delete-branch
+gh pr merge <pr> --merge --match-head-commit <reviewed-head-sha>
+gh pr merge <pr> --squash --match-head-commit <reviewed-head-sha>
+gh pr merge <pr> --rebase --match-head-commit <reviewed-head-sha>
 ```
 
 After merging:
@@ -249,7 +256,7 @@ checkout.
 
 2. Restore a consistent local state.
 
-For a plain-Git workstream, synchronize the local mainline and prune deleted
+For a plain-Git workstream, synchronize the selected integration target and prune deleted
 remotes:
 
 ```bash
@@ -278,11 +285,11 @@ git pull --ff-only
 git status --short --branch
 ```
 
-Confirm `<base>` and `origin/<base>` point to the same commit. If the PR branch
-is still present locally and is merged or patch-equivalent to `<base>`, delete
-it with `git branch -d <branch>`. This applies to both `session/*` and `gest/*`
-work branches; those names are review/workflow handles, not durable records.
-Do not delete a branch that is checked out in another worktree.
+Confirm `<base>` and `origin/<base>` point to the same commit. Only delete the PR branch when its role is temporary, it is verified merged,
+and no open stack PR or worktree depends on it. Preserve all persistent
+integration branches, including an experimental head promoted into mainline.
+Use `git branch -d <branch>` only after this check; a squash may require a
+separate verified patch-equivalence decision before any forced deletion.
 
 The final handoff should not leave the user on `gitbutler/workspace` unless
 active GitButler work is intentionally continuing. `gitbutler/target` and
@@ -308,7 +315,9 @@ gest task meta set <task-id> github.merge_method <method>
 gest task meta set <task-id> github.merged_commit <sha>
 ```
 
-5. Regenerate checkpoint graphs for durable workflow changes.
+5. Update the linked issue according to its intended delivery milestone;
+   experimental integration does not imply release completion. Gest maintains
+   its own graphs automatically.
 
 ## Tag And Dependency Review
 

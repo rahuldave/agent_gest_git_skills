@@ -38,15 +38,21 @@ Use completed Gest task notes to draft copious but focused commit bodies:
 include what changed from `Done`, the exact checks from `Verification`, and any
 real `Follow-up`. Never include Gest IDs.
 
-After creating a commit, run checkpoint hygiene: regenerate the overall Gest
-graph and a focused graph for the latest relevant iteration, serialized away
-from `gest` commands. For any code commit, ensure `grv` has happened after the
+After creating a commit, run checkpoint hygiene. Gest maintains its graphs
+automatically; no separate export is required. For any code commit, ensure `grv` has happened after the
 code change or run it immediately. Also make and verify a push/sync decision:
 `git push` is separate from GitHub issue promotion. For development depth-1
 parents or development iterations, run the explicit `gpr` decision: create/sync
 the GitHub issue and record metadata, or record why promotion was skipped.
-Report graph paths, the commit hash, final branch relationship, push status,
+Report the selected PR base, commit hash, final branch relationship, push status,
 review status, and the GitHub issue decision.
+
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
 
 ## Workflow
 
@@ -136,11 +142,10 @@ and final summary. A checkpoint is not complete while a Codex-created commit is
 silently local or ahead of its upstream. For reusable workflow/template repo
 changes, push is mandatory unless blocked.
 
-After pushing a branch other than the repository's mainline branch, create or
+After pushing a topic or stack branch, create or
 update the PR for that branch, then route it through `gpa`. Report the `gpa`
-review findings/state to the user and ask whether to merge. Only merge without
-another question when the user explicitly asked for that merge in the current
-turn. For reusable workflow/template repo changes, PR creation is mandatory
+review findings/state to the user and ask whether to merge. Only merge when that particular merge is already authorized; authorization
+persists across turns. For reusable workflow/template repo changes, PR creation is mandatory
 after push unless blocked; record the exact blocker instead of leaving only a
 pushed branch.
 
@@ -150,8 +155,7 @@ for this kind of change, run it or record the concrete blocker before handoff.
 For GitButler-managed workstreams, the merge checkpoint is not complete until
 the local repository is back in a consistent post-merge state: fetch/prune,
 switch to the merged base branch, verify `<base> == origin/<base>`, delete
-merged local `session/*` or `gest/*` work branches when they are not checked out
-elsewhere, and run `but teardown` when no active GitButler stack work remains.
+verified merged temporary topic branches with no worktree or stack dependents, and run `but teardown` when no active GitButler stack work remains.
 Do not leave the user on `gitbutler/workspace` at handoff unless continuing
 GitButler work is explicit.
 
