@@ -81,6 +81,7 @@ class InstallerTests(unittest.TestCase):
         metadata = json.loads((self.target / '.agents/gest-git-install.json').read_text())
         self.assertEqual(metadata['source_revision'], commit)
         self.assertFalse(metadata['source_worktree_dirty'])
+        self.assertTrue(metadata['source_checkout_dirty'])
         self.assertEqual(metadata['source_requested_commit'], commit)
 
     def test_bundled_installer_uses_local_pinned_source(self):

@@ -201,6 +201,7 @@ def main():
             'source_repository': remote,
             'source_revision': revision,
             'source_worktree_dirty': dirty if not args.source_commit else False,
+            'source_checkout_dirty': dirty,
             'source_requested_commit': args.source_commit,
             'managed_files': dict(old_hashes),
         }
