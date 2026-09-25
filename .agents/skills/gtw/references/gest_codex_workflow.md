@@ -731,8 +731,10 @@ directly, but ordinary requests can simply use `gtw` or natural language.
    are in the same phase.
 5. Use physical git worktrees/subagents for independent tasks when useful, and
    record each `vcs.workspace_path`.
-6. Integrate results and advance phases.
-7. Clean up worktrees and report failures.
+6. Integrate results into the selected branch or stack and advance phases.
+7. Retire only worker-owned physical worktrees after the ownership, dirty-file,
+   integration and dependency checks in the integration-delivery policy;
+   report any retained worktrees.
 
 ### GRV
 
@@ -775,8 +777,11 @@ commits and zero-change `WIP Assignments` commits are red flags. After merge,
 plain-Git workstreams should fetch/prune remotes, switch to the merged base
 branch, verify the local base and `origin/<base>` are equal, and delete only
 verified merged temporary topic branches with no worktree or stack dependents.
-Preserve persistent integration branches regardless of name. Confirm remaining
-PRs belong to intentional follow-on work. GitButler workstreams must not
+Preserve persistent integration branches regardless of name. Retire only
+worker-owned physical worktrees after confirming their changes reached the
+intended target, all valuable files are accounted for and no task/stack depends
+on them; see the integration-delivery policy. Confirm remaining PRs belong to
+intentional follow-on work. GitButler workstreams must not
 run raw branch-mutating Git while GitButler owns the workspace; run
 `but teardown` first when the stack is done, then synchronize the base branch in
 normal Git mode. Do not leave the user's terminal on `gitbutler/workspace`

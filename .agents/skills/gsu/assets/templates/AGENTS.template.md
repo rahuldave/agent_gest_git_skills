@@ -106,6 +106,16 @@ unless GitButler work is intentionally continuing; `gitbutler/target` and
 `gitbutler/workspace` are GitButler implementation refs, not durable workflow
 branches to keep after teardown.
 
+For worker-owned physical worktrees, record owner, absolute path, topic branch
+and selected integration base before dispatch. After the worker and its
+processes finish, inspect tracked, untracked and valuable ignored files; verify
+its changes reached the intended branch (including patch equivalence for
+cherry-picks or squash); and check no active task or stack depends on it.
+Remove only that owned, clean checkout with ordinary `git worktree remove`,
+then consider its temporary topic branch. Preserve the selected primary,
+persistent integration and user-retained or unrelated worktrees. Follow the
+project's integration-delivery policy for the full procedure.
+
 For non-trivial completed leaf tasks, add a Gest task note before completion:
 
 ```bash

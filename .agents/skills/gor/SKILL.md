@@ -40,8 +40,12 @@ gest iteration next <id> --claim --agent <agent-name> --json
 Exit code 75 means no task is currently available.
 
 6. For parallel work, create one git worktree per task, attach it to the same
-   Gest project, run implementation, integrate results, and clean up. Record
-   `vcs.workspace_path` metadata for each writable task when practical.
+   Gest project, run implementation, and integrate results. Record the owned
+   absolute `vcs.workspace_path`, topic `vcs.branch`, worker/task, selected
+   integration branch and stack parent before dispatch. After workers and their
+   owned processes finish, retire only owned worktrees using the checks in
+   `docs/integration_delivery_workflow.md` (or its installed policy copy).
+   Preserve the primary checkout and unrelated or user-retained worktrees.
 7. Advance phases only after current-phase tasks are terminal.
 8. Report successes, failures, and remaining tasks.
 

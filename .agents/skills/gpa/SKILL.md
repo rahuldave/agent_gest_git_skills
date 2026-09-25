@@ -291,6 +291,17 @@ integration branches, including an experimental head promoted into mainline.
 Use `git branch -d <branch>` only after this check; a squash may require a
 separate verified patch-equivalence decision before any forced deletion.
 
+If this PR used worker-owned physical worktrees, retire each one only after its
+worker and owned processes stop, its tracked/untracked and valuable ignored
+files are accounted for, its commits are verified in the intended base or
+stack parent, and no active task or stack depends on it. Check the recorded
+owner/path/branch against `git worktree list --porcelain`; use ordinary
+`git worktree remove <owned-absolute-path>` from another checkout and verify
+removal before considering the temporary topic branch. Keep the selected
+primary checkout, persistent integration branches and unrelated or
+user-retained worktrees. Follow the full retirement policy in
+`references/integration_delivery_workflow.md`.
+
 The final handoff should not leave the user on `gitbutler/workspace` unless
 active GitButler work is intentionally continuing. `gitbutler/target` and
 `gitbutler/workspace` are GitButler implementation refs, not normal work

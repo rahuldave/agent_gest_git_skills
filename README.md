@@ -285,7 +285,9 @@ stacked branches share one managed workspace, so they are branch-curation tools,
 not the agent-parallelism primitive. Do not launch parallel write agents in one
 GitButler workspace and do not use GitButler parallel lanes for agent
 parallelism. If work must run in parallel, use physical worktrees first, then
-integrate the results into the intended branch or stack.
+integrate the results into the intended branch or stack. Record each worker
+worktree's owner, path and branch; after integration, retire only owned clean
+worktrees using the checks in the integration-delivery policy.
 
 In GitButler-managed mode, use current `but` CLI write commands such as
 `but branch new`, `but stage`, `but commit`, `but push`, and `but pr`. Do not
