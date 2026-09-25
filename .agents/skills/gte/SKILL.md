@@ -9,6 +9,13 @@ Use to design and verify behavior with executable tests. `gte` owns test design
 and test execution; `gfm` owns format/lint/typecheck/static checks, and `gdo`
 owns documentation.
 
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
+
 ## Test Policy
 
 Any changed callable code needs focused tests near that code. Smoke checks are
@@ -122,3 +129,12 @@ route to `gsu` to establish one.
 ## Testing Dependency Impact
 
 Inspect tag/dependency notes from `references/tag_dependency_workflow.md`; tests must cover dependers found by semantic tags or `ast-grep`, not only the file that was directly edited. Smoke checks alone are not enough for changed callable code or shared contracts.
+
+## CI verification
+
+Verify that the selected PR base receives all required checks, including a
+non-default integration target. For a conditional matrix or summary gate, test
+failure/skipped-job handling rather than trusting a green summary unconditionally.
+Distinguish local evidence, remote CI, artifact/clean-install verification and
+opt-in live tests. Credentialed or paid tests need their own explicit scope.
+Confirm test-owned servers and children exit; never reuse a user's service.

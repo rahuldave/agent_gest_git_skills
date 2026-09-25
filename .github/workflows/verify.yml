@@ -1,0 +1,64 @@
+name: Verify skill package
+
+on:
+  pull_request:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify-skill-package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+      - name: Check contracts, hooks, and source mirrors
+        run: just lint
+      - name: Check installer behavior in disposable target repositories
+        run: python3 -m unittest scripts/test_install_package.py -q
+      - name: Verify live-lab cleanup without GitHub credentials
+        run: just lab-safety-test
+      - name: Validate package manifest with skill-package-maker
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_root="$(mktemp -d)"
+          trap 'rm -rf -- "$tool_root"' EXIT
+          git clone --quiet https://github.com/rahuldave/agent_skill_package_maker.git "$tool_root/package-maker"
+          git -C "$tool_root/package-maker" checkout --quiet 6a5938c49ca71c374dc1a234a4d15134c484a741
+          uv run --no-project python "$tool_root/package-maker/skills/skill-package-maker/scripts/lint_skill_bundle.py" .
+      - name: Install GitButler CLI at tested version
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://gitbutler.com/install.sh -o /tmp/gitbutler-install.sh
+          sh /tmp/gitbutler-install.sh
+          rm -f /tmp/gitbutler-install.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/but" update install 0.19.9
+          "$HOME/.local/bin/but" --version | grep -Fx 'but 0.19.9'
+      - name: Exercise local GitButler workflow on main and integration bases
+        run: scripts/run_gitbutler_workflow_lab.sh
+      - name: Build and verify source distribution archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=tar.gz --prefix=agent_gest_git_skills/ -o dist/agent_gest_git_skills-source.tar.gz HEAD
+          tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/skill-package.json'
+          tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/.agents/skills/gest_git_installer/SKILL.md'
+          (cd dist && sha256sum agent_gest_git_skills-source.tar.gz > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-source-package
+          path: dist/
+          if-no-files-found: error

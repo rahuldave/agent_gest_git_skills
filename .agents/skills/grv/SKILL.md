@@ -8,6 +8,13 @@ description: Gest Review. Review the current Git changeset for correctness, safe
 Use for code-review stance. Run `grv` after every code change before completing
 the task, even during quick local development without a pull request.
 
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
+
 ## Workflow
 
 Inspect:
@@ -99,3 +106,12 @@ mode and preserve physical git worktrees as the parallel write primitive.
 ## Tag And Dependency Findings
 
 Review the current changes against `references/tag_dependency_workflow.md`. If code contracts changed, inspect the `ast-grep` patterns that were run and the dependers they found. Treat missing `ast-grep` dependency-impact checks, unhandled dependent surfaces, or missing focused tests for found dependers as review findings.
+
+## Review evidence
+
+For substantial code, executable setup, CI or reusable workflow changes, obtain
+independent adversarial review. Record reviewer, scope, actual base/head SHAs,
+findings and their dispositions. Re-review changed portions after fixes. Label
+self-review honestly and report an unavailable independent reviewer as a gap;
+do not manufacture approval. Inspect integration-target drift as well as head
+changes before carrying evidence into GPA.

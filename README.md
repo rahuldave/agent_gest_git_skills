@@ -23,8 +23,9 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `docs/live_protocol_flow_transcript_2026-06-14.md`: real live LLM transcript
   for plain, recursive, unsafe, draft, promotion, and worker result flows.
 - `docs/*.md`: reference docs and setup examples for users who need details.
-- `tools/gest_mermaid_graph.py`: optional read-only Gest SQLite exporter that
-  writes clickable Mermaid/HTML relationship graphs.
+- `docs/integration_delivery_workflow.md`: branch roles, adversarial review,
+  CI, delivery, issue completion and installation policy. Gest maintains its
+  graphs automatically; no separate graph exporter is shipped.
 - `scripts/install.sh`: source-checkout installer for target repos, including hooks by default.
 - `skill-package.json`: package manifest used by `skill-package-maker` to
   validate skills, installer scripts, and executable prerequisites.
@@ -82,7 +83,9 @@ installs skill folders only; it does not run hooks or copy root-level package
 extras. Runtime references, helper scripts, and setup templates are vendored
 inside the installed skill folders. `gest_git_installer` carries a bundled
 helper that fetches this repository and runs the source-checkout installer with
-clear prerequisite messages and overwrite approval.
+clear prerequisite messages, an explicit source revision, and conflict-safe
+configuration merging. The helper refreshes the full package, including skills;
+use the same reviewed revision as the intended installation.
 
 Third, use `gsu` for normal repository setup and command-contract refresh work.
 
@@ -97,8 +100,10 @@ scripts/install.sh /path/to/target/repo
 The installer copies the skill bundle and reports missing workflow executables:
 `git`, `gest`, `just`, and `uv`. It also reports optional executables that
 unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
-`ast-grep`, `direnv`, and `cx`. If `rsync` is missing, the installer uses a
-`cp` fallback.
+`ast-grep`, `direnv`, and `cx`. Installation uses Python 3 and preflights
+configuration and managed-file conflicts before writing. Existing project
+instructions and unrelated settings are preserved. Exact source revision and
+managed file hashes are recorded in `.agents/gest-git-install.json`.
 
 The installer copies:
 
@@ -251,19 +256,24 @@ changes. Before final response for substantial work, inspect
 `git status --short --branch`; if Codex-owned changes remain and one of those
 triggers applies, run `gcm` or record the concrete no-commit reason.
 
-After Codex pushes a branch other than the repository's mainline branch, the
+After Codex pushes a topic or stack branch, the
 checkpoint continues through GitHub review: create or update the pull request,
 run `gpa`, report the PR review findings/state to the user, and ask whether to
 merge. Do not merge without explicit user approval unless the user already asked
-for that merge in the current turn.
+for that particular merge; authorization persists across turns.
 
 If a committed branch has no upstream, push with an upstream instead of stopping
 locally. After a PR is merged, run any deploy/release command defined by the
 target repository's instructions, or report the exact blocker.
 
+See [Integration branches, review, and delivery](docs/integration_delivery_workflow.md)
+for the governing policy and references. Mainline and persistent experimental
+branches both receive reviewed PRs; experimental integration does not publish
+a stable release.
+
 ## Branch, Stack, And Worktree Policy
 
-For Gest-tracked writes, keep `main` integration-ready and choose both a branch
+For Gest-tracked writes, keep the selected integration target buildable and choose both a branch
 model and an execution model before editing. Normal session or development work
 uses `session/<task-id>-summary` or `gest/<task-id>-summary` branches. Multiple
 meaty dependent slices should use stacked branches or stacked PRs. Multiple
@@ -313,3 +323,22 @@ execution, and keep tag/dependency checks in view. When a planned flow has
 left GitButler mode and is intentionally creating physical worktrees, prefix raw
 git worktree commands with `GEST_VCS_EXECUTION=git-worktrees`. Existing repos
 can refresh hooks with `scripts/sync_g_skills.sh --hooks /path/to/repo`.
+
+
+## Automatic checks and delivery
+
+GitHub runs `verify-skill-package` on PRs to any branch and on branch pushes.
+It checks shell/JSON contracts, hook behavior, canonical reference mirrors,
+installer regression tests and the package manifest, then exercises GitButler
+0.19.9 against both mainline and a distinct persistent integration target.
+It builds and verifies a source archive and uploads it as a CI artifact.
+`just ci-local` runs the directly available local subset; `just verify` also
+runs the broader language/protocol labs with their documented prerequisites.
+Automatic CI does not claim that those additional local labs ran.
+
+The authenticated live GitHub lab is manual-only. It requires explicit typed
+confirmation and a separately configured `GEST_GITHUB_LAB_TOKEN`; ordinary PR
+checks receive no such credential. A merge integrates source. A versioned/tagged
+release is a separate request, with package validation, scratch installation,
+reviewed source and published artifact verification. No release occurs merely
+because an experimental target receives a PR.

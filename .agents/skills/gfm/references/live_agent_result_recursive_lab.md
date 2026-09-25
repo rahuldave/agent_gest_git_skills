@@ -7,6 +7,16 @@ transcript, but it does not simulate the agents.
 Use it when changing the `AGENT_TASK v1` / `AGENT_RESULT v1` contract,
 subagent delegation guidance, or recursive orchestration docs.
 
+## Execution location
+
+Run this maintainer lab from the root of an `agent_gest_git_skills` source
+checkout. All `scripts/` commands below are relative to that checkout and
+include the source-only transcript runner. An installed skill includes this
+reference for context; the target project does not receive root-level lab
+scripts. To run it from an installed workflow, use a disposable source checkout
+at the revision recorded in `.agents/gest-git-install.json`, with the lab's
+prerequisites and delegation authorization. Remove the owned checkout afterward.
+
 ## Transcript Directory
 
 Create a fresh transcript directory:
@@ -69,7 +79,7 @@ safety:
 Validate it:
 
 ```bash
-../scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
+scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/01-parent-task.agent-task.txt"
 ```
 
 ## 2. First Subagent: Planner
@@ -94,7 +104,7 @@ The result must have:
 Validate it:
 
 ```bash
-../scripts/jagt_lint_agent_result.sh \
+scripts/jagt_lint_agent_result.sh \
   --expect-count 1 \
   --expect-target count-chat-message-words \
   --expect-status partial \
@@ -118,7 +128,7 @@ must tell the worker to run `wc -w` on the exact message in
 Validate it:
 
 ```bash
-../scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
+scripts/jagt_lint_agent_task.sh --expect-count 1 "$lab_dir/03-child-task.agent-task.txt"
 ```
 
 ## 4. Second Subagent: Worker
@@ -141,7 +151,7 @@ The result must have:
 Validate it:
 
 ```bash
-../scripts/jagt_lint_agent_result.sh \
+scripts/jagt_lint_agent_result.sh \
   --expect-count 1 \
   --expect-target count-chat-message-words-with-wc \
   --expect-status success \

@@ -11,6 +11,13 @@ Read `references/gest_codex_workflow.md` when more detail is needed. Keep
 project-specific workflow notes in this repository or in user-level Codex
 configuration.
 
+## Integration and delivery policy
+
+Read [the integration and delivery contract](references/integration_delivery_workflow.md)
+for explicit branch roles, selected PR bases, independent review evidence,
+CI gates, issue completion, installation provenance and safe cleanup. Apply it
+throughout this skill; the repository default is not an implicit PR target.
+
 ## Core Job
 
 Use GTW before any code-writing turn in a Gest-managed workspace. If a request
@@ -152,6 +159,10 @@ vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-develo
 vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
 vcs.parallel_allowed=true|false
 vcs.branch=<branch-name>
+vcs.integration_branch=<selected-persistent-target>
+vcs.base_branch=<immediate-PR-base>
+vcs.base_sha=<resolved-commit>
+vcs.branch_role=topic|stack-topic|integration
 vcs.workspace_path=<absolute-path>
 test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
 test.scope=focused|regression|integration|browser|full
@@ -211,8 +222,9 @@ Session/development mode does not determine test style. Choose
 - `no-test-needed`: docs-only, planning-only, or prose-only work with a reason.
 
 Development work usually raises `test.scope` and `review.depth`; it does not
-force one strategy. For non-trivial code-facing work, prefer
-`review.depth=adversarial` and route the final local review through `grv`.
+force one strategy. Substantial code, executable setup, CI and reusable workflow
+changes require independent adversarial review through `grv`, with the reviewed
+base/head commits and finding dispositions recorded.
 
 ## Dynamic Command Context
 
@@ -311,11 +323,10 @@ the normal repository command such as `git push -u origin <branch>`; "no
 upstream" is not a no-push reason. GitHub issue promotion and `git push` are
 different decisions.
 
-When Codex pushes changes to a branch other than the repository's mainline
-branch, do not stop at push. Create or update the PR for that branch, route the
+When Codex pushes a topic or stack branch, do not stop at push. Create or update the PR for that branch, route the
 PR through `gpa`, report the PR review findings/state to the user, and ask
-whether to merge. Only merge without another question when the user explicitly
-asked for the merge in the current turn.
+whether to merge. Only merge when the particular merge is already authorized; authorization
+persists across turns.
 
 After a PR is merged, check the repository's project instructions and command
 contract for deployment or release steps. If the repo defines a deploy command
@@ -334,10 +345,7 @@ commit.
 
 At every durable checkpoint, run the cleanup that future agents need:
 
-- regenerate the overall Gest graph and a focused graph for the latest relevant
-  iteration
-- treat graph generation as a Gest database operation and do not run it in
-  parallel with `gest`
+- let Gest maintain graphs automatically; inspect native graphs when useful
 - for every development depth-1 parent and development iteration, run the
   explicit `gpr` decision: create/sync the GitHub issue and record
   `github.issue`/`github.url`, or record why it was not promoted
@@ -345,14 +353,14 @@ At every durable checkpoint, run the cleanup that future agents need:
   with an unmentioned `ahead` branch
 - if a committed branch has no upstream, push with an upstream instead of
   treating that state as local-only
-- after pushing a non-mainline branch, create/update the PR, run `gpa`, report
+- after pushing a topic or stack branch, create/update the PR, run `gpa`, report
   the PR review, and ask before merge unless the user already explicitly asked
   for that merge
 - after merging a PR, run the repo's deploy/release contract when applicable,
   or report the exact reason deployment was skipped
 - run `grv` after every code change before task completion, even for quick
   development without a pull request
-- report graph paths, commit hashes, push status, review status, and GitHub
+- report selected PR base, commit hashes, push status, review status, and GitHub
   issue decision
 - report the final branch/execution mode for substantial write work, including
   whether GitButler stack work was sequential or whether parallel work used

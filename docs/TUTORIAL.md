@@ -572,7 +572,7 @@ For each PR, run the PR acceptance checkpoint first:
 - stop and ask before merging if there are findings, mergeability is not clean,
   or the PR target/branch shape is not the expected tutorial shape
 
-Then merge these PRs with `gh pr merge <number> --merge --delete-branch`, and
+After explicit merge authorization, merge these PRs with `gh pr merge <number> --merge`, and
 verify each PR state is `MERGED` by PR number:
 
 - repo `agent-gest-git-tutorial-plain`, PR branch `tutorial/plain`
@@ -633,7 +633,7 @@ Commands it should have used:
 - `gh pr view <branch> --json number` before deleting PR branches
 - `gh pr view <number> --json ...`, `gh pr diff <number> --patch`, and
   `gh pr checks <number>` as the PR acceptance checkpoint before merging
-- `gh pr merge <number> --merge --delete-branch`
+- `gh pr merge <number> --merge`
 - `gh pr view` or `gh pr list --state merged`
 
 Commands it should not have used:
@@ -686,3 +686,8 @@ just integration-live
 
 They intentionally stress GitButler itself. Read this tutorial first; use those
 scripts when you want to verify the reusable skill repository.
+
+For this tutorial, `main` is the selected integration target. In an existing
+project, use the declared target (including a persistent experiment) throughout.
+Clean up only verified merged temporary topics with no stack/worktree dependents;
+keep persistent branches. See [the integration contract](integration_delivery_workflow.md).
