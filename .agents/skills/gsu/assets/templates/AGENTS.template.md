@@ -268,7 +268,7 @@ recursion itself, it should report
 `outputs.recursion_trace.mode: local-recursion-supported`. If the result is
 missing or malformed, ask the subagent to restate it in `AGENT_RESULT v1` form
 or record a protocol failure. For recursive orchestration changes, run the live
-recursive lab in `docs/live_agent_result_recursive_lab.md`: the parent
+recursive lab in `.agents/skills/gtw/references/live_agent_result_recursive_lab.md`: the parent
 delegates to a planner subagent, validates its partial result, delegates the
 approved child task to a worker subagent, validates the worker result, and
 records a final recursion trace.

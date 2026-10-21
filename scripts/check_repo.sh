@@ -77,6 +77,12 @@ check_mirror "docs/gest_codex_workflow.md" ".agents/skills/gtw/references/gest_c
 for skill in gor gtw gpl gcm gpa gpr grv gsu gte; do
   check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
 done
+check_mirror "templates/README.md" ".agents/skills/gsu/assets/templates/README.md"
+for name in tag_dependency_workflow live_agent_result_recursive_lab cx_incremental_pipelines; do
+  for mirror in "$repo_root"/.agents/skills/*/references/"$name.md"; do
+    check_mirror "docs/$name.md" "${mirror#"$repo_root/"}"
+  done
+done
 
 for skill in gbs gcm gdo gfm gest_git_installer gim gis gor gpa gpl gpr grv gsp gsu gte gtw; do
   if [ ! -f "$repo_root/.agents/skills/$skill/SKILL.md" ]; then
@@ -220,6 +226,35 @@ for stale_tutorial_text in "Latest Live Run" "422 Unprocessable Entity" "live_gi
     exit 1
   fi
 done
+
+# Installed copies have no docs/ tree, so shipped guidance must not point into it.
+shipped_text=("$repo_root/AGENTS.template.md")
+while IFS= read -r file; do shipped_text+=("$file"); done < <(
+  find "$repo_root/.agents/skills" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" \
+    -type f \( -name '*.md' -o -name '*.sh' \) | sort)
+[ "${#shipped_text[@]}" -gt 1 ] || { echo "no shipped guidance files found" >&2; exit 1; }
+refs="$(grep -hoE '\.agents/skills/[A-Za-z0-9_./-]+\.(md|sh|py)' "${shipped_text[@]}" | sort -u)" || [ $? -eq 1 ] || exit 1
+while IFS= read -r ref; do
+  [ -n "$ref" ] || continue
+  skill="${ref#.agents/skills/}"; skill="${skill%%/*}"
+  # References into other packages, such as skill-package-maker, are not shipped here.
+  [ -d "$repo_root/.agents/skills/$skill" ] || continue
+  [ -f "$repo_root/$ref" ] || { echo "shipped reference to missing file: $ref" >&2; exit 1; }
+done <<< "$refs"
+docs_hits="$(grep -nE '(^|[^/A-Za-z_])\.?/?docs/[A-Za-z0-9_./-]+\.md' "${shipped_text[@]}")" || [ $? -eq 1 ] || exit 1
+if [ -n "$docs_hits" ]; then
+  printf '%s\n' "$docs_hits" >&2
+  echo "shipped guidance names a docs/ file that installed repositories do not have" >&2
+  exit 1
+fi
+
+# Shipped files must not carry paths from one machine.
+path_hits="$(grep -rnE '/(Users|home)/[A-Za-z0-9._-]+/' "$repo_root/.agents/skills" "$repo_root/.claude" "$repo_root/.codex" "$repo_root/AGENTS.template.md" "$repo_root/templates")" || [ $? -eq 1 ] || exit 1
+if [ -n "$path_hits" ]; then
+  printf '%s\n' "$path_hits" >&2
+  echo "shipped files contain a machine-specific absolute path" >&2
+  exit 1
+fi
 
 # Exercise both hook payload formats in disposable plain and managed checkouts.
 (

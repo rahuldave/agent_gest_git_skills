@@ -22,7 +22,7 @@ Use the project-local `g*` skills for substantial work:
 
 Keep Gest commands serialized. Use task notes with Done and Verification before
 completing non-trivial leaves. Apply tag classification and ast-grep dependency
-impact checks from docs/tag_dependency_workflow.md.
+impact checks from .agents/skills/gtw/references/tag_dependency_workflow.md.
 CONTEXT_EOF
 
 escape_json() {
