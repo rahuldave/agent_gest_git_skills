@@ -37,5 +37,5 @@ the depending recipe and in the listed order; they are ordered recipe
 composition, not Make-style file freshness analysis.
 
 Use `cx` only for explicit file-producing build or pipeline stages inside
-linewise Just recipes. See `docs/cx_incremental_pipelines.md` before adding
+linewise Just recipes. See `.agents/skills/gsu/references/cx_incremental_pipelines.md` before adding
 `cx` to a project command contract.

@@ -137,7 +137,7 @@ script paths under `.agents/skills/skill-package-maker/`. If the standalone
 checkout is available, use:
 
 ```bash
-uv run python /Users/rahul/Projects/agent_skill_package_maker/skills/skill-package-maker/scripts/lint_skill_bundle.py .
+uv run python /path/to/agent_skill_package_maker/skills/skill-package-maker/scripts/lint_skill_bundle.py .
 ```
 
 Require skill repos to declare their package-specific installer skill, custom
