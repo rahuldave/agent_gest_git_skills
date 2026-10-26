@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lanes"
+  short_description: "Report human attention requests to Lanes"
+  default_prompt: "Use $lanes to check this project's inbox and report any real requests for my attention."

@@ -301,6 +301,34 @@ remote, and clean merged local `session/*` and `gest/*` branches. The terminal
 should not be left on `gitbutler/workspace` unless active GitButler work is
 continuing.
 
+## Optional Lanes reporting across projects
+
+The `lanes` skill works independently of Gest and the Lanes source checkout.
+It provides a short-lived direct-cloud client for ordinary todos, explicit
+human attention requests and reading saved replies. It changes no hooks or
+provider approvals and runs no background service. Node.js >=22 is its only
+runtime requirement.
+
+Install from a source checkout with:
+
+```sh
+node .agents/skills/lanes/scripts/install.mjs --dry-run
+node .agents/skills/lanes/scripts/install.mjs
+```
+
+This installs `~/.local/bin/lanes` plus global Codex and Claude skill copies.
+Ensure `~/.local/bin` is on PATH; restart agent sessions for skill discovery.
+The install manifest records exact content hashes and source revision.
+It preserves unrelated files and refuses to overwrite user edits.
+For published-source `npx` installation and one-time project/credential setup,
+see [the portable setup guide](.agents/skills/lanes/references/setup.md).
+No project is registered or authorized merely by installing the skill.
+Each project has a non-secret `.lanes.json` binding, and each reporter has a
+separate protected project-scoped token. Existing sessions do not become
+instrumented retroactively. A saved reply waits for the agent to resume and
+read it; no automatic wake-up is promised. `just lanes-test` exercises the
+transport, credential boundaries and isolated installation.
+
 ## Publishing This Repo
 
 After creating a GitHub token/session:
