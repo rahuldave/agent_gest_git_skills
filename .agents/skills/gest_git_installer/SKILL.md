@@ -5,6 +5,15 @@ description: Install Git/GitButler Gest package extras after npx installs the sk
 
 # Gest Git Installer
 
+For a request to install only the portable **Lanes** reporting command, use the
+installed `lanes` skill's bundled `scripts/install.mjs` with `--cli-only`.
+Resolve it relative to that skill, inspect `--dry-run` first, then install.
+Do not run the Gest hook installer for Lanes-only setup. Node.js >=22 is needed
+for Lanes; Gest, git, just and uv are not Lanes runtime dependencies. If the
+Lanes skill is absent, install it separately with `npx skills add
+rahuldave/agent_gest_git_skills -g -a codex -a claude-code --skill lanes --copy -y`.
+This copies skills only; installing the CLI is an explicit follow-up.
+
 Use this package-specific installer after a user has installed the Git/GitButler
 Gest skills with:
 
