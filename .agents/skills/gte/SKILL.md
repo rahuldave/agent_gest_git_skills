@@ -1,6 +1,7 @@
 ---
 name: gte
 description: Gest Test. Run unit, API regression, smoke, regression, and integration tests appropriate to the changed code; add missing tests when the task changes callable behavior.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GTE: Gest Test

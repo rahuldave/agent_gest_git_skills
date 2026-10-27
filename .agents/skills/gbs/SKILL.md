@@ -1,6 +1,7 @@
 ---
 name: gbs
 description: Gest Brainstorm. Explore rough ideas or ambiguous requests, inspect existing code/docs/Gest context, ask clarifying questions when needed, and decide whether to create a spec, outline issue, plan, or session task.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GBS: Gest Brainstorm

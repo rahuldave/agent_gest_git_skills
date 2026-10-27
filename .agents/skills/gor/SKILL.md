@@ -1,6 +1,7 @@
 ---
 name: gor
 description: Gest Orchestrate. Execute a phased Gest iteration, deciding per phase whether work should run sequentially or in parallel physical worktrees/subagents.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GOR: Gest Orchestrate

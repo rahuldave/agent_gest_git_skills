@@ -1,6 +1,7 @@
 ---
 name: gpr
 description: Gest Promote. Promote or sync durable Gest work with GitHub issues using gh, storing GitHub metadata back on Gest entities.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GPR: Gest Promote

@@ -1,6 +1,7 @@
 ---
 name: gest_git_installer
 description: Install Git/GitButler Gest package extras after npx installs the skills, including hooks/settings and AGENTS guidance.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # Gest Git Installer

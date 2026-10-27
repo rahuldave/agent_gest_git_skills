@@ -1,6 +1,7 @@
 ---
 name: gpl
 description: Gest Plan. Decompose a spec, outline task, or GitHub-backed initiative into Gest tasks, dependencies, phases, and session/development iterations.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GPL: Gest Plan

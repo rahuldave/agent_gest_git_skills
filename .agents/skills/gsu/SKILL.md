@@ -1,6 +1,7 @@
 ---
 name: gsu
 description: Gest Setup. Bootstrap or refresh a Gest-tracked repository workflow surface across tool checks, project command contracts, Justfile targets, AGENTS.md mappings, docs, tests, and setup follow-ups.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GSU: Gest Setup
