@@ -17,16 +17,13 @@ Use the rest only when you need reference material:
 - `live_protocol_flow_transcript_2026-06-14.md`: real parent/subagent protocol
   transcript with validation failures, corrections, recursive refusal, draft
   promotion, and final validator output.
-- `just_command_contract.md`: stable Justfile command contract guidance,
-  including optional dynamic `agent-*` context targets, `AGENT_TASK v1`
-  handoff packets, `AGENT_RESULT v1` subagent reports, and
-  `AGENT_TASK_DRAFT v1` stochastic proposals.
+- `just_command_contract.md`: a pointer. The Justfile command contract moved
+  to the `just` skill of jnterfaces.
 - `agent_task_draft_workflow.md`: user-facing guide for stochastic task
   proposals, approval, deterministic promotion with `jagt`, and fresh
   subagent contract delivery.
-- `cx_incremental_pipelines.md`: `cx` guidance for incremental builds and
-  file-artifact pipelines, including one pipeline example and one C build
-  example.
+- `cx_incremental_pipelines.md`: a pointer. The `cx` guidance moved to the
+  `cx` skill of jnterfaces.
 - `gsu_typescript_hello_world.md`: tiny setup example.
 - `gsu_language_profile_labs.md`: live local end-to-end setup labs for the
   Python, TypeScript, Go, and Rust setup/profile templates. These are command

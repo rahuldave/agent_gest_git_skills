@@ -50,7 +50,7 @@ through one of these paths:
 
 - repo `AGENTS.md`
 - installed skill references such as
-  `.agents/skills/gtw/references/just_command_contract.md`
+  `.agents/skills/just/references/command_contract.md` from jnterfaces
 - a copied excerpt in the parent delegation prompt
 - a fixture-local `AGENTS.md` in labs
 

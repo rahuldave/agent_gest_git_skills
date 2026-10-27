@@ -11,7 +11,6 @@ if [ "${#missing[@]}" -gt 0 ]; then
   printf 'Install these before running the Git/GitButler Gest workflow.\n' >&2
 fi
 optional=()
-if ! command -v node >/dev/null 2>&1; then optional+=(node); fi # Only the optional Lanes client requires Node.js >=22.
 if ! command -v rsync >/dev/null 2>&1; then optional+=(rsync); fi
 if ! command -v gh >/dev/null 2>&1; then optional+=(gh); fi
 if ! command -v but >/dev/null 2>&1; then optional+=(but); fi

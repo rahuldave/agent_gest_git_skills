@@ -93,7 +93,10 @@ distinct `vcs.workspace_path` recorded for each task.
 
 Use the project command contract in `AGENTS.md`. Prefer `just` targets when the
 project maps workflow concepts to them. For the reusable Just contract shape,
-see `references/just_command_contract.md`. Typical concepts include:
+read the `just` skill of jnterfaces, `.agents/skills/just/SKILL.md`, and its
+contract, `.agents/skills/just/references/command_contract.md`. If jnterfaces
+is not installed, use the project's `AGENTS.md` and `just --list`; the source
+is https://github.com/rahuldave/jnterfaces. Typical concepts include:
 
 ```bash
 just fmt [path]

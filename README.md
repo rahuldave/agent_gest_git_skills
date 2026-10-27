@@ -75,7 +75,11 @@ First, install the skills:
 
 ```bash
 npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
+npx skills add rahuldave/jnterfaces -a codex --skill '*' -y
 ```
+
+The second command adds the jnterfaces skills that the `g*` skills link to. See
+[Sibling packages](#sibling-packages-jnterfaces-and-sklanes).
 
 Second, ask the agent to use `gest_git_installer` to install the Git/GitButler
 Gest hooks/settings and AGENTS guidance in the current repo. `npx skills add`
@@ -141,6 +145,9 @@ They delegate to `jagt lint`, `jagt result lint`, and `jagt draft lint`.
 Set `JAGT_BIN=/path/to/jagt` when testing against a local checkout. The older
 `scripts/validate_agent_*.sh` files are intentionally still present as legacy
 shell references, but new labs and docs should use the `jagt_lint_*` wrappers.
+
+These repository scripts serve the labs here and are not shipped in a skill.
+The shipped wrappers are in the `jagt-protocol` skill of jnterfaces.
 
 The local packet labs are:
 
@@ -301,33 +308,38 @@ remote, and clean merged local `session/*` and `gest/*` branches. The terminal
 should not be left on `gitbutler/workspace` unless active GitButler work is
 continuing.
 
-## Optional Lanes reporting across projects
+## Sibling packages: jnterfaces and sklanes
 
-The `lanes` skill works independently of Gest and the Lanes source checkout.
-It provides a short-lived direct-cloud client for ordinary todos, explicit
-human attention requests and reading saved replies. It changes no hooks or
-provider approvals and runs no background service. Node.js >=22 is its only
-runtime requirement.
+The `g*` skills link to skills in two other packages:
 
-Install from a source checkout with:
+- **jnterfaces**, https://github.com/rahuldave/jnterfaces, has the skills
+  `just`, `jagt-protocol` and `cx`. They hold the Just command contract, the
+  Justfile templates and house style, the jagt packet wrappers and the cx
+  guidance. Each link in a `g*` skill has a one-line fallback, so the `g*`
+  skills still work when jnterfaces is not installed.
+- **sklanes**, https://github.com/rahuldave/sklanes, has the optional `lanes`
+  skill, which reports requests for human attention to a Lanes inbox.
+
+Install the three packages into a target repository with one command. The
+clones of jnterfaces and sklanes must be next to this clone, or you pass
+`--jnterfaces DIR` and `--sklanes DIR`:
 
 ```sh
-node .agents/skills/lanes/scripts/install.mjs --dry-run
-node .agents/skills/lanes/scripts/install.mjs
+scripts/install_stack.sh ../my-project --dry-run --with-lanes
+scripts/install_stack.sh ../my-project --with-lanes
 ```
 
-This installs `~/.local/bin/lanes` plus global Codex and Claude skill copies.
-Ensure `~/.local/bin` is on PATH; restart agent sessions for skill discovery.
-The install manifest records exact content hashes and source revision.
-It preserves unrelated files and refuses to overwrite user edits.
-For published-source `npx` installation and one-time project/credential setup,
-see [the portable setup guide](.agents/skills/lanes/references/setup.md).
-No project is registered or authorized merely by installing the skill.
-Each project has a non-secret `.lanes.json` binding, and each reporter has a
-separate protected project-scoped token. Existing sessions do not become
-instrumented retroactively. A saved reply waits for the agent to resume and
-read it; no automatic wake-up is promised. `just lanes-test` exercises the
-transport, credential boundaries and isolated installation.
+The stack installer runs a dry run of every package before any package writes
+a file. Then it runs the installer of each package, so each package records its
+own source revision in `.agents/gest-git-install.json`,
+`.agents/jnterfaces-install.json` and `.agents/sklanes-install.json`. Add
+`--clean` to install the committed `HEAD` of each clone. Without `--with-lanes`,
+sklanes is not installed.
+
+A new install removes the skill files that an older install left and that the
+source no longer ships, if nobody edited them. For example, it removes the old
+copies of `just_command_contract.md`, `cx_incremental_pipelines.md` and the
+`jagt_lint_*.sh` scripts. It keeps an edited file and reports it.
 
 ## Publishing This Repo
 

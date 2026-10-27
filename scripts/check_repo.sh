@@ -26,6 +26,8 @@ required_files=(
   "docs/live_agent_result_recursive_lab.md"
   "scripts/install.sh"
   "scripts/sync_g_skills.sh"
+  "scripts/install_stack.sh"
+  "scripts/check_sibling_links.py"
   "scripts/run_gitbutler_workflow_lab.sh"
   "scripts/run_gitbutler_github_integration_lab.sh"
   "scripts/run_tag_dependency_agent_dry_run.sh"
@@ -78,7 +80,7 @@ for skill in gor gtw gpl gcm gpa gpr grv gsu gte; do
   check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
 done
 check_mirror "templates/README.md" ".agents/skills/gsu/assets/templates/README.md"
-for name in tag_dependency_workflow live_agent_result_recursive_lab cx_incremental_pipelines; do
+for name in tag_dependency_workflow live_agent_result_recursive_lab; do
   for mirror in "$repo_root"/.agents/skills/*/references/"$name.md"; do
     check_mirror "docs/$name.md" "${mirror#"$repo_root/"}"
   done
@@ -247,6 +249,15 @@ if [ -n "$docs_hits" ]; then
   echo "shipped guidance names a docs/ file that installed repositories do not have" >&2
   exit 1
 fi
+
+# Links into jnterfaces need a fallback in the same paragraph, because a target may not have jnterfaces.
+# With a jnterfaces checkout, each link must name a path that jnterfaces ships.
+jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
+sibling_args=()
+if [ -n "${JNTERFACES_DIR:-}" ] || [ -f "$jnterfaces_dir/skill-package.json" ]; then
+  sibling_args=(--jnterfaces "$jnterfaces_dir")
+fi
+python3 "$repo_root/scripts/check_sibling_links.py" ${sibling_args[@]+"${sibling_args[@]}"} "${shipped_text[@]}"
 
 # Shipped files must not carry paths from one machine.
 path_hits="$(grep -rnE '/(Users|home)/[A-Za-z0-9._-]+/' "$repo_root/.agents/skills" "$repo_root/.claude" "$repo_root/.codex" "$repo_root/AGENTS.template.md" "$repo_root/templates")" || [ $? -eq 1 ] || exit 1

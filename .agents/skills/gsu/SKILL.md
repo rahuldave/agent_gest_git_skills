@@ -197,9 +197,12 @@ or credentials.
 ## Command Contract
 
 Prefer `just` targets when present. `AGENTS.md` should say which command maps
-to each workflow concept and how arguments are passed. See
-`references/just_command_contract.md` for the reusable Just command-contract model. A
-typical contract might include:
+to each workflow concept and how arguments are passed. For the reusable Just
+command-contract model, the house style and Justfile templates, read
+the `just` skill of jnterfaces, `.agents/skills/just/SKILL.md`, and its
+contract, `.agents/skills/just/references/command_contract.md`. If jnterfaces
+is not installed, use the project's `AGENTS.md` and `just --list`; the source
+is https://github.com/rahuldave/jnterfaces. A typical contract might include:
 
 ```text
 Format: just fmt [path]
@@ -344,8 +347,10 @@ When adding `cx`:
   `up-to-date`, then changing one input and confirming the expected downstream
   artifacts rerun.
 
-For reusable examples, read `references/cx_incremental_pipelines.md` and run
-`just cx-examples-lab` in this skill repository.
+For the full rules and worked examples, read the `cx` skill of jnterfaces,
+`.agents/skills/cx/SKILL.md`. If jnterfaces is not installed, the rules above
+are enough to start; the source is https://github.com/rahuldave/jnterfaces.
+The recipe `just cx-examples-lab` of agent_gest_git_skills runs the examples.
 
 For npm projects, prefer a project-local cache when the user wants explicit
 per-project tooling or the global npm cache is unreliable:
