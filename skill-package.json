@@ -22,25 +22,19 @@
     {"name": "gsp", "path": ".agents/skills/gsp", "installer": "scripts/install.sh"},
     {"name": "gsu", "path": ".agents/skills/gsu", "installer": "scripts/install.sh"},
     {"name": "gte", "path": ".agents/skills/gte", "installer": "scripts/install.sh"},
-    {"name": "gtw", "path": ".agents/skills/gtw", "installer": "scripts/install.sh"},
-    {"name": "lanes", "path": ".agents/skills/lanes", "installer": ".agents/skills/lanes/scripts/install.mjs"}
+    {"name": "gtw", "path": ".agents/skills/gtw", "installer": "scripts/install.sh"}
   ],
   "installers": [
     {
       "path": "scripts/install.sh",
       "description": "Copy Git/GitButler Gest skills, hooks/settings, and optional AGENTS starter guidance into a target repo.",
       "checks_prerequisites": true
-    },
-    {
-      "path": ".agents/skills/lanes/scripts/install.mjs",
-      "description": "Opt-in portable Lanes CLI and native global Codex/Claude skill copies; no hooks, settings or credentials.",
-      "checks_prerequisites": true
     }
   ],
   "installer_skill": {
     "name": "gest_git_installer",
-      "description": "Bootstrap Gest extras or route optional portable Lanes CLI installation after npx installs the skills.",
-      "installs": ["hooks", "agents", "tools"],
+    "description": "Bootstrap Gest extras after npx installs the skills, and route the jnterfaces and optional sklanes packages.",
+    "installs": ["hooks", "agents", "tools"],
     "requires_approval": true
   },
   "executables": {
@@ -51,7 +45,6 @@
       {"name": "uv", "check": "uv --version"}
     ],
     "optional": [
-      {"name": "node", "check": "node --version", "description": "Node.js >=22 is required only for the optional Lanes client."},
       {"name": "rsync", "check": "rsync --version"},
       {"name": "gh", "check": "gh --version"},
       {"name": "but", "check": "but --version"},

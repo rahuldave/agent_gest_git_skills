@@ -152,6 +152,69 @@ def gather_files(source, mode, hooks):
     return files
 
 
+def other_records(target):
+    """Hashes that other package installs recorded, by path, for example .agents/jnterfaces-install.json."""
+    known = {}
+    agents = target / '.agents'
+    if not agents.is_dir() or agents.is_symlink():
+        return known
+    for record in sorted(agents.glob('*-install.json')):
+        if record.name == PROVENANCE.name or record.is_symlink():
+            continue
+        try:
+            managed = json.loads(record.read_text()).get('managed_files', {})
+        except (OSError, json.JSONDecodeError, AttributeError):
+            continue
+        if isinstance(managed, dict):
+            for path, value in managed.items():
+                known.setdefault(path, set()).add(value)
+    return known
+
+
+def stale_files(target, old_hashes, files, mode, known):
+    """Split skill files of an earlier install that this source no longer ships into (remove, keep with reason)."""
+    pattern = 'g*' if mode == 'sync' else '*'
+    planned_by_case = {path.as_posix().casefold(): path for path in files}
+    remove, keep = [], []
+    for name, recorded in old_hashes.items():
+        relative = Path(name)
+        if relative in files or relative.is_absolute() or '..' in relative.parts:
+            continue
+        if relative.parts[:2] != ('.agents', 'skills') or len(relative.parts) < 4:
+            continue
+        if not Path(relative.parts[2]).match(pattern):
+            continue
+        if any((target / Path(*relative.parts[:depth])).is_symlink() for depth in range(1, len(relative.parts) + 1)):
+            keep.append((relative, 'symlinked; never followed'))
+            continue
+        destination = target / relative
+        new_name = planned_by_case.get(name.casefold())
+        if new_name is not None and destination.exists() and (target / new_name).exists() \
+                and os.path.samefile(destination, target / new_name):
+            remove.append((relative, False))  # a case-only rename on a case-insensitive disk: the same file stays
+            continue
+        if not destination.is_file():
+            remove.append((relative, False))
+        elif name in known:
+            keep.append((relative, 'another package records it'))
+        elif digest(destination.read_bytes()) == recorded:
+            remove.append((relative, True))
+        else:
+            keep.append((relative, 'edited after install'))
+    return remove, keep
+
+
+def remove_empty_parents(target, path):
+    stop = (target / '.agents/skills').resolve()
+    parent = path.parent
+    while parent.resolve() != stop and parent.resolve().is_relative_to(stop):
+        try:
+            parent.rmdir()
+        except OSError:
+            return
+        parent = parent.parent
+
+
 def atomic_write(path, data, mode=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=f'.{path.name}.', dir=path.parent)
@@ -194,6 +257,7 @@ def main():
         old_hashes = old.get('managed_files', {})
         if not isinstance(old_hashes, dict):
             fail(f'Invalid managed_files in {target / PROVENANCE}')
+        known = other_records(target)
         planned = {}
         for relative, data in files.items():
             destination = target / relative
@@ -205,7 +269,7 @@ def main():
             if destination.exists() and relative != Path('AGENTS.md'):
                 previous = old_hashes.get(relative.as_posix())
                 current = digest(destination.read_bytes())
-                if current != digest(data) and current != previous:
+                if current != digest(data) and current != previous and current not in known.get(relative.as_posix(), set()):
                     fail(f'Existing managed file differs from source and previous install: {destination}')
             planned[relative] = data
         configs = {}
@@ -217,6 +281,8 @@ def main():
                 existing = read_json(target / relative)
                 merged = merge_config(existing, incoming, target / relative)
                 configs[relative] = (json.dumps(merged, indent=2, ensure_ascii=False) + '\n').encode()
+        # Files that the source dropped, for example skill copies that moved to jnterfaces or sklanes.
+        stale, kept = stale_files(target, old_hashes, files, args.mode, known)
         metadata = {
             'schema_version': 1,
             'source_repository': remote,
@@ -226,11 +292,20 @@ def main():
             'source_requested_commit': args.source_commit,
             'managed_files': dict(old_hashes),
         }
+        for relative, _ in stale + kept:
+            metadata['managed_files'].pop(relative.as_posix(), None)
         for relative, data in planned.items():
             if relative != Path('AGENTS.md'):
                 metadata['managed_files'][relative.as_posix()] = digest(data)
+        for relative, reason in kept:
+            print(f'Kept {relative.as_posix()}: {reason}.', file=sys.stderr)
+        removals = [relative for relative, present in stale if present]
+        for relative in removals:
+            print(f'{"Would remove" if args.dry_run else "Removed"} {relative.as_posix()}: no longer shipped here.', file=sys.stderr)
+        if any(relative.parts[2] == 'lanes' for relative in removals):
+            print('The lanes skill now lives in sklanes: scripts/install_stack.sh TARGET --with-lanes.', file=sys.stderr)
         if args.dry_run:
-            print(f'Would install {len(planned)} files and merge {len(configs)} hook settings in {target} from {revision}')
+            print(f'Would install {len(planned)} files, remove {len(removals)} old files and merge {len(configs)} hook settings in {target} from {revision}')
             return
         for relative, data in planned.items():
             source_path = selected / ('AGENTS.template.md' if relative == Path('AGENTS.md') else relative)
@@ -238,6 +313,9 @@ def main():
         for relative, data in configs.items():
             if not (target / relative).exists() or (target / relative).read_bytes() != data:
                 atomic_write(target / relative, data)
+        for relative in removals:
+            (target / relative).unlink()
+            remove_empty_parents(target, target / relative)
         atomic_write(target / PROVENANCE, (json.dumps(metadata, indent=2) + '\n').encode())
         print(f'Installed Gest Git package in {target} from {revision} (dirty source: {metadata["source_worktree_dirty"]})')
         if (target / 'AGENTS.md').exists() and Path('AGENTS.md') not in planned and args.mode == 'install':

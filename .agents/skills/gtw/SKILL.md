@@ -294,8 +294,10 @@ gest task claim --as codex <leaf-id> --quiet
 - `gdo`: update and verify docs.
 - `gcm`: commit.
 
-For Just-based command contracts, use `references/just_command_contract.md` as the
-reusable reference and let project-specific details live in the target
+For Just-based command contracts, read the `just` skill of jnterfaces, `.agents/skills/just/SKILL.md`, and its
+contract, `.agents/skills/just/references/command_contract.md`. If jnterfaces
+is not installed, use the project's `AGENTS.md` and `just --list`; the source
+is https://github.com/rahuldave/jnterfaces. Let project-specific details live in the target
 repository's `AGENTS.md` and `Justfile`.
 
 ## Commit Cadence

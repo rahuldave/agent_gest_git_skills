@@ -199,5 +199,120 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(json.loads(codex.read_text())['another'], 'keep')
 
 
+    def record_old_files(self, files, other=None):
+        """Make the target look like an older install that shipped these files."""
+        import hashlib
+        record = self.provenance()
+        for name, text in files.items():
+            path = self.target / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+            record['managed_files'][name] = hashlib.sha256(text.encode()).hexdigest()
+        (self.target / '.agents/gest-git-install.json').write_text(json.dumps(record))
+        if other:
+            (self.target / '.agents/other-install.json').write_text(json.dumps({'managed_files': other}))
+
+    def test_removes_unchanged_files_that_the_source_dropped(self):
+        self.run_install()
+        old = {'.agents/skills/gsu/references/just_command_contract_old.md': 'old contract\n',
+               '.agents/skills/lanes_old/SKILL.md': 'old lanes\n'}
+        self.record_old_files(old)
+        self.run_install()
+        for name in old:
+            self.assertFalse((self.target / name).exists(), name)
+            self.assertNotIn(name, self.provenance()['managed_files'])
+        self.assertFalse((self.target / '.agents/skills/lanes_old').exists())
+        self.assertTrue((self.target / '.agents/skills/gsu/SKILL.md').is_file())
+
+    def test_keeps_edited_or_claimed_files_that_the_source_dropped(self):
+        import hashlib
+        self.run_install()
+        edited, claimed = '.agents/skills/gim/references/edited_old.md', '.agents/skills/lanes_old/SKILL.md'
+        self.record_old_files({edited: 'shipped\n', claimed: 'shipped lanes\n'},
+                              other={claimed: hashlib.sha256(b'shipped lanes\n').hexdigest()})
+        (self.target / edited).write_text('my edit\n')
+        run = self.run_install()
+        self.assertEqual((self.target / edited).read_text(), 'my edit\n')
+        self.assertEqual((self.target / claimed).read_text(), 'shipped lanes\n')
+        self.assertIn('edited after install', run.stderr)
+        self.assertIn('another package records it', run.stderr)
+        self.assertNotIn(edited, self.provenance()['managed_files'])
+        self.assertNotIn(claimed, self.provenance()['managed_files'])
+
+    def test_sync_leaves_other_skills_and_hooks_alone(self):
+        self.run_install()
+        self.record_old_files({'.agents/skills/lanes_old/SKILL.md': 'old lanes\n'})
+        hooks = [name for name in self.provenance()['managed_files'] if not name.startswith('.agents/skills/')]
+        self.assertTrue(hooks)
+        run = subprocess.run(['bash', str(self.source / 'scripts/sync_g_skills.sh'), str(self.target)],
+                             capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue((self.target / '.agents/skills/lanes_old/SKILL.md').is_file())
+        for name in hooks:
+            self.assertTrue((self.target / name).is_file(), name)
+            self.assertIn(name, self.provenance()['managed_files'])
+
+    def test_ignores_a_recorded_path_outside_the_skills(self):
+        self.run_install()
+        victim = Path(self.temp.name) / 'victim.txt'
+        victim.write_text('keep me\n')
+        record = self.provenance()
+        import hashlib
+        record['managed_files']['.agents/skills/../../../victim.txt'] = hashlib.sha256(b'keep me\n').hexdigest()
+        (self.target / '.agents/gest-git-install.json').write_text(json.dumps(record))
+        self.run_install()
+        self.assertTrue(victim.exists())
+
+    def test_adopts_a_copy_that_another_package_recorded(self):
+        import hashlib
+        skill = self.target / '.agents/skills/gbs/SKILL.md'
+        skill.parent.mkdir(parents=True)
+        skill.write_text('copy from another package\n')
+        (self.target / '.agents/other-install.json').write_text(json.dumps(
+            {'managed_files': {'.agents/skills/gbs/SKILL.md': hashlib.sha256(b'copy from another package\n').hexdigest()}}))
+        self.run_install()
+        self.assertEqual(skill.read_bytes(), (self.source / '.agents/skills/gbs/SKILL.md').read_bytes())
+        skill.write_text('a user edit\n')
+        (self.target / '.agents/other-install.json').unlink()
+        self.run_install(success=False)
+        self.assertEqual(skill.read_text(), 'a user edit\n')
+
+
+    def test_a_symlinked_old_skill_is_kept_and_not_followed(self):
+        self.run_install()
+        self.record_old_files({'.agents/skills/lanes_old/SKILL.md': 'old\n'})
+        clone = Path(self.temp.name) / 'clone'
+        (self.target / '.agents/skills/lanes_old').rename(clone)
+        (self.target / '.agents/skills/lanes_old').symlink_to(clone)
+        run = self.run_install()
+        self.assertIn('symlinked', run.stderr)
+        self.assertEqual((clone / 'SKILL.md').read_text(), 'old\n')
+
+    def test_names_each_removed_file_and_points_lanes_to_sklanes(self):
+        self.run_install()
+        self.record_old_files({'.agents/skills/lanes/retired.md': 'old lanes\n'})
+        dry = self.run_install('--dry-run')
+        self.assertIn('Would remove .agents/skills/lanes/retired.md', dry.stderr)
+        self.assertTrue((self.target / '.agents/skills/lanes/retired.md').exists())
+        run = self.run_install()
+        self.assertIn('Removed .agents/skills/lanes/retired.md', run.stderr)
+        self.assertIn('sklanes', run.stderr)
+
+
+    def test_a_case_only_rename_keeps_the_installed_file(self):
+        self.run_install()
+        old = '.agents/skills/gcm/references/integration_delivery_workflow.md'
+        new = '.agents/skills/gcm/references/Integration_delivery_workflow.md'
+        subprocess.run(['git', '-C', str(self.source), 'mv', old, new], check=True)
+        subprocess.run(['git', '-C', str(self.source), '-c', 'user.name=T', '-c', 'user.email=t@example.invalid',
+                        'commit', '-q', '-m', 'rename'], check=True)
+        self.run_install()
+        names = [n.casefold() for n in os.listdir(self.target / '.agents/skills/gcm/references')]
+        self.assertIn('integration_delivery_workflow.md', names)
+        self.assertTrue((self.target / new).is_file())
+        self.assertNotIn(old, self.provenance()['managed_files'])
+        self.assertIn(new, self.provenance()['managed_files'])
+
+
 if __name__ == '__main__':
     unittest.main()
