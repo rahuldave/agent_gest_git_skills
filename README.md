@@ -26,9 +26,10 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `docs/integration_delivery_workflow.md`: branch roles, adversarial review,
   CI, delivery, issue completion and installation policy. Gest maintains its
   graphs automatically; no separate graph exporter is shipped.
-- `scripts/install.sh`: source-checkout installer for target repos, including hooks by default.
 - `skill-package.json`: package manifest used by `skill-package-maker` to
-  validate skills, installer scripts, and executable prerequisites.
+  validate skills and executable prerequisites. Its `install_extras` names the
+  hooks, hook settings and `AGENTS.md` starter that the jnterfaces installer
+  copies.
 - `scripts/run_gitbutler_workflow_lab.sh`: local lab for plain branch,
   multi-commit branch, stacked branch, and physical worktree flows.
 - `scripts/run_gitbutler_github_integration_lab.sh`: live GitHub lab for the
@@ -63,60 +64,53 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
   for `AGENT_TASK_DRAFT v1` proposal envelopes.
 - `scripts/validate_agent_task_draft.sh`: legacy shell reference validator for
   `AGENT_TASK_DRAFT v1` proposal envelopes.
-- `templates/`: composable setup snippets for `.gitignore`, `.envrc`,
-  `.env.example`, and common `Justfile` targets.
+- `templates/`: composable setup snippets for `.gitignore`, `.envrc` and
+  `.env.example`. The `Justfile` templates are in the `just` skill of
+  jnterfaces.
 
 ## Install Into A Repo
 
-For a fresh machine or a fresh project, use three steps from inside the target
-repository.
+This repository has no installer of its own. The installer of jnterfaces
+installs it in the role `tasker`. A machine needs `just`, `uv` and `git`. In a
+project that has the `install` recipe of jnterfaces, run this command:
 
-First, install the skills:
+```bash
+just install tasker
+```
+
+To start a project without the recipe, clone jnterfaces once and run its
+installer. It installs the `just` skill too, which the `g*` skills link to:
+
+```bash
+git clone https://github.com/rahuldave/jnterfaces ~/.local/share/skill-packages/jnterfaces
+uv run ~/.local/share/skill-packages/jnterfaces/scripts/install_stack.py --profile python tasker
+```
+
+The installer clones this repository into the same folder, then copies these
+files into the project:
+
+```text
+.agents/skills/g* and .agents/skills/gest_git_installer
+.claude/hooks and .codex/hooks, and their hook commands in .claude/settings.json and .codex/hooks.json
+AGENTS.template.md -> AGENTS.md, only if AGENTS.md does not already exist
+```
+
+It reports the missing workflow executables, such as `gest`. It checks for
+conflicts before it writes, and it keeps existing project instructions and
+other settings. The source revision and a hash of each file are in
+`.agents/gest-git-install.json`. `just uninstall tasker` takes the package out
+again, with its hook commands, and keeps each file that you edited.
+
+With npx, install the skills first, then ask the agent to use
+`gest_git_installer`. That skill runs the jnterfaces installer for the hooks,
+the hook settings and `AGENTS.md`:
 
 ```bash
 npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
 npx skills add rahuldave/jnterfaces -a codex --skill just -y
 ```
 
-The second command adds the `just` skill of jnterfaces, which the `g*` skills
-link to. See [Sibling packages](#sibling-packages). From local clones, the
-stack installer of jnterfaces installs all the packages that you choose.
-
-Second, ask the agent to use `gest_git_installer` to install the Git/GitButler
-Gest hooks/settings and AGENTS guidance in the current repo. `npx skills add`
-installs skill folders only; it does not run hooks or copy root-level package
-extras. Runtime references, helper scripts, and setup templates are vendored
-inside the installed skill folders. `gest_git_installer` carries a bundled
-helper that fetches this repository and runs the source-checkout installer with
-clear prerequisite messages, an explicit source revision, and conflict-safe
-configuration merging. The helper refreshes the full package, including skills;
-use the same reviewed revision as the intended installation.
-
-Third, use `gsu` for normal repository setup and command-contract refresh work.
-
-Source checkout alternative:
-
-From this repository:
-
-```bash
-scripts/install.sh /path/to/target/repo
-```
-
-The installer copies the skill bundle and reports missing workflow executables:
-`git`, `gest`, `just`, and `uv`. It also reports optional executables that
-unlock additional workflows or cleaner installs: `rsync`, `gh`, `but`,
-`ast-grep`, `direnv`, and `cx`. Installation uses Python 3 and preflights
-configuration and managed-file conflicts before writing. Existing project
-instructions and unrelated settings are preserved. Exact source revision and
-managed file hashes are recorded in `.agents/gest-git-install.json`.
-
-The installer copies:
-
-```text
-.agents/skills/g* and .agents/skills/gest_git_installer
-.claude/hooks and .codex/hooks settings
-AGENTS.template.md -> AGENTS.md, only if AGENTS.md does not already exist
-```
+Then use `gsu` for normal repository setup and command-contract refresh work.
 
 Review `AGENTS.md` after installing and replace placeholders such as project
 name, verification commands, and GitHub policy.
@@ -240,12 +234,8 @@ one explicit C incremental build. Use `cx` only for file-producing build or
 pipeline stages inside linewise Just recipes, not for tests or ordinary
 package-manager builds.
 
-To update vendored `g*` skills in a target repository while preserving local
-non-`g*` skills, run:
-
-```bash
-scripts/sync_g_skills.sh /path/to/target-repo
-```
+To update the `g*` skills in a target repository, run `just install` there.
+It keeps the skills of other packages and each file that you edited.
 
 Gest descriptions record intent. Non-trivial completed leaf tasks should get a
 task note before completion:
@@ -329,19 +319,9 @@ The link checker of jnterfaces, `scripts/check_skill_links.py`, checks this
 rule. `just lint` runs it, and it needs a jnterfaces clone next to this clone
 or in `JNTERFACES_DIR`.
 
-Install the packages with the stack installer of jnterfaces. It always installs
-`just`, and it asks about the other skills and packages. It saves the choices
-in the target, so a later run installs them again:
-
-```sh
-../jnterfaces/scripts/install_stack.sh ../my-project
-```
-
-This repository keeps `scripts/install_stack.sh` for the old options, for
-example `--with-lanes`. It passes them to the jnterfaces stack installer. A
-target can have no saved choices, and you can give no choice options. Then it
-also installs the old set, which is the Gest skills, `cx` and `jagt-protocol`. It adds
-no nossaifd, but it keeps an installed nossaifd.
+Install the packages with `just install`, the recipe of jnterfaces. It always
+installs `just`, and it asks about the other roles. It saves the choices in the
+target, so a later run installs them again. See the README of jnterfaces.
 
 `just lint` fails when it finds no jnterfaces clone. Clone jnterfaces next to
 this clone, or set `JNTERFACES_DIR`.
@@ -369,20 +349,20 @@ vocabulary and record selected/rejected/new tags. For code-facing changes, use
 
 ## Hooks
 
-`install.sh` installs `.claude/` and `.codex/` hooks by default. The GitButler
+The installer copies the `.claude/` and `.codex/` hooks. The GitButler
 hooks enforce GitButler mode-strict during active GitButler branch/stack series:
 use `but` for writes, reserve raw git writes for explicit physical worktree
 execution, and keep tag/dependency checks in view. When a planned flow has
 left GitButler mode and is intentionally creating physical worktrees, prefix raw
 git worktree commands with `GEST_VCS_EXECUTION=git-worktrees`. Existing repos
-can refresh hooks with `scripts/sync_g_skills.sh --hooks /path/to/repo`.
+refresh the hooks with `just install`.
 
 
 ## Automatic checks and delivery
 
 GitHub runs `verify-skill-package` on PRs to any branch and on branch pushes.
 It checks shell/JSON contracts, hook behavior, canonical reference mirrors,
-installer regression tests and the package manifest, then exercises GitButler
+the package manifest, then exercises GitButler
 0.19.9 against both mainline and a distinct persistent integration target.
 It builds and verifies a source archive and uploads it as a CI artifact.
 `just ci-local` runs the directly available local subset; `just verify` also

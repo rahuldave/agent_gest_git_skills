@@ -64,7 +64,12 @@ Identify which of these concepts apply to the project:
    installation. Treat `direnv` as recommended unless the project contract
    requires it. Check `cx` only when the project has or wants explicit
    file-producing incremental build/pipeline stages.
-4. Infer likely project profiles from files and user context. Examples:
+4. Read the saved profile first. `.agents/stack.json` names the profiles of
+   the project, such as `python` or `typescript`, and the tools that
+   `just install` added. Use them, and do not guess again. Infer a profile
+   only when that file has none, and then save it with
+   `just install --profile NAME`. Infer likely project profiles from files and
+   user context. Examples:
    - Python: `pyproject.toml`, `uv.lock`, `pixi.toml`, notebooks, FastAPI,
      Django, Flask, pytest, ruff, ty, pyright, mypy.
    - TypeScript/JavaScript: `package.json`, lockfiles, Vite, Next, ESLint,
@@ -168,7 +173,9 @@ starting points, not as blind overwrites:
 - `assets/templates/env/envrc.local-bin`
 - `assets/templates/env/*profile*.envrc` and related profile env snippets
 - `assets/templates/env/env.example`
-- `assets/templates/just/*.just`
+- the Justfile templates of the `just` skill, in
+  `.agents/skills/just/assets/templates/`. If the just skill is not installed,
+  run `just install`, which always installs it.
 
 Every setup should include the base ignore concepts. Add profile snippets only
 when the project needs them. If existing project files already cover the same
@@ -232,10 +239,16 @@ instead of hard-coding language tools.
 
 ## Tool Installation Policy
 
-Check the required toolchain before running setup commands. If a required tool
-is missing, ask the user before installing it and prefer the least surprising
-installer for their platform/project. Use the project package manager where
-possible. Examples:
+A project assumes two programs only, `just` and `uv`. Get every other tool
+through `just install TOOL`, which runs the command of the profile, such as
+`uv add --group lint ruff pre-commit`. For TypeScript, uv runs node and npm
+from the `nodejs-wheel` package. Do not install a tool on the machine
+when `just install` can add it to the project.
+
+Check the required toolchain before running setup commands. A required tool may
+be missing, and no profile may have it. Then ask the user before installing it,
+and prefer the least surprising installer for their platform/project. Use the project
+package manager where possible. Examples:
 
 - Python: prefer `uv`, `pixi`, or the tool already chosen by the project.
 - TypeScript/JavaScript: prefer the detected package manager (`pnpm`, `npm`,
@@ -263,9 +276,9 @@ cx --help
 
 Profile install prompts should be concrete:
 
-- Python/uv: ask before installing `uv`; then use `uv sync`.
-- TypeScript/npm: ask before installing Node/npm or an alternate package
-  manager; then use the chosen install command.
+- Python/uv: `just install lint test`, then `uv sync`.
+- TypeScript/npm: `just install lint typecheck`, then `just setup`. Ask before
+  installing an alternate package manager.
 - Go: ask before installing Go; then use `go mod tidy` or `go test ./...` to
   populate module state.
 - Rust: ask before installing Rust via `rustup`; then use Cargo commands.

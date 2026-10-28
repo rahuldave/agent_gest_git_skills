@@ -16,9 +16,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - uses: astral-sh/setup-uv@v6
       - uses: extractions/setup-just@v3
       - name: Get jnterfaces, whose link checker the lint runs
@@ -26,12 +23,12 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 0b115f09edfc9c2ffb83733fcb07c491b709eec4
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet ba6a04be55209a4d20198b5550263e2fc2614784
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Check contracts, hooks, and source mirrors
         run: just lint
-      - name: Check installer behavior in disposable target repositories
-        run: python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py -q
+      - name: Install this package with the jnterfaces installer, then remove it
+        run: just install-test
       - name: Verify live-lab cleanup without GitHub credentials
         run: just lab-safety-test
       - name: Validate package manifest with skill-package-maker

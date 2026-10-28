@@ -6,13 +6,13 @@ meant to prove the setup surface before doing real work in a target repository.
 ## Create The Repo
 
 ```bash
-skills_repo=/path/to/agent_gest_git_skills
+jnterfaces=/path/to/jnterfaces
 lab=/tmp/gsu-typescript-hello
 rm -rf "$lab"
 mkdir -p "$lab/src"
 cd "$lab"
 git init -b main
-"$skills_repo/scripts/install.sh" "$lab"
+uv run "$jnterfaces/scripts/install_stack.py" --target "$lab" --defaults tasker
 ```
 
 Create `package.json`:

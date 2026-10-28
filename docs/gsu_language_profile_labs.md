@@ -34,7 +34,7 @@ Profile snippets:
 - `templates/env/env.example`
 - `templates/env/envrc.local-bin`
 - `templates/env/python-uv.envrc`
-- `templates/just/python-uv.just`
+- `python-uv.just`, from the `just` skill of jnterfaces
 
 Important local state:
 
@@ -93,8 +93,8 @@ Profile snippets:
 - `templates/gitignore/base.gitignore`
 - `templates/gitignore/typescript-npm.gitignore`
 - `templates/env/typescript-npm.envrc`
-- `templates/just/npm-local-cache.just`
-- `templates/just/typescript-npm.just`
+- `npm-local-cache.just`, from the `just` skill of jnterfaces
+- `typescript-npm.just`, from the `just` skill of jnterfaces
 
 Important local state:
 
@@ -155,7 +155,7 @@ Profile snippets:
 - `templates/gitignore/base.gitignore`
 - `templates/gitignore/go.gitignore`
 - `templates/env/go.envrc`
-- `templates/just/go.just`
+- `go.just`, from the `just` skill of jnterfaces
 
 Important local state:
 
@@ -213,7 +213,7 @@ Profile snippets:
 - `templates/gitignore/rust-cargo.gitignore`
 - `templates/env/rust-cargo.envrc`
 - `templates/rust/rust-toolchain.toml`
-- `templates/just/rust-cargo.just`
+- `rust-cargo.just`, from the `just` skill of jnterfaces
 
 Important local state:
 
