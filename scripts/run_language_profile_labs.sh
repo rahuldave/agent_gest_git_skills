@@ -2,6 +2,13 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# The Justfile templates are in the just skill of jnterfaces.
+jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
+templates="$jnterfaces_dir/.agents/skills/just/assets/templates"
+if [ ! -d "$templates" ]; then
+  echo "The labs need a jnterfaces clone at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
+  exit 1
+fi
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/agent-gest-language-labs.XXXXXX")"
 
 if [ "${AGENT_GEST_KEEP_LANGUAGE_LABS:-0}" != "1" ]; then
@@ -45,7 +52,7 @@ init_lab() {
   printf '\n' >>"$dir/.gitignore"
   copy_template "templates/gitignore/$profile.gitignore" "$dir/.gitignore"
   copy_template "templates/env/$profile.envrc" "$dir/.envrc"
-  cp "$repo_root/templates/just/$justfile" "$dir/Justfile"
+  cp "$templates/$justfile" "$dir/Justfile"
 
   run "$dir" git -c init.defaultBranch=main init
   run "$dir" gest init --local

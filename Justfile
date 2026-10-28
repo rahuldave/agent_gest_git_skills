@@ -45,17 +45,36 @@ protocol-flow-labs: agentic-target-lab agent-result-lab agent-task-draft-lab
 workflow-lab:
   scripts/run_gitbutler_workflow_lab.sh
 
-installer-test:
-  python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py -q
-
-# Old entry point: pass the options to the stack installer of jnterfaces; see scripts/install_stack.sh --help
-install-stack TARGET *ARGS:
-  scripts/install_stack.sh "{{TARGET}}" {{ARGS}}
+# Install this package into a scratch repository with the installer of a jnterfaces clone, and check the result
+install-test:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  jnterfaces="${JNTERFACES_DIR:-$PWD/../jnterfaces}"
+  target="$(mktemp -d)"; trap 'rm -rf -- "$target"' EXIT
+  git -C "$target" init -q
+  printf '{"model": "mine", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "mine.sh"}]}]}}\n' > "$target/x.json"
+  mkdir -p "$target/.claude" && mv "$target/x.json" "$target/.claude/settings.json"
+  install() { uv run --quiet --script "$jnterfaces/scripts/install_stack.py" --target "$target" --clone "agent_gest_git_skills=$PWD" "$@"; }
+  install --defaults --without prose tasker
+  fail() { echo "install-test: $*" >&2; exit 1; }
+  for file in .agents/skills/gtw/SKILL.md .agents/skills/just/SKILL.md .claude/hooks/session-start.sh .codex/hooks/session-start.sh AGENTS.md .agents/gest-git-install.json; do
+    test -f "$target/$file" || fail "missing $file after the install"
+  done
+  grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the install dropped the hook of the user"
+  grep -q 'session-start' "$target/.claude/settings.json" || fail "the install merged no Claude hook"
+  grep -q 'session-start' "$target/.codex/hooks.json" || fail "the install merged no Codex hook"
+  install --without tasker
+  for gone in .agents/skills/gtw .claude/hooks .codex .agents/gest-git-install.json; do
+    if [ -e "$target/$gone" ]; then fail "$gone is still there after the removal"; fi
+  done
+  grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the removal dropped the hook of the user"
+  if grep -q 'session-start' "$target/.claude/settings.json"; then fail "the removal left a Gest hook"; fi
+  echo "install-test: install and removal passed"
 
 lab-safety-test:
-  python3 -m unittest scripts/test_gitbutler_live_cleanup.py -q
+  uv run --no-project --quiet python -m unittest scripts/test_gitbutler_live_cleanup.py -q
 
-ci-local: lint installer-test lab-safety-test workflow-lab
+ci-local: lint install-test lab-safety-test workflow-lab
 
 integration-live:
   scripts/run_gitbutler_github_integration_lab.sh

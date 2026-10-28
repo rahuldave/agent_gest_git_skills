@@ -7,33 +7,31 @@
     "url": "https://github.com/rahuldave/agent_gest_git_skills"
   },
   "skills": [
-    {"name": "gbs", "path": ".agents/skills/gbs", "installer": "scripts/install.sh"},
-    {"name": "gcm", "path": ".agents/skills/gcm", "installer": "scripts/install.sh"},
-    {"name": "gdo", "path": ".agents/skills/gdo", "installer": "scripts/install.sh"},
-    {"name": "gfm", "path": ".agents/skills/gfm", "installer": "scripts/install.sh"},
-    {"name": "gest_git_installer", "path": ".agents/skills/gest_git_installer", "installer": "scripts/install.sh"},
-    {"name": "gim", "path": ".agents/skills/gim", "installer": "scripts/install.sh"},
-    {"name": "gis", "path": ".agents/skills/gis", "installer": "scripts/install.sh"},
-    {"name": "gor", "path": ".agents/skills/gor", "installer": "scripts/install.sh"},
-    {"name": "gpa", "path": ".agents/skills/gpa", "installer": "scripts/install.sh"},
-    {"name": "gpl", "path": ".agents/skills/gpl", "installer": "scripts/install.sh"},
-    {"name": "gpr", "path": ".agents/skills/gpr", "installer": "scripts/install.sh"},
-    {"name": "grv", "path": ".agents/skills/grv", "installer": "scripts/install.sh"},
-    {"name": "gsp", "path": ".agents/skills/gsp", "installer": "scripts/install.sh"},
-    {"name": "gsu", "path": ".agents/skills/gsu", "installer": "scripts/install.sh"},
-    {"name": "gte", "path": ".agents/skills/gte", "installer": "scripts/install.sh"},
-    {"name": "gtw", "path": ".agents/skills/gtw", "installer": "scripts/install.sh"}
+    {"name": "gbs", "path": ".agents/skills/gbs"},
+    {"name": "gcm", "path": ".agents/skills/gcm"},
+    {"name": "gdo", "path": ".agents/skills/gdo"},
+    {"name": "gfm", "path": ".agents/skills/gfm"},
+    {"name": "gest_git_installer", "path": ".agents/skills/gest_git_installer"},
+    {"name": "gim", "path": ".agents/skills/gim"},
+    {"name": "gis", "path": ".agents/skills/gis"},
+    {"name": "gor", "path": ".agents/skills/gor"},
+    {"name": "gpa", "path": ".agents/skills/gpa"},
+    {"name": "gpl", "path": ".agents/skills/gpl"},
+    {"name": "gpr", "path": ".agents/skills/gpr"},
+    {"name": "grv", "path": ".agents/skills/grv"},
+    {"name": "gsp", "path": ".agents/skills/gsp"},
+    {"name": "gsu", "path": ".agents/skills/gsu"},
+    {"name": "gte", "path": ".agents/skills/gte"},
+    {"name": "gtw", "path": ".agents/skills/gtw"}
   ],
-  "installers": [
-    {
-      "path": "scripts/install.sh",
-      "description": "Copy Git/GitButler Gest skills, hooks/settings, and optional AGENTS starter guidance into a target repo.",
-      "checks_prerequisites": true
-    }
-  ],
+  "install_extras": {
+    "files": [".claude/hooks", ".codex/hooks"],
+    "merge_hooks": [".claude/settings.json", ".codex/hooks.json"],
+    "seed": {"AGENTS.md": "AGENTS.template.md"}
+  },
   "installer_skill": {
     "name": "gest_git_installer",
-    "description": "Bootstrap Gest extras after npx installs the skills, and route the jnterfaces and optional sklanes packages.",
+    "description": "After npx installs the skills, run the jnterfaces installer to add the Gest hooks, settings and AGENTS.md starter.",
     "installs": ["hooks", "agents", "tools"],
     "requires_approval": true
   },

@@ -24,9 +24,6 @@ required_files=(
   "docs/just_command_contract.md"
   "docs/agent_task_draft_workflow.md"
   "docs/live_agent_result_recursive_lab.md"
-  "scripts/install.sh"
-  "scripts/sync_g_skills.sh"
-  "scripts/install_stack.sh"
   "scripts/run_gitbutler_workflow_lab.sh"
   "scripts/run_gitbutler_github_integration_lab.sh"
   "scripts/run_tag_dependency_agent_dry_run.sh"
@@ -102,10 +99,11 @@ while IFS= read -r script; do
   bash -n "$script"
 done < <(find "$repo_root/scripts" "$repo_root/.agents/skills" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" -type f -name '*.sh' | sort)
 
-if command -v python3 >/dev/null 2>&1; then
-  python3 -m json.tool "$repo_root/.claude/settings.json" >/dev/null
-  python3 -m json.tool "$repo_root/.codex/hooks.json" >/dev/null
-fi
+# Python comes from uv, so the machine needs just and uv only.
+python=(uv run --no-project --quiet python)
+"${python[@]}" -m json.tool "$repo_root/.claude/settings.json" >/dev/null
+"${python[@]}" -m json.tool "$repo_root/.codex/hooks.json" >/dev/null
+"${python[@]}" -m json.tool "$repo_root/skill-package.json" >/dev/null
 
 required_text=(
   "but setup"
@@ -157,8 +155,6 @@ required_text=(
   "skill-package.json"
   "uv --version"
   "rsync --version"
-  "command -v uv"
-  "command -v rsync"
   "run_cx_examples_lab.sh"
   "agentic-target-lab"
   "run_agentic_target_lab.sh"
@@ -262,7 +258,7 @@ if [ ! -f "$jnterfaces_dir/scripts/check_skill_links.py" ]; then
   echo "The link check needs a jnterfaces clone with scripts/check_skill_links.py at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
   exit 1
 fi
-python3 "$jnterfaces_dir/scripts/check_skill_links.py" --package "$repo_root" --resolve "$jnterfaces_dir" "${shipped_text[@]}"
+"${python[@]}" "$jnterfaces_dir/scripts/check_skill_links.py" --package "$repo_root" --resolve "$jnterfaces_dir" "${shipped_text[@]}"
 
 # Shipped files must not carry paths from one machine.
 path_hits="$(grep -rnE '/(Users|home)/[A-Za-z0-9._-]+/' "$repo_root/.agents/skills" "$repo_root/.claude" "$repo_root/.codex" "$repo_root/AGENTS.template.md" "$repo_root/templates")" || [ $? -eq 1 ] || exit 1
@@ -272,10 +268,18 @@ if [ -n "$path_hits" ]; then
   exit 1
 fi
 
+# Only jnterfaces has an installer and the Justfile templates, so no copy may come back here.
+for copy in scripts/install.sh scripts/install_package.py scripts/install_stack.sh templates/just .agents/skills/gsu/assets/templates/just; do
+  if [ -e "$repo_root/$copy" ]; then
+    echo "$copy is a copy of jnterfaces; use the jnterfaces installer and the templates of its just skill" >&2
+    exit 1
+  fi
+done
+
 # Exercise both hook payload formats in disposable plain and managed checkouts.
 (
   cd "$repo_root"
-  python3 -m unittest scripts/test_raw_git_guards.py -q
+  "${python[@]}" -m unittest scripts/test_raw_git_guards.py -q
 )
 
 if [ "$mode" = "--diff" ]; then
