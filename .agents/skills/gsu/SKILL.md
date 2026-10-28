@@ -134,8 +134,9 @@ uv run python ~/.agents/skills/skill-package-maker/scripts/render_package_plan.p
 ```
 
 If the skill was installed project-locally instead of globally, use the same
-script paths under `.agents/skills/skill-package-maker/`. If the standalone
-checkout is available, use:
+script paths under `.agents/skills/skill-package-maker/`. If the
+skill-package-maker skill is not installed but the standalone checkout is
+available, use:
 
 ```bash
 uv run python /path/to/agent_skill_package_maker/skills/skill-package-maker/scripts/lint_skill_bundle.py .
@@ -349,7 +350,7 @@ When adding `cx`:
   artifacts rerun.
 
 For the full rules and worked examples, read the `cx` skill of jnterfaces,
-`.agents/skills/cx/SKILL.md`. If jnterfaces is not installed, the rules above
+`.agents/skills/cx/SKILL.md`. If the cx skill is not installed, the rules above
 are enough to start; the source is https://github.com/rahuldave/jnterfaces.
 The recipe `just cx-examples-lab` of agent_gest_git_skills runs the examples.
 

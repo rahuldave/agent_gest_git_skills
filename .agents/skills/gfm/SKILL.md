@@ -43,8 +43,8 @@ If the project uses `cx` in its Justfile, run `cx lint` or the mapped
 `just cx-lint` target as a static declaration check. `cx lint` validates
 incremental build/pipeline lines; it is not a test runner and should not be
 used as a substitute for `gte`. For `cx` rules, read the `cx` skill of
-jnterfaces, `.agents/skills/cx/SKILL.md`, when it is installed. If jnterfaces
-is not installed, `cx lint` and `cx --help` are the reference.
+jnterfaces, `.agents/skills/cx/SKILL.md`, when it is installed. If the cx
+skill is not installed, `cx lint` and `cx --help` are the reference.
 
 When a repository is GitButler-managed, use `but status` or `but diff` to
 identify branch-owned changes before running mechanical checks. Read-only git

@@ -6,14 +6,16 @@ license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE fil
 
 # Gest Git Installer
 
-The `g*` skills link to the jnterfaces skills `just`, `jagt-protocol` and `cx`.
-Install them with `npx skills add rahuldave/jnterfaces -a codex --skill '*' -y`.
-Optional: the `lanes` skill for Lanes reporting is in the sklanes package,
-`npx skills add rahuldave/sklanes -g -a codex -a claude-code --skill lanes --copy -y`.
+The `g*` skills need the `just` skill of jnterfaces. Install it with
+`npx skills add rahuldave/jnterfaces -a codex --skill just -y`. The `cx` and
+`jagt-protocol` skills of jnterfaces, the nossaifd writing skill and the
+`lanes` skill of sklanes are optional.
 
-From local clones of all three packages, `scripts/install_stack.sh TARGET
-[--with-lanes]` in this repository installs them together. Each package records
-its own source revision in `.agents/<package>-install.json`.
+From local clones, the stack installer of jnterfaces,
+`scripts/install_stack.sh TARGET`, installs `just` and asks about the rest.
+Each package records its own source revision in the target. This package
+writes `.agents/gest-git-install.json`, and the others write
+`.agents/<package>-install.json`.
 
 Use this package-specific installer after a user has installed the Git/GitButler
 Gest skills with:
