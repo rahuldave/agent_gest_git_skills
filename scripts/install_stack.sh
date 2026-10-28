@@ -1,93 +1,67 @@
 #!/usr/bin/env bash
-# Install agent_gest_git_skills, jnterfaces and, with --with-lanes, sklanes into one target repository.
-# Each package runs its own installer, so each records its own source revision in .agents/<package>-install.json.
+# The stack installer moved to jnterfaces. This script keeps the old options and passes them to
+# jnterfaces/scripts/install_stack.sh, with this clone as the Gest package.
 set -euo pipefail
 
 usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/install_stack.sh [OPTIONS] [--] TARGET
 
-Options: [--with-lanes] [--jnterfaces DIR] [--sklanes DIR] [--clean] [--dry-run]
+The stack installer is now scripts/install_stack.sh of jnterfaces. This script
+passes its options there. If the target has no saved choices in
+.agents/stack.json and you pass no choice options (--with, --without, --all,
+--defaults or --ask), it installs the set that it installed before: the Gest
+skills and all three jnterfaces skills. It adds no nossaifd, but it keeps an
+installed nossaifd.
 
-Install the Gest g* skills, the jnterfaces skills (just, jagt-protocol, cx) and,
-with --with-lanes, the sklanes skill (lanes) into TARGET.
-
+Old options:
+  --with-lanes      also install sklanes (the same as --with sklanes)
   --jnterfaces DIR  clone of jnterfaces; default: ../jnterfaces next to this repository
-  --sklanes DIR     clone of sklanes; default: ../sklanes next to this repository
-  --clean           install the committed HEAD of each clone, without uncommitted changes
-  --dry-run         check every package and write nothing
+  --sklanes DIR     clone of sklanes (the same as --clone sklanes=DIR)
+  --clean, --dry-run
 
-All packages are checked with a dry run before any package writes a file.
+Every other option goes to the jnterfaces stack installer. Run it with --help to
+see them.
 USAGE
 }
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 jnterfaces="$repo_root/../jnterfaces"
-sklanes="$repo_root/../sklanes"
+forward=(--clone "agent_gest_git_skills=$repo_root")
+chose=0
 target=""
-with_lanes=0
-clean=0
-dry_run=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --with-lanes) with_lanes=1 ;;
-    --clean) clean=1 ;;
-    --dry-run) dry_run=1 ;;
+    --with-lanes) forward+=(--with sklanes) ;;
     --jnterfaces) [ "$#" -ge 2 ] || { usage; exit 2; }; jnterfaces="$2"; shift ;;
-    --sklanes) [ "$#" -ge 2 ] || { usage; exit 2; }; sklanes="$2"; shift ;;
+    --sklanes) [ "$#" -ge 2 ] || { usage; exit 2; }; forward+=(--clone "sklanes=$2"); shift ;;
+    --with|--without) [ "$#" -ge 2 ] || { usage; exit 2; }; chose=1; forward+=("$1" "$2"); shift ;;
+    --clone) [ "$#" -ge 2 ] || { usage; exit 2; }; forward+=("$1" "$2"); shift ;;
+    --all|--defaults|--ask) chose=1; forward+=("$1") ;;
     --) shift; [ "$#" -eq 1 ] && [ -z "$target" ] || { usage; exit 2; }; target="$1"; break ;;
-    -*) echo "Unknown option: $1" >&2; usage; exit 2 ;;
+    -*) forward+=("$1") ;;
     *) [ -z "$target" ] || { echo "Only one TARGET is allowed" >&2; exit 2; }; target="$1" ;;
   esac
   shift
 done
 [ -n "$target" ] || { usage; exit 2; }
-# An absolute path keeps a target such as -odd from looking like an option to an installer.
-target="$(cd -- "$target" && pwd)" || { echo "Target does not exist" >&2; exit 2; }
-
-# Check that DIR is a clone of the named package, then print its absolute path.
-package_dir() {
-  local dir="$1" name="$2"
-  if [ ! -f "$dir/skill-package.json" ] || [ ! -x "$dir/scripts/install.sh" ]; then
-    echo "No $name clone at $dir. Clone https://github.com/rahuldave/$name there, or pass --$name DIR." >&2
-    return 1
-  fi
-  if ! python3 -c 'import json, sys; sys.exit(json.load(open(sys.argv[1]))["repository"]["name"] != sys.argv[2])' \
-      "$dir/skill-package.json" "$name"; then
-    echo "$dir is not the $name package." >&2
-    return 1
-  fi
-  (cd "$dir" && pwd)
-}
-
-packages=("$repo_root")
-packages+=("$(package_dir "$jnterfaces" jnterfaces)")
-if [ "$with_lanes" -eq 1 ]; then
-  packages+=("$(package_dir "$sklanes" sklanes)")
+# `[ -L link/ ]` follows the link, so test the path without its trailing slashes.
+bare="$target"
+while [ "$bare" != "/" ] && [ "$bare" != "${bare%/}" ]; do bare="${bare%/}"; done
+[ ! -L "$bare" ] || { echo "The target repository root must not be a symlink" >&2; exit 2; }
+# An absolute path keeps a target such as -odd from looking like an option.
+target="$(cd -- "$target" && pwd -P)" || { echo "Target does not exist" >&2; exit 2; }
+# Saved choices, or choices on the command line, win. Only a target without them gets the old set.
+if [ ! -f "$target/.agents/stack.json" ] && [ "$chose" -eq 0 ]; then
+  forward+=(--with gest,cx,jagt-protocol)
+  # An installed nossaifd stays on. The old set had no nossaifd, so it stays off where it is not installed.
+  [ -f "$target/.agents/nossaifd-install.json" ] || forward+=(--without nossaifd)
 fi
-
-install_one() {
-  local dir="$1"; shift
-  local options=("$@")
-  if [ "$clean" -eq 1 ]; then
-    options+=(--source-commit "$(git -C "$dir" rev-parse HEAD)")
-  fi
-  bash "$dir/scripts/install.sh" ${options[@]+"${options[@]}"} "$target"
-}
-
-for dir in "${packages[@]}"; do
-  install_one "$dir" --dry-run
-done
-if [ "$dry_run" -eq 1 ]; then
-  exit 0
+stack="$jnterfaces/scripts/install_stack.sh"
+if [ ! -f "$stack" ]; then
+  echo "No jnterfaces clone with scripts/install_stack.sh at $jnterfaces. Clone https://github.com/rahuldave/jnterfaces there, or pass --jnterfaces DIR." >&2
+  exit 1
 fi
-for dir in "${packages[@]}"; do
-  install_one "$dir"
-done
-
-echo "Installed packages and their recorded source revisions:"
-for record in "$target"/.agents/*-install.json; do
-  printf '  %s: %s\n' "$(basename "$record")" \
-    "$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("source_revision"))' "$record")"
-done
+echo "Note: the stack installer is now $stack. This script passes its options there." >&2
+exec bash "$stack" "$target" "${forward[@]}"

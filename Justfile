@@ -46,9 +46,9 @@ workflow-lab:
   scripts/run_gitbutler_workflow_lab.sh
 
 installer-test:
-  python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py scripts/test_check_sibling_links.py -q
+  python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py -q
 
-# Install this package, jnterfaces and, with --with-lanes, sklanes into TARGET; see scripts/install_stack.sh --help
+# Old entry point: pass the options to the stack installer of jnterfaces; see scripts/install_stack.sh --help
 install-stack TARGET *ARGS:
   scripts/install_stack.sh "{{TARGET}}" {{ARGS}}
 

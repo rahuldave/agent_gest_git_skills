@@ -75,11 +75,12 @@ First, install the skills:
 
 ```bash
 npx skills add rahuldave/agent_gest_git_skills -a codex --skill '*' -y
-npx skills add rahuldave/jnterfaces -a codex --skill '*' -y
+npx skills add rahuldave/jnterfaces -a codex --skill just -y
 ```
 
-The second command adds the jnterfaces skills that the `g*` skills link to. See
-[Sibling packages](#sibling-packages-jnterfaces-and-sklanes).
+The second command adds the `just` skill of jnterfaces, which the `g*` skills
+link to. See [Sibling packages](#sibling-packages). From local clones, the
+stack installer of jnterfaces installs all the packages that you choose.
 
 Second, ask the agent to use `gest_git_installer` to install the Git/GitButler
 Gest hooks/settings and AGENTS guidance in the current repo. `npx skills add`
@@ -308,33 +309,42 @@ remote, and clean merged local `session/*` and `gest/*` branches. The terminal
 should not be left on `gitbutler/workspace` unless active GitButler work is
 continuing.
 
-## Sibling packages: jnterfaces and sklanes
+## Sibling packages
 
-The `g*` skills link to skills in two other packages:
+This package needs the `just` skill of jnterfaces. The other packages are
+optional:
 
-- **jnterfaces**, https://github.com/rahuldave/jnterfaces, has the skills
-  `just`, `jagt-protocol` and `cx`. They hold the Just command contract, the
-  Justfile templates and house style, the jagt packet wrappers and the cx
-  guidance. Each link in a `g*` skill has a one-line fallback, so the `g*`
-  skills still work when jnterfaces is not installed.
-- **sklanes**, https://github.com/rahuldave/sklanes, has the optional `lanes`
-  skill, which reports requests for human attention to a Lanes inbox.
+- **jnterfaces**, https://github.com/rahuldave/jnterfaces, has the required
+  `just` skill and the optional `cx` and `jagt-protocol` skills. They hold the
+  Just command contract, the Justfile templates and house style, the jagt
+  packet rules and the cx guidance.
+- **nossaifd**, https://github.com/rahuldave/nossaifd, has the writing guide
+  and its checker.
+- **sklanes**, https://github.com/rahuldave/sklanes, has the `lanes` skill,
+  which reports requests for human attention to a Lanes inbox.
 
-Install the three packages into a target repository with one command. The
-clones of jnterfaces and sklanes must be next to this clone, or you pass
-`--jnterfaces DIR` and `--sklanes DIR`:
+Each link from a `g*` skill to another package has a fallback in its
+paragraph. So the `g*` skills still work when a linked skill is not installed.
+The link checker of jnterfaces, `scripts/check_skill_links.py`, checks this
+rule. `just lint` runs it, and it needs a jnterfaces clone next to this clone
+or in `JNTERFACES_DIR`.
+
+Install the packages with the stack installer of jnterfaces. It always installs
+`just`, and it asks about the other skills and packages. It saves the choices
+in the target, so a later run installs them again:
 
 ```sh
-scripts/install_stack.sh ../my-project --dry-run --with-lanes
-scripts/install_stack.sh ../my-project --with-lanes
+../jnterfaces/scripts/install_stack.sh ../my-project
 ```
 
-The stack installer runs a dry run of every package before any package writes
-a file. Then it runs the installer of each package, so each package records its
-own source revision in `.agents/gest-git-install.json`,
-`.agents/jnterfaces-install.json` and `.agents/sklanes-install.json`. Add
-`--clean` to install the committed `HEAD` of each clone. Without `--with-lanes`,
-sklanes is not installed.
+This repository keeps `scripts/install_stack.sh` for the old options, for
+example `--with-lanes`. It passes them to the jnterfaces stack installer. A
+target can have no saved choices, and you can give no choice options. Then it
+also installs the old set, which is the Gest skills, `cx` and `jagt-protocol`. It adds
+no nossaifd, but it keeps an installed nossaifd.
+
+`just lint` fails when it finds no jnterfaces clone. Clone jnterfaces next to
+this clone, or set `JNTERFACES_DIR`.
 
 A new install removes the skill files that an older install left and that the
 source no longer ships, if nobody edited them. For example, it removes the old

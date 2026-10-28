@@ -21,17 +21,17 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v6
       - uses: extractions/setup-just@v3
-      - name: Check contracts, hooks, and source mirrors
-        run: just lint
-      - name: Check installer behavior in disposable target repositories
-        run: python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py scripts/test_check_sibling_links.py -q
-      - name: Check that links into jnterfaces name files that jnterfaces has
+      - name: Get jnterfaces, whose link checker the lint runs
         shell: bash
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet a5bfdf2ce6788a4edc869e5f07990f69464f58b5
-          JNTERFACES_DIR="$RUNNER_TEMP/jnterfaces" just lint
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 0b115f09edfc9c2ffb83733fcb07c491b709eec4
+          echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
+      - name: Check contracts, hooks, and source mirrors
+        run: just lint
+      - name: Check installer behavior in disposable target repositories
+        run: python3 -m unittest scripts/test_install_package.py scripts/test_install_stack.py -q
       - name: Verify live-lab cleanup without GitHub credentials
         run: just lab-safety-test
       - name: Validate package manifest with skill-package-maker

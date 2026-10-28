@@ -27,7 +27,6 @@ required_files=(
   "scripts/install.sh"
   "scripts/sync_g_skills.sh"
   "scripts/install_stack.sh"
-  "scripts/check_sibling_links.py"
   "scripts/run_gitbutler_workflow_lab.sh"
   "scripts/run_gitbutler_github_integration_lab.sh"
   "scripts/run_tag_dependency_agent_dry_run.sh"
@@ -239,7 +238,7 @@ done
 shipped_text=("$repo_root/AGENTS.template.md")
 while IFS= read -r file; do shipped_text+=("$file"); done < <(
   find "$repo_root/.agents/skills" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" \
-    -type f \( -name '*.md' -o -name '*.sh' \) | sort)
+    -type f \( -name '*.md' -o -name '*.sh' -o -name '*.just' -o -name '*.yaml' -o -name '*.txt' \) | sort)
 [ "${#shipped_text[@]}" -gt 1 ] || { echo "no shipped guidance files found" >&2; exit 1; }
 refs="$(grep -hoE '\.agents/skills/[A-Za-z0-9_./-]+\.(md|sh|py)' "${shipped_text[@]}" | sort -u)" || [ $? -eq 1 ] || exit 1
 while IFS= read -r ref; do
@@ -256,14 +255,14 @@ if [ -n "$docs_hits" ]; then
   exit 1
 fi
 
-# Links into jnterfaces need a fallback in the same paragraph, because a target may not have jnterfaces.
-# With a jnterfaces checkout, each link must name a path that jnterfaces ships.
+# A link to a skill of another package needs a fallback in the same paragraph, because a target may not have
+# that skill. Each link into jnterfaces must name a path that jnterfaces ships. The checker lives in jnterfaces.
 jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
-sibling_args=()
-if [ -n "${JNTERFACES_DIR:-}" ] || [ -f "$jnterfaces_dir/skill-package.json" ]; then
-  sibling_args=(--jnterfaces "$jnterfaces_dir")
+if [ ! -f "$jnterfaces_dir/scripts/check_skill_links.py" ]; then
+  echo "The link check needs a jnterfaces clone with scripts/check_skill_links.py at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
+  exit 1
 fi
-python3 "$repo_root/scripts/check_sibling_links.py" ${sibling_args[@]+"${sibling_args[@]}"} "${shipped_text[@]}"
+python3 "$jnterfaces_dir/scripts/check_skill_links.py" --package "$repo_root" --resolve "$jnterfaces_dir" "${shipped_text[@]}"
 
 # Shipped files must not carry paths from one machine.
 path_hits="$(grep -rnE '/(Users|home)/[A-Za-z0-9._-]+/' "$repo_root/.agents/skills" "$repo_root/.claude" "$repo_root/.codex" "$repo_root/AGENTS.template.md" "$repo_root/templates")" || [ $? -eq 1 ] || exit 1

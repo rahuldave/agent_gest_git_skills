@@ -1,4 +1,4 @@
-"""Tests for scripts/install_stack.sh, which installs this package, jnterfaces and optional sklanes together."""
+"""Tests for scripts/install_stack.sh, which passes the old options to the stack installer of jnterfaces."""
 import json
 import os
 from pathlib import Path
@@ -8,118 +8,115 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 STACK = ROOT / 'scripts/install_stack.sh'
-FAKE_INSTALLER = '''#!/usr/bin/env bash
-# Log the call; on a real run, write a record as a package installer does.
-printf '%s %s\\n' "{name}" "$*" >> "$STACK_LOG"
-[ -n "${{FAIL_DRY_RUN:-}}" ] && [ "$FAIL_DRY_RUN" = "{name}" ] && exit 1
-for arg in "$@"; do [ "$arg" = --dry-run ] && exit 0; done
-target="${{@: -1}}"
-mkdir -p "$target/.agents"
-echo '{{"source_revision": "rev-{name}"}}' > "$target/.agents/{name}-install.json"
+FAKE_STACK = '''#!/usr/bin/env bash
+# Log each argument on its own line.
+printf '%s\\n' "$@" > "$STACK_LOG"
 '''
 
 
-def git(path, *args):
-    subprocess.run(['git', '-C', str(path), '-c', 'user.name=T', '-c', 'user.email=t@example.invalid', *args],
-                   check=True, capture_output=True)
-
-
-class StackTests(unittest.TestCase):
+class WrapperTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.base = Path(self.temp.name)
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name)
         self.target = self.base / 'target'
         self.target.mkdir()
         self.log = self.base / 'log'
-        self.gest = self.fake('agent_gest_git_skills', with_stack=True)
-        self.jnterfaces = self.fake('jnterfaces')
-        self.sklanes = self.fake('sklanes')
+        self.jnterfaces = self.base / 'jnterfaces'
+        (self.jnterfaces / 'scripts').mkdir(parents=True)
+        (self.jnterfaces / 'scripts/install_stack.sh').write_text(FAKE_STACK)
 
-    def fake(self, name, with_stack=False):
-        root = self.base / name
-        (root / 'scripts').mkdir(parents=True)
-        (root / 'skill-package.json').write_text(json.dumps({'repository': {'name': name}}))
-        installer = root / 'scripts/install.sh'
-        installer.write_text(FAKE_INSTALLER.format(name=name))
-        installer.chmod(0o755)
-        if with_stack:
-            (root / 'scripts/install_stack.sh').write_bytes(STACK.read_bytes())
-        git(root, 'init', '-q')
-        git(root, 'add', '-A')
-        git(root, 'commit', '-q', '-m', 'fake')
-        return root
+    def stack(self, *args, cwd=None):
+        return subprocess.run(['bash', STACK, *args], capture_output=True, text=True, cwd=cwd,
+                              env=dict(os.environ, STACK_LOG=str(self.log)))
 
-    def stack(self, *args, env=None):
-        return subprocess.run(['bash', self.gest / 'scripts/install_stack.sh', self.target, *args],
-                              capture_output=True, text=True, env=dict(os.environ, STACK_LOG=str(self.log), **(env or {})))
+    def forwarded(self):
+        return self.log.read_text().splitlines()
 
-    def calls(self):
-        return self.log.read_text().splitlines() if self.log.exists() else []
-
-    def test_installs_gest_and_jnterfaces_after_a_dry_run_of_each(self):
-        run = self.stack()
+    def test_a_target_without_saved_choices_gets_the_old_set(self):
+        run = self.stack(self.target, '--jnterfaces', self.jnterfaces)
         self.assertEqual(run.returncode, 0, run.stderr)
-        names = [line.split()[0] for line in self.calls()]
-        self.assertEqual(names, ['agent_gest_git_skills', 'jnterfaces'] * 2)
-        self.assertTrue(all('--dry-run' in line for line in self.calls()[:2]))
-        self.assertFalse(any('--dry-run' in line for line in self.calls()[2:]))
-        self.assertEqual(sorted(p.name for p in (self.target / '.agents').iterdir()),
-                         ['agent_gest_git_skills-install.json', 'jnterfaces-install.json'])
-        self.assertIn('rev-jnterfaces', run.stdout)
+        self.assertEqual(self.forwarded(), [str(self.target.resolve()), '--clone', f'agent_gest_git_skills={ROOT}',
+                                            '--with', 'gest,cx,jagt-protocol', '--without', 'nossaifd'])
+        self.assertIn('the stack installer is now', run.stderr)
 
-    def test_with_lanes_adds_sklanes(self):
-        run = self.stack('--with-lanes')
+    def test_saved_choices_win_over_the_old_set(self):
+        (self.target / '.agents').mkdir()
+        (self.target / '.agents/stack.json').write_text('{"version": 1, "choices": {"cx": false}}')
+        run = self.stack(self.target, '--jnterfaces', self.jnterfaces)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertTrue((self.target / '.agents/sklanes-install.json').is_file())
+        self.assertEqual(self.forwarded()[1:], ['--clone', f'agent_gest_git_skills={ROOT}'])
 
-    def test_a_failed_dry_run_writes_nothing(self):
-        run = self.stack('--with-lanes', env={'FAIL_DRY_RUN': 'sklanes'})
-        self.assertNotEqual(run.returncode, 0)
-        self.assertFalse((self.target / '.agents').exists())
+    def test_choice_options_win_over_the_old_set(self):
+        for option in (['--without', 'cx'], ['--with', 'sklanes'], ['--all'], ['--defaults'], ['--ask']):
+            run = self.stack(self.target, '--jnterfaces', self.jnterfaces, *option)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(self.forwarded()[3:], option, option)
 
-    def test_dry_run_writes_nothing(self):
-        run = self.stack('--with-lanes', '--dry-run')
+    def test_translates_the_old_options(self):
+        run = self.stack('--with-lanes', '--sklanes', '/x/sk', '--clean', '--dry-run',
+                         '--jnterfaces', self.jnterfaces, self.target)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertFalse((self.target / '.agents').exists())
-        self.assertEqual(len(self.calls()), 3)
+        self.assertEqual(self.forwarded()[3:], ['--with', 'sklanes', '--clone', 'sklanes=/x/sk', '--clean', '--dry-run',
+                                                '--with', 'gest,cx,jagt-protocol', '--without', 'nossaifd'])
 
-    def test_missing_or_wrong_clone_stops_before_any_install(self):
-        run = self.stack('--jnterfaces', self.base / 'nowhere')
-        self.assertNotEqual(run.returncode, 0)
-        self.assertIn('No jnterfaces clone', run.stderr)
-        run = self.stack('--jnterfaces', self.sklanes)
-        self.assertNotEqual(run.returncode, 0)
-        self.assertIn('is not the jnterfaces package', run.stderr)
-        self.assertEqual(self.calls(), [])
+    def test_a_symlinked_target_is_refused(self):
+        link = self.base / 'link'
+        link.symlink_to(self.target)
+        for path in (str(link), f'{link}/', f'{link}//'):
+            run = self.stack(path, '--jnterfaces', self.jnterfaces)
+            self.assertEqual(run.returncode, 2, path)
+            self.assertIn('must not be a symlink', run.stderr)
+        self.assertFalse(self.log.exists())
 
-    def test_clean_pins_each_package_to_its_head(self):
-        self.assertEqual(self.stack('--clean', '--dry-run').returncode, 0)
-        for line in self.calls():
-            name = line.split()[0]
-            head = subprocess.check_output(['git', '-C', str(self.base / name), 'rev-parse', 'HEAD'], text=True).strip()
-            self.assertIn(f'--source-commit {head}', line)
-
-    def test_real_sibling_packages_when_present(self):
-        jnterfaces, sklanes = ROOT.parent / 'jnterfaces', ROOT.parent / 'sklanes'
-        if not (jnterfaces / 'scripts/install.sh').is_file() or not (sklanes / 'scripts/install.sh').is_file():
-            self.skipTest('no jnterfaces and sklanes clones next to this repository')
-        run = subprocess.run(['bash', STACK, self.target, '--with-lanes'], capture_output=True, text=True)
+    def test_an_installed_nossaifd_stays_on(self):
+        (self.target / '.agents').mkdir()
+        (self.target / '.agents/nossaifd-install.json').write_text('{}')
+        run = self.stack(self.target, '--jnterfaces', self.jnterfaces)
         self.assertEqual(run.returncode, 0, run.stderr)
-        for name in ('gest-git', 'jnterfaces', 'sklanes'):
-            record = json.loads((self.target / f'.agents/{name}-install.json').read_text())
-            self.assertRegex(record['source_revision'], '^[0-9a-f]{40}$')
-        for skill in ('gsu', 'just', 'jagt-protocol', 'cx', 'lanes'):
-            self.assertTrue((self.target / f'.agents/skills/{skill}/SKILL.md').is_file(), skill)
-
+        self.assertEqual(self.forwarded()[3:], ['--with', 'gest,cx,jagt-protocol'])
 
     def test_double_dash_allows_a_target_that_starts_with_a_dash(self):
         odd = self.base / '-odd'
         odd.mkdir()
-        run = subprocess.run(['bash', self.gest / 'scripts/install_stack.sh', '--dry-run', '--', '-odd'],
-                             capture_output=True, text=True, cwd=self.base, env=dict(os.environ, STACK_LOG=str(self.log)))
+        run = self.stack('--jnterfaces', self.jnterfaces, '--', '-odd', cwd=self.base)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertTrue(all(line.endswith(str(odd.resolve())) for line in self.calls()))
+        self.assertEqual(self.forwarded()[0], str(odd.resolve()))
+
+    def test_a_missing_jnterfaces_clone_says_how_to_get_one(self):
+        run = self.stack(self.target, '--jnterfaces', self.base / 'nowhere')
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('git', run.stderr.lower())
+        self.assertIn('https://github.com/rahuldave/jnterfaces', run.stderr)
+        self.assertFalse(self.log.exists())
+
+    def test_usage_errors(self):
+        self.assertEqual(self.stack().returncode, 2)
+        self.assertEqual(self.stack(self.target, self.base).returncode, 2)
+        self.assertEqual(self.stack(self.target, '--jnterfaces').returncode, 2)
+
+    def test_real_jnterfaces_when_present(self):
+        # CI clones jnterfaces and nossaifd into one folder and sets JNTERFACES_DIR.
+        jnterfaces = Path(os.environ.get('JNTERFACES_DIR', ROOT.parent / 'jnterfaces'))
+        if not (jnterfaces / 'scripts/install_stack.py').is_file():
+            self.skipTest('no jnterfaces clone with the stack installer; set JNTERFACES_DIR')
+        subprocess.run(['git', 'init', '-q', str(self.target)], check=True)
+        run = subprocess.run(['bash', STACK, self.target, '--jnterfaces', jnterfaces], capture_output=True, text=True,
+                             stdin=subprocess.DEVNULL)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        for skill in ('gtw', 'just', 'cx', 'jagt-protocol'):
+            self.assertTrue((self.target / f'.agents/skills/{skill}/SKILL.md').is_file(), skill)
+        self.assertFalse((self.target / '.agents/skills/nossaifd').exists())
+        # A later run keeps the saved choices: here, cx turned off stays off.
+        run = subprocess.run(['bash', STACK, self.target, '--jnterfaces', jnterfaces, '--without', 'cx'],
+                             capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        run = subprocess.run(['bash', STACK, self.target, '--jnterfaces', jnterfaces], capture_output=True, text=True,
+                             stdin=subprocess.DEVNULL)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse((self.target / '.agents/skills/cx').exists())
+        record = json.loads((self.target / '.agents/gest-git-install.json').read_text())
+        self.assertRegex(record['source_revision'], '^[0-9a-f]{40}$')
 
 
 if __name__ == '__main__':

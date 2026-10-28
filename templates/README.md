@@ -37,5 +37,6 @@ the depending recipe and in the listed order; they are ordered recipe
 composition, not Make-style file freshness analysis.
 
 Use `cx` only for explicit file-producing build or pipeline stages inside
-linewise Just recipes. See the `cx` skill of jnterfaces, `.agents/skills/cx/SKILL.md`, when it is installed, before adding
-`cx` to a project command contract.
+linewise Just recipes. Before you add `cx` to a project command contract, read
+the `cx` skill of jnterfaces, `.agents/skills/cx/SKILL.md`. If the cx skill is
+not installed, read `cx --help` and run `cx lint`.
