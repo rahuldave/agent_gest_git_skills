@@ -1,6 +1,7 @@
 ---
 name: grv
 description: Gest Review. Review the current Git changeset for correctness, safety, regressions, style, and missing tests, with findings first.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GRV: Gest Review

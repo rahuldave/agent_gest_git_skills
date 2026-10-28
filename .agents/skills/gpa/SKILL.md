@@ -1,6 +1,7 @@
 ---
 name: gpa
 description: Gest PR Accept. Review and accept a GitHub pull request as the GitHub-facing checkpoint of a Gest-tracked workstream, including PR metadata, diff review, checks, Gest context, merge recommendation, and post-merge bookkeeping.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GPA: Gest PR Accept

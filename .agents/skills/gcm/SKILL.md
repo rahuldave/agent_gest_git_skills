@@ -1,6 +1,7 @@
 ---
 name: gcm
 description: Gest Commit. Create a Git commit for the current changes, using conventional commit style and GitHub metadata when present.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GCM: Gest Commit

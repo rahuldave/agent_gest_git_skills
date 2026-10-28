@@ -1,6 +1,7 @@
 ---
 name: gtw
 description: Gest Track Work. Use for substantial coding, debugging, implementation, refactoring, documentation, verification, GitHub issue planning, or project work. GTW is the router that classifies requests, chooses/creates Gest outline parents, creates session or development tasks, decides whether a spec or parallel work is needed, and routes to the g* stage skills.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GTW: Gest Track Work

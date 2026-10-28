@@ -1,6 +1,7 @@
 ---
 name: gim
 description: Gest Implement. Implement one concrete Gest task end to end by reading, claiming, splitting if too broad, editing, verifying, reviewing, formatting as appropriate, and completing it.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GIM: Gest Implement

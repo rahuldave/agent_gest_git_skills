@@ -385,3 +385,7 @@ checks receive no such credential. A merge integrates source. A versioned/tagged
 release is a separate request, with package validation, scratch installation,
 reviewed source and published artifact verification. No release occurs merely
 because an experimental target receives a PR.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

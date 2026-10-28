@@ -91,7 +91,13 @@ for skill in gbs gcm gdo gfm gest_git_installer gim gis gor gpa gpl gpr grv gsp 
     echo "missing g skill: $skill" >&2
     exit 1
   fi
+  # Installed copies carry the licence in the front matter, because no installer copies LICENSE.
+  if ! awk 'NR==1 && $0!="---" {exit 1} NR>1 && $0=="---" {exit found ? 0 : 1} NR>1 && /^license: MIT, copyright \(c\) 2026 Rahul Dave\. .*rahuldave\/agent_gest_git_skills$/ {found=1}' "$repo_root/.agents/skills/$skill/SKILL.md"; then
+    echo "$skill/SKILL.md front matter has no MIT license line" >&2
+    exit 1
+  fi
 done
+grep -q '^MIT License$' "$repo_root/LICENSE" || { echo "LICENSE is not the MIT licence" >&2; exit 1; }
 
 while IFS= read -r script; do
   bash -n "$script"

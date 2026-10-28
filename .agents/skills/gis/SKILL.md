@@ -1,6 +1,7 @@
 ---
 name: gis
 description: Gest Issue. Create or update durable Gest outline tasks with user story, context, acceptance criteria, tags, metadata, and child-of links.
+license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 
 # GIS: Gest Issue
