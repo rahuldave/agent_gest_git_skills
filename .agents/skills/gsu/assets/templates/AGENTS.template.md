@@ -88,7 +88,8 @@ worktree from `just worktree-new NAME`, and keep the main checkout on its base
 branch. `just worktree-new` copies the ignored files that `.worktreeinclude`
 names and links the paths in `.worktreelink`. `just worktrees` lists the
 worktrees. Run `just worktrees-prune`, which removes clean, merged and idle
-worktrees, only when the user asks.
+worktrees, only when the user asks. Ignored files that `.worktreedisposable`
+names, such as `.venv/`, do not keep a worktree.
 
 GitButler parallel branches and stacked branches share one managed workspace.
 They are sequential branch-curation tools for agents, not an agent-parallelism

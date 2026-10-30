@@ -248,6 +248,105 @@ class WorktreeScriptTests(unittest.TestCase):
         self.run_script("prune", "--with-ignored")
         self.assertFalse(folder.exists())
 
+    def disposable_worktree(self) -> Path:
+        """A merged worktree that holds a virtual environment and caches, as uv and the test tools leave them."""
+        with (self.repo / ".gitignore").open("a") as handle:
+            handle.write(".venv/\n__pycache__/\n.pytest_cache/\n")
+        (self.repo / ".worktreedisposable").write_text("# made again by uv sync and the tools\n.venv/\n__pycache__/\n"
+                                                       ".pytest_cache/\n")
+        git("add", ".", cwd=self.repo)
+        git("commit", "-qm", "disposable", cwd=self.repo)
+        self.run_script("new", "venv", "--no-setup")
+        folder = self.shelf / "venv"
+        (folder / ".venv/bin").mkdir(parents=True)
+        (folder / ".venv/bin/python").symlink_to(sys.executable)
+        (folder / ".venv/pyvenv.cfg").write_text("home = /usr\n")
+        (folder / "src/pkg/__pycache__").mkdir(parents=True)
+        (folder / "src/pkg/__pycache__/mod.cpython-312.pyc").write_bytes(b"\0")
+        (folder / ".pytest_cache").mkdir()
+        (folder / ".pytest_cache/README.md").write_text("cache\n")
+        return folder
+
+    def test_files_that_worktreedisposable_names_do_not_keep_a_worktree(self) -> None:
+        folder = self.disposable_worktree()
+        self.age(folder, 5)
+        self.assertIn("1 Git worktree(s) are clean, merged and idle", self.run_script("list", "--report").stdout)
+        out = self.run_script("prune").stdout
+        self.assertIn(".pytest_cache, .venv", out)
+        self.assertFalse(folder.exists())
+
+    def test_an_output_that_worktreedisposable_does_not_name_still_keeps_a_worktree(self) -> None:
+        folder = self.disposable_worktree()
+        (folder / "out.log").write_text("an output\n")
+        (folder / "src/pkg/result.log").write_text("an output\n")
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        self.assertTrue(folder.is_dir())
+        (folder / "out.log").unlink()
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        (folder / "src/pkg/result.log").unlink()
+        self.age(folder, 5)
+        self.run_script("prune")
+        self.assertFalse(folder.exists())
+
+    def test_a_negated_file_under_an_excluded_folder_keeps_the_worktree(self) -> None:
+        folder = self.disposable_worktree()
+        # gitignore cannot bring .venv/keep.txt back under .venv/, but prune keeps it all the same.
+        with (self.repo / ".worktreedisposable").open("a") as handle:
+            handle.write("!.venv/keep.txt\n")
+        (folder / ".venv/keep.txt").write_text("kept by hand\n")
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        self.assertTrue((folder / ".venv/keep.txt").is_file())
+
+    def test_worktreedisposable_matches_with_letter_case(self) -> None:
+        folder = self.disposable_worktree()
+        with (self.repo / ".gitignore").open("a") as handle:
+            handle.write("*.PYC\n")
+        git("add", ".gitignore", cwd=self.repo)
+        git("commit", "-qm", "upper", cwd=self.repo)
+        git("merge", "-q", "main", cwd=folder)
+        with (self.repo / ".worktreedisposable").open("a") as handle:
+            handle.write("*.pyc\n")
+        (folder / "Results.PYC").write_text("real\n")
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        self.assertTrue((folder / "Results.PYC").is_file())
+
+    def test_worktreedisposable_can_name_part_of_an_ignored_folder(self) -> None:
+        folder = self.disposable_worktree()
+        # git ignores all of big/; .worktreedisposable names only its cache and its .tmp files. The log is a copy of
+        # .worktreeinclude, so the walk through big/ meets each kind of file.
+        (self.repo / ".worktreedisposable").write_text(".venv/\n__pycache__/\n.pytest_cache/\nbig/cache/\nbig/*.tmp\n")
+        (self.repo / "big").mkdir()
+        (self.repo / "big/keep.log").write_text("shared\n")
+        (folder / "big/cache").mkdir(parents=True)
+        (folder / "big/keep.log").write_text("shared\n")
+        (folder / "big/cache/a.bin").write_bytes(b"\0")
+        (folder / "big/x.tmp").write_text("tmp\n")
+        (folder / "big/model.bin").write_bytes(b"\0")
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        (folder / "big/model.bin").unlink()
+        self.age(folder, 5)
+        self.run_script("prune")
+        self.assertFalse(folder.exists())
+
+    def test_a_negated_pattern_in_worktreedisposable_keeps_its_files(self) -> None:
+        folder = self.disposable_worktree()
+        # As in .gitignore, a file comes back only when its folder is not excluded: .venv/* and not .venv/.
+        (self.repo / ".worktreedisposable").write_text(".venv/*\n!.venv/keep.txt\n__pycache__/\n.pytest_cache/\n")
+        (folder / ".venv/keep.txt").write_text("kept by hand\n")
+        self.age(folder, 5)
+        self.assertIn(".worktreedisposable does not name", self.run_script("prune").stdout)
+        self.assertTrue(folder.is_dir())
+        # Without the kept file, .venv/* names each file in .venv, so the worktree goes.
+        (folder / ".venv/keep.txt").unlink()
+        self.age(folder, 5)
+        self.run_script("prune")
+        self.assertFalse(folder.exists())
+
     def test_a_new_output_makes_a_worktree_young(self) -> None:
         self.run_script("new", "busy", "--no-setup")
         folder = self.shelf / "busy"
