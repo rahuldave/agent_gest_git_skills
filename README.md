@@ -353,7 +353,8 @@ __pycache__/
 
 A removal deletes these files, and they do not keep a worktree. `uv sync
 --locked` makes `.venv` again from `uv.lock`. Each profile of jnterfaces
-writes this file for its language when the project has none.
+adds its lines to this file, in a block of its own at the start. Your own
+lines come after the blocks.
 
 A `!` line names a file that keeps the worktree, for example
 `!.venv/keep.txt`. The file keeps it even under a folder that a pattern
