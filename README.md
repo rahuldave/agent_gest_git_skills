@@ -299,6 +299,46 @@ remote, and clean merged local `session/*` and `gest/*` branches. The terminal
 should not be left on `gitbutler/workspace` unless active GitButler work is
 continuing.
 
+### Variants and worktree recipes
+
+The tasker role has two variants. Choose one with `just install tasker=gitwt`
+or `just install tasker=git`. `just tasker-mode` prints the variant.
+
+| Variant | Where a task works | Parallel tasks |
+|---|---|---|
+| `git`, the default | A branch in the main checkout | One worktree for each task |
+| `gitwt` | A worktree for each task; the main checkout stays on `main` | No more steps |
+
+The package adds these recipes in a project that jnterfaces started. The file
+is `.agents/just/roles/agent_gest_git_skills.just`, and the script is
+`.agents/skills/gtw/scripts/worktree.py`.
+
+| Recipe | What it does |
+|---|---|
+| `just worktree-new NAME [BASE]` | Makes branch NAME in `../<repo>.worktrees/NAME`, sets it up, and runs `just setup` there |
+| `just worktree-sync` | Sets up a worktree that another tool made, such as Claude Code |
+| `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
+| `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
+
+Setup follows two files in the main checkout, as other tools do:
+
+- `.worktreeinclude` has gitignore patterns. Each file that matches and that
+  Git ignores is copied, for example `.env`. Claude Code and Conductor read
+  the same file.
+- `.worktreelink` has one path on each line. Each path becomes a symbolic link
+  to the path in the main checkout, for example a large `data` folder. Git
+  sees a link as a file, so the pattern `data/` does not ignore it; write
+  `/data` in `.gitignore`. The recipe warns when Git does not ignore a link.
+
+Copy small inputs, link large shared inputs, and keep outputs in each
+worktree.
+
+**What prune keeps.** Merged means that a merge of the worktree into the base
+would change nothing, so rebased and squashed work counts, and reverted work
+does not. A worktree stays when it has ignored files that setup did not put
+there, such as outputs or an edited `.env`. `--with-ignored` removes it too.
+A detached worktree stays when no branch has its commits.
+
 ## Sibling packages
 
 This package needs the `just` skill of jnterfaces. The other packages are
@@ -349,8 +389,13 @@ vocabulary and record selected/rejected/new tags. For code-facing changes, use
 
 ## Hooks
 
-The installer copies the `.claude/` and `.codex/` hooks. The GitButler
-hooks enforce GitButler mode-strict during active GitButler branch/stack series:
+The installer copies the `.claude/` and `.codex/` hooks. The session-start
+hooks name the tasker variant, and they report worktrees that are ready to
+prune; they remove nothing. In `gitwt`, a `git commit` in the main checkout gets
+a warning, not a block. The GitButler context appears only when `but` is
+installed and the checkout is on `gitbutler/workspace`, and never in `gitwt`.
+
+The GitButler hooks enforce GitButler mode-strict during active GitButler branch/stack series:
 use `but` for writes, reserve raw git writes for explicit physical worktree
 execution, and keep tag/dependency checks in view. When a planned flow has
 left GitButler mode and is intentionally creating physical worktrees, prefix raw

@@ -81,6 +81,15 @@ branches for multiple meaty dependent slices that should be separately
 reviewable. Use physical git worktrees for multiple independent write tasks
 running at the same time.
 
+`just tasker-mode` prints the tasker variant. In `git`, the default, work on a
+branch in the main checkout, and make a worktree for each parallel write task
+with `just worktree-new NAME`. In `gitwt`, do each write task in its own
+worktree from `just worktree-new NAME`, and keep the main checkout on its base
+branch. `just worktree-new` copies the ignored files that `.worktreeinclude`
+names and links the paths in `.worktreelink`. `just worktrees` lists the
+worktrees. Run `just worktrees-prune`, which removes clean, merged and idle
+worktrees, only when the user asks.
+
 GitButler parallel branches and stacked branches share one managed workspace.
 They are sequential branch-curation tools for agents, not an agent-parallelism
 primitive. Do not launch parallel write agents in one GitButler workspace or use

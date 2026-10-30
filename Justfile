@@ -63,8 +63,13 @@ install-test:
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the install dropped the hook of the user"
   grep -q 'session-start' "$target/.claude/settings.json" || fail "the install merged no Claude hook"
   grep -q 'session-start' "$target/.codex/hooks.json" || fail "the install merged no Codex hook"
+  test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
+  [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
+  just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"
+  install tasker=gitwt
+  [ "$(just --justfile "$target/Justfile" tasker-mode)" = gitwt ] || fail "just tasker-mode does not print gitwt"
   install --without tasker
-  for gone in .agents/skills/gtw .claude/hooks .codex .agents/gest-git-install.json; do
+  for gone in .agents/skills/gtw .claude/hooks .codex .agents/gest-git-install.json .agents/just/roles/agent_gest_git_skills.just; do
     if [ -e "$target/$gone" ]; then fail "$gone is still there after the removal"; fi
   done
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the removal dropped the hook of the user"

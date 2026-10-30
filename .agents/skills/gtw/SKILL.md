@@ -206,6 +206,43 @@ recorded owner and topic branch. Afterward, integrate the results into the
 selected branch or stack and follow the owned-worktree retirement procedure in
 `references/integration_delivery_workflow.md`.
 
+### Tasker Variant And Worktrees
+
+Before the first write of a task, run `just tasker-mode`. It prints the variant
+of the tasker role that `just install` recorded:
+
+- `git`, the default: work on a topic branch in the main checkout. For
+  parallel write tasks, make one worktree for each task with
+  `just worktree-new NAME`.
+- `gitwt`: do each write task in its own worktree. Run `just worktree-new NAME`,
+  then work in the folder that it prints. Record `vcs.execution=git-worktrees`
+  and that folder as `vcs.workspace_path`. Keep the main checkout on its base
+  branch, and use it only to read, merge and prune. Parallel tasks need no
+  more steps, because each task has its own worktree already.
+
+The worktree commands:
+
+- `just worktree-new NAME [BASE]` makes the branch NAME from BASE (default
+  `main`) in `../<repo>.worktrees/NAME`. It sets the worktree up, then it runs
+  `just setup` there. `--no-setup` skips `just setup`.
+- Setup copies each file that `.worktreeinclude` names and that Git ignores,
+  such as `.env`. It makes a symbolic link for each path in `.worktreelink`,
+  such as a large `data` folder. So scripts with relative paths find their
+  inputs. Outputs stay in each worktree.
+- `just worktree-sync` sets up a worktree that another tool made, such as
+  Claude Code or Codex.
+- `just worktrees` lists the worktrees: clean or dirty, merged or not, and the
+  ignored files that a removal deletes.
+- `just worktrees-prune` removes each worktree that is clean, merged and idle
+  for 2 hours, with `git worktree remove` and no `--force`. Branches stay. A
+  worktree with ignored files that setup did not put there, such as outputs,
+  stays unless you pass `--with-ignored`. Run it only when the user asks. Show
+  `just worktrees-prune --dry-run` first.
+
+In a project that jnterfaces did not start, these recipes are missing. Run
+`uv run --no-project --quiet python .agents/skills/gtw/scripts/worktree.py`
+with `mode`, `new`, `sync`, `list` or `prune` instead.
+
 In GitButler-managed mode, use current `but` CLI write commands such as
 `but branch new`, `but stage`, `but commit`, `but push`, and `but pr`. Do not
 use raw `git commit`, `git switch`, `git checkout`, or branch-mutating git
