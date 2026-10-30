@@ -8,9 +8,10 @@ license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE fil
 
 The Gest skills are the role `tasker` of the jnterfaces installer. jnterfaces
 holds the only installer. It copies the skills of this package, its hook
-scripts in `.claude/hooks` and `.codex/hooks`, and its hook settings. It also
-writes `AGENTS.md` from `AGENTS.template.md` when the repository has no
-`AGENTS.md`.
+scripts in `.claude/hooks` and `.codex/hooks`, and its hook settings. It also writes `AGENTS.md` from `AGENTS.starter.md` when the repository has
+no `AGENTS.md`. It writes the rules to `.agents/instructions/tasker.md`, and
+adds a line to `AGENTS.md` that points to them. The SessionStart hook prints
+the rules.
 
 The `g*` skills need the `just` skill of jnterfaces, and the installer always
 installs it. If jnterfaces is not installed, the `install` recipe is missing

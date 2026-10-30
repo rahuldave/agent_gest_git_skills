@@ -7,48 +7,147 @@
     "url": "https://github.com/rahuldave/agent_gest_git_skills"
   },
   "skills": [
-    {"name": "gbs", "path": ".agents/skills/gbs"},
-    {"name": "gcm", "path": ".agents/skills/gcm"},
-    {"name": "gdo", "path": ".agents/skills/gdo"},
-    {"name": "gfm", "path": ".agents/skills/gfm"},
-    {"name": "gest_git_installer", "path": ".agents/skills/gest_git_installer"},
-    {"name": "gim", "path": ".agents/skills/gim"},
-    {"name": "gis", "path": ".agents/skills/gis"},
-    {"name": "gor", "path": ".agents/skills/gor"},
-    {"name": "gpa", "path": ".agents/skills/gpa"},
-    {"name": "gpl", "path": ".agents/skills/gpl"},
-    {"name": "gpr", "path": ".agents/skills/gpr"},
-    {"name": "grv", "path": ".agents/skills/grv"},
-    {"name": "gsp", "path": ".agents/skills/gsp"},
-    {"name": "gsu", "path": ".agents/skills/gsu"},
-    {"name": "gte", "path": ".agents/skills/gte"},
-    {"name": "gtw", "path": ".agents/skills/gtw"}
+    {
+      "name": "gbs",
+      "path": ".agents/skills/gbs"
+    },
+    {
+      "name": "gcm",
+      "path": ".agents/skills/gcm"
+    },
+    {
+      "name": "gdo",
+      "path": ".agents/skills/gdo"
+    },
+    {
+      "name": "gfm",
+      "path": ".agents/skills/gfm"
+    },
+    {
+      "name": "gest_git_installer",
+      "path": ".agents/skills/gest_git_installer"
+    },
+    {
+      "name": "gim",
+      "path": ".agents/skills/gim"
+    },
+    {
+      "name": "gis",
+      "path": ".agents/skills/gis"
+    },
+    {
+      "name": "gor",
+      "path": ".agents/skills/gor"
+    },
+    {
+      "name": "gpa",
+      "path": ".agents/skills/gpa"
+    },
+    {
+      "name": "gpl",
+      "path": ".agents/skills/gpl"
+    },
+    {
+      "name": "gpr",
+      "path": ".agents/skills/gpr"
+    },
+    {
+      "name": "grv",
+      "path": ".agents/skills/grv"
+    },
+    {
+      "name": "gsp",
+      "path": ".agents/skills/gsp"
+    },
+    {
+      "name": "gsu",
+      "path": ".agents/skills/gsu"
+    },
+    {
+      "name": "gte",
+      "path": ".agents/skills/gte"
+    },
+    {
+      "name": "gtw",
+      "path": ".agents/skills/gtw"
+    }
   ],
   "install_extras": {
-    "files": [".claude/hooks", ".codex/hooks", ".agents/just/roles/agent_gest_git_skills.just"],
-    "merge_hooks": [".claude/settings.json", ".codex/hooks.json"],
-    "seed": {"AGENTS.md": "AGENTS.template.md"}
+    "files": [
+      ".claude/hooks",
+      ".codex/hooks",
+      ".agents/just/roles/agent_gest_git_skills.just"
+    ],
+    "merge_hooks": [
+      ".claude/settings.json",
+      ".codex/hooks.json"
+    ],
+    "seed": {
+      "AGENTS.md": "AGENTS.template.md"
+    },
+    "parts": {
+      "AGENTS.md": "AGENTS.instructions.md",
+      ".claude/settings.json": ".claude/settings.json",
+      ".codex/hooks.json": ".codex/hooks.json"
+    },
+    "starter": {
+      "AGENTS.md": "AGENTS.starter.md"
+    }
   },
   "installer_skill": {
     "name": "gest_git_installer",
     "description": "After npx installs the skills, run the jnterfaces installer to add the Gest hooks, settings and AGENTS.md starter.",
-    "installs": ["hooks", "agents", "tools"],
+    "installs": [
+      "hooks",
+      "agents",
+      "tools"
+    ],
     "requires_approval": true
   },
   "executables": {
     "required": [
-      {"name": "git", "check": "git --version"},
-      {"name": "gest", "check": "gest --version"},
-      {"name": "just", "check": "just --version"},
-      {"name": "uv", "check": "uv --version"}
+      {
+        "name": "git",
+        "check": "git --version"
+      },
+      {
+        "name": "gest",
+        "check": "gest --version"
+      },
+      {
+        "name": "just",
+        "check": "just --version"
+      },
+      {
+        "name": "uv",
+        "check": "uv --version"
+      }
     ],
     "optional": [
-      {"name": "rsync", "check": "rsync --version"},
-      {"name": "gh", "check": "gh --version"},
-      {"name": "but", "check": "but --version"},
-      {"name": "ast-grep", "check": "ast-grep --version"},
-      {"name": "direnv", "check": "direnv version"},
-      {"name": "cx", "check": "cx --help"}
+      {
+        "name": "rsync",
+        "check": "rsync --version"
+      },
+      {
+        "name": "gh",
+        "check": "gh --version"
+      },
+      {
+        "name": "but",
+        "check": "but --version"
+      },
+      {
+        "name": "ast-grep",
+        "check": "ast-grep --version"
+      },
+      {
+        "name": "direnv",
+        "check": "direnv version"
+      },
+      {
+        "name": "cx",
+        "check": "cx --help"
+      }
     ]
   },
   "npx": {

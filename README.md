@@ -14,7 +14,11 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
   pull request acceptance, orchestration, and commits.
 - `.agents/skills/gest_git_installer`: package-specific installer skill for
   hooks/settings and AGENTS guidance after `npx skills add`.
-- `AGENTS.template.md`: starter agent instructions to copy into a target repo.
+- `AGENTS.starter.md`: the starter `AGENTS.md` of a target repo, with the
+  project context that you fill in.
+- `AGENTS.instructions.md`: the rules of the role. The installer writes them
+  to `.agents/instructions/tasker.md` of the target repo.
+- `AGENTS.template.md`: the old starter, for an older installer.
 - `docs/README.md`: documentation map.
 - `docs/TUTORIAL.md`: the deterministic beginner tutorial. Start here.
 - `docs/protocol_flows.md`: the agentic packet flow guide and lab map for
@@ -92,7 +96,8 @@ files into the project:
 ```text
 .agents/skills/g* and .agents/skills/gest_git_installer
 .claude/hooks and .codex/hooks, and their hook commands in .claude/settings.json and .codex/hooks.json
-AGENTS.template.md -> AGENTS.md, only if AGENTS.md does not already exist
+AGENTS.starter.md -> AGENTS.md, only if AGENTS.md does not already exist
+AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.md that points to it
 ```
 
 It reports the missing workflow executables, such as `gest`. It checks for

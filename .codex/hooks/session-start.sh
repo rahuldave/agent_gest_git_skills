@@ -24,6 +24,19 @@ if [ -f "$script" ] && command -v uv >/dev/null 2>&1; then
   fi
 fi
 
+# The rules of the tasker role. just install writes them to .agents/instructions/tasker.md, and the line in
+# AGENTS.md only points to them, so this hook is the step that loads them.
+rules="$project_root/.agents/instructions/tasker.md"
+if [ -f "$rules" ]; then
+  # Claude Code and Codex show a long hook output only as a short preview and a file. So the first line, which is
+  # always in the preview, asks for the whole file.
+  CONTEXT="Read all of .agents/instructions/tasker.md before you start work. It holds the rules of this project.
+
+$(cat "$rules")
+
+$CONTEXT"
+fi
+
 escape_json() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/g' | tr -d '\n' | tr '\001-\037' ' '
 }
