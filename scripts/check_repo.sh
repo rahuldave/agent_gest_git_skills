@@ -50,6 +50,8 @@ required_files=(
   "fixtures/agent_task_draft/fresh_context/AGENTS.md"
   ".agents/skills/gest_git_installer/SKILL.md"
   ".agents/skills/gest_git_installer/scripts/install_gest_git_package.sh"
+  ".agents/skills/gtw/scripts/worktree.py"
+  ".agents/just/roles/agent_gest_git_skills.just"
   "templates/README.md"
 )
 
@@ -280,6 +282,7 @@ done
 (
   cd "$repo_root"
   "${python[@]}" -m unittest scripts/test_raw_git_guards.py -q
+  "${python[@]}" -m unittest scripts/test_worktrees.py -q
 )
 
 if [ "$mode" = "--diff" ]; then

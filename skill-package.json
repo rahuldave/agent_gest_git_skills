@@ -25,7 +25,7 @@
     {"name": "gtw", "path": ".agents/skills/gtw"}
   ],
   "install_extras": {
-    "files": [".claude/hooks", ".codex/hooks"],
+    "files": [".claude/hooks", ".codex/hooks", ".agents/just/roles/agent_gest_git_skills.just"],
     "merge_hooks": [".claude/settings.json", ".codex/hooks.json"],
     "seed": {"AGENTS.md": "AGENTS.template.md"}
   },

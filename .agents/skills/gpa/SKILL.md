@@ -309,6 +309,10 @@ primary checkout, persistent integration branches and unrelated or
 user-retained worktrees. Follow the full retirement policy in
 `references/integration_delivery_workflow.md`.
 
+`just worktrees` shows which worktrees are clean and merged. When the user asks
+to clean up worktrees, run `just worktrees-prune --dry-run`, show the result,
+then run `just worktrees-prune`.
+
 At handoff, verify `git -C <primary-path> symbolic-ref --short HEAD` equals the
 recorded `<primary-branch>`. If GitButler teardown changed it, switch back only
 when that checkout is clean and the branch is not checked out elsewhere; stop

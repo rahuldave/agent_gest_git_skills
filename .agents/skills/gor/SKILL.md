@@ -40,8 +40,9 @@ gest iteration next <id> --claim --agent <agent-name> --json
 
 Exit code 75 means no task is currently available.
 
-6. For parallel work, create one git worktree per task, attach it to the same
-   Gest project, run implementation, and integrate results. Record the owned
+6. For parallel work, create one git worktree per task with
+   `just worktree-new NAME` (see "Tasker Variant And Worktrees" in gtw), attach
+   it to the same Gest project, run implementation, and integrate results. Record the owned
    absolute `vcs.workspace_path`, topic `vcs.branch`, worker/task, selected
    integration branch and stack parent before dispatch. Record the primary
    checkout path and branch separately. After workers and their owned
