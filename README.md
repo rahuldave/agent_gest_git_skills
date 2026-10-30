@@ -339,6 +339,29 @@ does not. A worktree stays when it has ignored files that setup did not put
 there, such as outputs or an edited `.env`. `--with-ignored` removes it too.
 A detached worktree stays when no branch has its commits.
 
+**Files that a command makes again.** Commands in a worktree make ignored
+files. For example, `just setup` makes `.venv`, and the tests make
+`__pycache__` and `.pytest_cache`. These files would keep every worktree. So prune reads a
+third file in the main checkout, `.worktreedisposable`. It has gitignore
+patterns for the ignored files that a command can make again, for example:
+
+```gitignore
+.venv/
+__pycache__/
+.pytest_cache/
+```
+
+A removal deletes these files, and they do not keep a worktree. `uv sync
+--locked` makes `.venv` again from `uv.lock`. Each profile of jnterfaces
+writes this file for its language when the project has none.
+
+A `!` line names a file that keeps the worktree, for example
+`!.venv/keep.txt`. The file keeps it even under a folder that a pattern
+excludes.
+Patterns match letter case, also on macOS. A package that `uv pip install`
+added is not in `uv.lock`, so `uv sync --locked` does not bring it back. Add
+such a package with `uv add`, or remove `.venv/` from the file.
+
 ## Sibling packages
 
 This package needs the `just` skill of jnterfaces. The other packages are

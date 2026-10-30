@@ -18,7 +18,9 @@ inputs, such as a data folder. Keep outputs in each worktree.
 
 Merged means that a merge of the worktree into the base branch would change nothing, so rebased and squashed work
 counts. A worktree stays when it holds ignored files other than the copies and links of setup, such as outputs or
-an edited .env; --with-ignored removes it too. A detached worktree stays unless a branch has its commits. A removal
+an edited .env; --with-ignored removes it too. A third file in the main checkout, .worktreedisposable, has gitignore
+patterns for the ignored files that a command can make again, such as .venv/ and __pycache__/: those do not keep a
+worktree. A detached worktree stays unless a branch has its commits. A removal
 uses `git worktree remove` without --force. Branches stay.
 """
 
@@ -32,6 +34,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 RECORD = Path('.agents/stack.json')
@@ -289,18 +292,57 @@ def ignored_tops(entries):
     return sorted({name.split('/', 1)[0] for name in entries})
 
 
+def disposable_paths(path, main):
+    """The ignored files and folders in the worktree that .worktreedisposable of the main checkout names.
+
+    Patterns match with letter case, also on macOS. A file that a ! line names is kept, with each folder above it,
+    even under a folder that a pattern excludes, where gitignore would not bring the file back."""
+    patterns = main / '.worktreedisposable'
+    if not patterns.is_file():
+        return set()
+    listing = ['-c', 'core.ignorecase=false', 'ls-files', '-z', '--others', '--ignored']
+    done = git(*listing, f'--exclude-from={patterns}', '--directory', cwd=path)
+    found = {name.rstrip('/') for name in done.stdout.split('\0') if name}
+    kept = [line[1:] for line in patterns.read_text(errors='replace').splitlines() if line.startswith('!')]
+    if kept and found:
+        # Ask git which files the ! lines name, as plain patterns, through a pattern file outside the worktree.
+        with tempfile.NamedTemporaryFile('w', suffix='.patterns', delete=False) as handle:
+            handle.write('\n'.join(kept) + '\n')
+        try:
+            named = git(*listing, f'--exclude-from={handle.name}', cwd=path).stdout
+        finally:
+            os.unlink(handle.name)
+        for name in filter(None, named.split('\0')):
+            parts = Path(name).parts
+            found -= {Path(*parts[:end]).as_posix() for end in range(1, len(parts) + 1)}
+    return found
+
+
+def disposable(relative, paths):
+    """True when the path, or a folder above it, is in paths."""
+    parts = Path(relative).parts
+    return any(Path(*parts[:end]).as_posix() in paths for end in range(1, len(parts) + 1))
+
+
 def setup_only(path, main, entries):
-    """True when each ignored file is a link of .worktreelink, or a copy of .worktreeinclude that nobody changed."""
+    """True when each ignored file is a link of .worktreelink, a copy of .worktreeinclude that nobody changed, or a
+    file that .worktreedisposable names."""
     links = {main / relative for relative in link_paths(main)}
     included = set(include_files(main))
+    remade = disposable_paths(path, main)
     for name in entries:
         item = path / name
+        # A whole folder that .worktreedisposable names, such as .venv, needs no walk through its files.
+        if disposable(name, remade):
+            continue
         if item.is_symlink() and Path(os.readlink(item)) in links:
             continue
         files = [item] if not item.is_dir() or item.is_symlink() else [
             Path(folder) / file for folder, _, names in os.walk(item) for file in names]
         for file in files:
             relative = file.relative_to(path).as_posix()
+            if disposable(relative, remade):
+                continue
             source = main / relative
             if relative not in included or file.is_symlink() or not source.is_file() or not filecmp.cmp(
                     source, file, shallow=False):
@@ -351,7 +393,8 @@ def survey(cwd, min_age, with_ignored=False):
             entry['stays'] = 'its commits are on no branch; git branch NAME keeps them'
         elif not with_ignored and not setup_only(path, main['path'], entries_ignored):
             entry['state'] += ', merged'
-            entry['stays'] = 'it has ignored files that setup did not put there; --with-ignored removes them too'
+            entry['stays'] = ('it has ignored files that setup did not put there and .worktreedisposable does not name; '
+                              '--with-ignored removes them too')
         else:
             entry['state'] += ', merged'
             entry['stays'] = None

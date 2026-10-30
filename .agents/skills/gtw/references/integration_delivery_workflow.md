@@ -202,16 +202,29 @@ report the blocker. Keep persistent integration branches, stack parents with
 dependents, primary branches, and user-retained
 worktrees intact. Record what was removed and what remains.
 
-`just worktrees` lists every worktree with its state: clean or dirty, merged
-into the base branch or its branch on origin, and the ignored files that a
-removal deletes. `just worktrees-prune` removes each worktree that is clean,
-merged and idle for two hours, with ordinary `git worktree remove`. Merged
-means ancestry, or that `git merge-tree` of the worktree into the base leaves
-the base tree unchanged, so a rebase or squash counts and a revert does not.
-It keeps locked worktrees, the one it runs in, a detached worktree whose
-commits are on no branch, and a worktree with ignored files that setup did not
-put there (`--with-ignored` removes those too). It keeps all branches. It does not check ownership, so
-an agent runs it only when the user asks, after `just worktrees-prune --dry-run`.
+`just worktrees` lists every worktree with its state. The state tells whether
+the worktree is clean or dirty, and whether it is merged into the base branch
+or its branch on origin. The list also names the ignored files that a removal
+deletes.
+
+`just worktrees-prune` removes each worktree that is clean, merged
+and idle for two hours, with ordinary `git worktree remove`. A worktree is
+merged when the base has its commits. It is also merged when `git merge-tree`
+of the worktree into the base leaves the base tree unchanged. So a rebase or
+squash counts, and a revert does not.
+
+Prune keeps these worktrees:
+
+- a locked worktree;
+- the worktree it runs in;
+- a detached worktree whose commits are on no branch;
+- a worktree with ignored files that setup did not put there.
+  `--with-ignored` removes those too.
+
+Ignored files that `.worktreedisposable` names, such as `.venv/`, can be made
+again, so they do not keep a worktree. Prune keeps all branches. It does not
+check ownership, so an agent runs it only when the user asks, after
+`just worktrees-prune --dry-run`.
 
 ## References
 

@@ -236,7 +236,9 @@ The worktree commands:
 - `just worktrees-prune` removes each worktree that is clean, merged and idle
   for 2 hours, with `git worktree remove` and no `--force`. Branches stay. A
   worktree with ignored files that setup did not put there, such as outputs,
-  stays unless you pass `--with-ignored`. Run it only when the user asks. Show
+  stays unless you pass `--with-ignored`. Ignored files that
+  `.worktreedisposable` names, such as `.venv/` and `__pycache__/`, can be
+  made again, so they do not keep a worktree. Run it only when the user asks. Show
   `just worktrees-prune --dry-run` first.
 
 In a project that jnterfaces did not start, these recipes are missing. Run
