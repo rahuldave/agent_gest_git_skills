@@ -14,7 +14,7 @@ Use the rest only when you need reference material:
 - `protocol_flows.md`: agentic Just packet flow guide and lab map for
   `AGENT_TASK v1`, `AGENT_RESULT v1`, recursive results, and
   `AGENT_TASK_DRAFT v1` with the standard `g*` skills.
-- `live_protocol_flow_transcript_2026-06-14.md`: real parent/subagent protocol
+- `../notes/live_protocol_flow_transcript_2026-06-14.md`: real parent/subagent protocol
   transcript with validation failures, corrections, recursive refusal, draft
   promotion, and final validator output.
 - `just_command_contract.md`: a pointer. The Justfile command contract moved
@@ -28,7 +28,7 @@ Use the rest only when you need reference material:
 - `gsu_language_profile_labs.md`: live local end-to-end setup labs for the
   Python, TypeScript, Go, and Rust setup/profile templates. These are command
   contract profiles, not language reasoning skills.
-- `live_gitbutler_tutorial_transcript_2026-05-07.md`: historical live GitHub
+- `../notes/live_gitbutler_tutorial_transcript_2026-05-07.md`: historical live GitHub
   transcript for the four Git/GitButler tutorial examples.
 
 The beginner tutorial is the source of truth for the supported review shapes:

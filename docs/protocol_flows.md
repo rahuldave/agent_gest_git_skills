@@ -4,7 +4,7 @@ This guide is the agentic packet companion to the Git/GitButler tutorial. The
 main tutorial teaches review shape; this guide teaches what happens when a
 Just target emits structured agent work. For a real parent/subagent transcript
 with validation failures and corrections, read
-[`live_protocol_flow_transcript_2026-06-14.md`](live_protocol_flow_transcript_2026-06-14.md).
+[`live_protocol_flow_transcript_2026-06-14.md`](https://github.com/rahuldave/agent_gest_git_skills/blob/main/notes/live_protocol_flow_transcript_2026-06-14.md).
 
 These labs use the standard reusable skills in this repository: `gtw` routes
 work, `gim` implements, `gte` verifies, `grv` reviews, `gpa` checks PRs, and

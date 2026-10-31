@@ -7,6 +7,9 @@ This repository is meant to be mixed into other repos. It keeps the workflow
 version-controlled without making every project reinvent the same `gtw`, `gim`,
 `gpa`, `gcm`, and related skills.
 
+The documentation site is https://rahuldave.github.io/agent_gest_git_skills/. It is built from `docs/`.
+`just docs` previews it, and `just docs-publish` publishes it to the branch `gh-pages`.
+
 ## What Is Included
 
 - `.agents/skills/g*`: project-local agent skills for setup, Gest workflow routing,
@@ -24,7 +27,7 @@ version-controlled without making every project reinvent the same `gtw`, `gim`,
 - `docs/protocol_flows.md`: the agentic packet flow guide and lab map for
   standard `g*` skills plus `AGENT_TASK`, `AGENT_RESULT`, recursive result,
   and task-draft validation.
-- `docs/live_protocol_flow_transcript_2026-06-14.md`: real live LLM transcript
+- `notes/live_protocol_flow_transcript_2026-06-14.md`: real live LLM transcript
   for plain, recursive, unsafe, draft, promotion, and worker result flows.
 - `docs/*.md`: reference docs and setup examples for users who need details.
 - `docs/integration_delivery_workflow.md`: branch roles, adversarial review,
