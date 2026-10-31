@@ -1,0 +1,775 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.4"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Gest-Codex Workflow – agent_gest_git_skills</title><link rel="stylesheet" href="site_libs/themes/cosmo.min.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/themes/darkly.min.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="site_libs/smalldocs.css"><meta name="smalldocs:offset" content="./"><script src="site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="site_libs/fuse/fuse.min.js"></script><script src="site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Workflows</a></li><li class="breadcrumb-item"><a href="gest_codex_workflow.html">Gest-Codex Workflow</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git And GitButler Tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-Commands Cheat Sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gest_codex_workflow.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Gest-Codex Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag Classification And Dependency Impact Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 Workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript Hello World Lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU Language Profile Labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#core-model" id="toc-core-model" class="nav-link" data-scroll-target="#core-model">Core Model</a></li><li><a href="#branch-stack-and-worktree-policy" id="toc-branch-stack-and-worktree-policy" class="nav-link" data-scroll-target="#branch-stack-and-worktree-policy">Branch, Stack, And Worktree Policy</a></li><li><a href="#task-hierarchy" id="toc-task-hierarchy" class="nav-link" data-scroll-target="#task-hierarchy">Task Hierarchy</a></li><li><a href="#classification" id="toc-classification" class="nav-link" data-scroll-target="#classification">Classification</a></li><li><a href="#specs" id="toc-specs" class="nav-link" data-scroll-target="#specs">Specs</a></li><li><a href="#github-promotion" id="toc-github-promotion" class="nav-link" data-scroll-target="#github-promotion">GitHub Promotion</a></li><li><a href="#tag-and-dependency-impact" id="toc-tag-and-dependency-impact" class="nav-link" data-scroll-target="#tag-and-dependency-impact">Tag And Dependency Impact</a></li><li><a href="#testing-strategy" id="toc-testing-strategy" class="nav-link" data-scroll-target="#testing-strategy">Testing Strategy</a></li><li><a href="#adversarial-review" id="toc-adversarial-review" class="nav-link" data-scroll-target="#adversarial-review">Adversarial Review</a></li><li><a href="#tags" id="toc-tags" class="nav-link" data-scroll-target="#tags">Tags</a></li><li><a href="#completion-notes" id="toc-completion-notes" class="nav-link" data-scroll-target="#completion-notes">Completion Notes</a></li><li><a href="#commit-cadence" id="toc-commit-cadence" class="nav-link" data-scroll-target="#commit-cadence">Commit Cadence</a></li><li><a href="#checkpoint-hygiene" id="toc-checkpoint-hygiene" class="nav-link" data-scroll-target="#checkpoint-hygiene">Checkpoint Hygiene</a></li><li><a href="#template-sync" id="toc-template-sync" class="nav-link" data-scroll-target="#template-sync">Template Sync</a></li><li><a href="#iterations-and-phases" id="toc-iterations-and-phases" class="nav-link" data-scroll-target="#iterations-and-phases">Iterations And Phases</a></li><li><a href="#parallel-work" id="toc-parallel-work" class="nav-link" data-scroll-target="#parallel-work">Parallel Work</a></li><li><a href="#serialization-and-storage" id="toc-serialization-and-storage" class="nav-link" data-scroll-target="#serialization-and-storage">Serialization And Storage</a></li><li><a href="#deferred-hooks" id="toc-deferred-hooks" class="nav-link" data-scroll-target="#deferred-hooks">Deferred Hooks</a></li><li><a href="#skill-family" id="toc-skill-family" class="nav-link" data-scroll-target="#skill-family">Skill Family</a></li><li><a href="#stage-responsibilities" id="toc-stage-responsibilities" class="nav-link" data-scroll-target="#stage-responsibilities">Stage Responsibilities</a><ul><li><a href="#gtw" id="toc-gtw" class="nav-link" data-scroll-target="#gtw">GTW</a></li><li><a href="#gbs" id="toc-gbs" class="nav-link" data-scroll-target="#gbs">GBS</a></li><li><a href="#gsp" id="toc-gsp" class="nav-link" data-scroll-target="#gsp">GSP</a></li><li><a href="#gpl" id="toc-gpl" class="nav-link" data-scroll-target="#gpl">GPL</a></li><li><a href="#gis" id="toc-gis" class="nav-link" data-scroll-target="#gis">GIS</a></li><li><a href="#gpr" id="toc-gpr" class="nav-link" data-scroll-target="#gpr">GPR</a></li><li><a href="#gim" id="toc-gim" class="nav-link" data-scroll-target="#gim">GIM</a></li><li><a href="#gor" id="toc-gor" class="nav-link" data-scroll-target="#gor">GOR</a></li><li><a href="#grv" id="toc-grv" class="nav-link" data-scroll-target="#grv">GRV</a></li><li><a href="#gfm" id="toc-gfm" class="nav-link" data-scroll-target="#gfm">GFM</a></li><li><a href="#gte" id="toc-gte" class="nav-link" data-scroll-target="#gte">GTE</a></li><li><a href="#gdo" id="toc-gdo" class="nav-link" data-scroll-target="#gdo">GDO</a></li><li><a href="#gpa" id="toc-gpa" class="nav-link" data-scroll-target="#gpa">GPA</a></li><li><a href="#gcm" id="toc-gcm" class="nav-link" data-scroll-target="#gcm">GCM</a></li></ul></li><li><a href="#project-defaults" id="toc-project-defaults" class="nav-link" data-scroll-target="#project-defaults">Project Defaults</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/gest_codex_workflow.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Workflows</a></li><li class="breadcrumb-item"><a href="gest_codex_workflow.html">Gest-Codex Workflow</a></li></ol></nav><div class="quarto-title"><h1 class="title">Gest-Codex Workflow</h1></div><div class="quarto-title-meta"></div></header><p>Last updated: 2026-09-25.</p>
+<p>Read <a href="integration_delivery_workflow.html">Integration branches, review, and delivery</a>
+for the shared contract governing selected bases, independent review, CI, issues,
+installation and cleanup.</p>
+<p>This document defines how Codex should use Gest, GitHub, and the local skill
+family while working in a Gest-tracked repository. The goal is to preserve
+creative flow without losing a durable task tree.</p>
+<section id="core-model" class="level2">
+<h2 class="anchored" data-anchor-id="core-model">Core Model</h2>
+<p>Every substantial request becomes Gest-tracked work. The tracker records both
+durable product structure and the concrete work done in a session.</p>
+<p>There are four distinct concepts:</p>
+<ul>
+<li><strong>GitHub issue</strong>: external, human-visible durable intent.</li>
+<li><strong>Development iteration</strong>: a Gest execution plan for larger scoped work,
+usually attached to a GitHub issue and possibly spanning many sessions.</li>
+<li><strong>Session iteration</strong>: a Gest execution plan for the current chat/session,
+including exploratory or tactical tasks.</li>
+<li><strong>Outline task</strong>: a durable Gest task in the internal task tree. User requests
+should be parented under the best existing outline task, or a new outline task
+should be created when needed.</li>
+</ul>
+<p>The mode of an iteration does not determine whether work can run in parallel.
+Parallelism depends on task independence, file overlap, and risk.</p>
+<p>Workflow mode also does not determine how tests are written. Treat these as
+orthogonal axes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">workflow.kind=session|development
+test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
+test.scope=focused|regression|integration|browser|full
+review.depth=solo|adversarial|multi-agent
+language.profile=python|ruby|typescript|go|rust|mixed|unknown
+contract.source=agents-md|just-agent-contract|manual</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Session work may use <code>test-first</code> when the behavior is small and clear, such as
+a regression fix. Development work may begin with <code>characterization-first</code> or
+<code>exploratory</code> when the code needs to be understood before a good red/green loop
+exists. Development mode raises the expected breadth of verification and review;
+it does not force one test strategy.</p>
+</section>
+<section id="branch-stack-and-worktree-policy" class="level2">
+<h2 class="anchored" data-anchor-id="branch-stack-and-worktree-policy">Branch, Stack, And Worktree Policy</h2>
+<p>Mainline and persistent integration branches should stay integration-ready. Any Gest-tracked workflow that writes files
+should choose an explicit VCS execution mode before editing. Keep two decisions
+separate:</p>
+<ul>
+<li><strong>branch model</strong>: how the work will be reviewed and integrated</li>
+<li><strong>execution model</strong>: where agents are allowed to write</li>
+</ul>
+<p>Use branch names keyed to the highest meaningful Gest task for the current
+workstream, not necessarily the permanent product root:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">gest/&lt;task-id-short&gt;-two-word-summary
+session/&lt;task-id-short&gt;-two-word-summary</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Use these branch modes:</p>
+<ul>
+<li><code>session-branch</code>: one tactical session branch. Good for a small session leaf
+or several small related session edits under one parent.</li>
+<li><code>development-branch</code>: one durable branch for one coherent feature, bug, or
+workflow change. Multiple commits are fine when they are useful checkpoints.</li>
+<li><code>stacked-session</code>: multiple meaty dependent session slices that should remain
+separately reviewable.</li>
+<li><code>stacked-development</code>: multiple meaty dependent development slices that should
+become stacked branches or stacked PRs.</li>
+<li><code>parallel-worktrees</code>: multiple independent meaty slices worked at the same
+time in separate physical worktrees.</li>
+</ul>
+<p>Use these execution modes:</p>
+<ul>
+<li><code>main-worktree</code>: one agent writes in the current checkout.</li>
+<li><code>git-worktrees</code>: one git worktree per parallel task.</li>
+<li><code>gitbutler-workspace</code>: one sequential agent in the GitButler-managed
+workspace.</li>
+<li><code>jj-workspaces</code>: one jj workspace per parallel task, if the project is using
+jj.</li>
+</ul>
+<p>GitButler stacks are based on GitButler’s applied branch workspace model. That
+is good for sequential stack curation, but not for multiple agents writing to
+the same working tree. Therefore:</p>
+<ul>
+<li>never run parallel write agents in one <code>gitbutler-workspace</code></li>
+<li>never use GitButler parallel lanes as the agent parallelism primitive</li>
+<li>if work must be parallel, use physical <code>git-worktrees</code> first and integrate the
+results into a branch or stack afterward</li>
+<li>when working inside GitButler mode, use current <code>but</code> CLI writes such as
+<code>but branch new</code>, <code>but stage</code>, <code>but commit</code>, <code>but push</code>, and <code>but pr</code>; do not
+use raw <code>git commit</code>, <code>git switch</code>, <code>git checkout</code>, or branch-mutating git
+commands</li>
+</ul>
+<p>Default integration:</p>
+<ul>
+<li>simple branches: rebase onto the target branch, then fast-forward or squash
+when appropriate</li>
+<li>GitButler stacks: review/merge bottom-up; GitHub merge commits are acceptable
+for stack ergonomics when using GitButler-managed stacked PRs</li>
+<li>parallel worktrees: integrate each finished worktree intentionally before
+starting dependent follow-on work</li>
+</ul>
+<p>Record branch and execution state in Gest metadata when work is more than a
+tiny local edit:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">vcs.tool=git|git-butler|jj
+vcs.default_branch=&lt;repository-default&gt;
+vcs.integration_branch=&lt;selected-persistent-target&gt;
+vcs.base_branch=&lt;immediate-PR-base&gt;
+vcs.branch_role=topic|stack-topic|integration
+vcs.base_sha=&lt;sha&gt;
+vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-development|parallel-worktrees
+vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
+vcs.parallel_allowed=true|false
+vcs.branch=&lt;branch-name&gt;
+vcs.stack_root=&lt;branch-name&gt;
+vcs.stack_parent=&lt;branch-name&gt;
+vcs.stack_index=&lt;n&gt;
+vcs.workspace_path=&lt;absolute-path&gt;
+vcs.integration=fast-forward|squash|rebase|merge|stacked-pr|local-only
+vcs.owner_session=&lt;thread-or-agent-label&gt;
+vcs.write_scope=&lt;paths-or-subsystems&gt;
+test.strategy=test-first|test-after|characterization-first|exploratory|no-test-needed
+test.scope=focused|regression|integration|browser|full
+review.depth=solo|adversarial|multi-agent
+language.profile=python|ruby|typescript|go|rust|mixed|unknown
+contract.source=agents-md|just-agent-contract|manual</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>vcs.parallel_allowed=false</code> is required when
+<code>vcs.tool=git-butler</code> and <code>vcs.execution=gitbutler-workspace</code>. Parallel claims
+are allowed only when each writable task has a distinct physical
+<code>vcs.workspace_path</code>, such as separate git worktrees.</p>
+</section>
+<section id="task-hierarchy" class="level2">
+<h2 class="anchored" data-anchor-id="task-hierarchy">Task Hierarchy</h2>
+<p>Gest parent tasks are represented with native <code>child-of</code> / <code>parent-of</code> links.
+Tags help filtering, but links are the source of truth for hierarchy.</p>
+<p>Preferred depth:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">depth 0: product area / GitHub-scale initiative
+depth 1: coherent feature, subsystem, or workstream
+depth 2: concrete implementable task
+depth 3: tiny tactical subtask, only when useful</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every concrete implementation task should have a parent unless it is truly
+standalone. Long-lived outline parents may remain open across multiple sessions.
+Do not complete a parent just because one session leaf is done.</p>
+<p>For multi-stage substantial work, create a small GTW-owned task treelet. The
+parent represents the user request. Child leaves represent the stage commands
+that are separately verifiable, for example <code>gsp</code>, <code>gpl</code>, <code>gim</code>, <code>gfm</code>, <code>gte</code>,
+<code>gdo</code>, <code>grv</code>, <code>gpr</code>, and <code>gcm</code>. Do not create busywork tasks for trivial stages,
+but do record in the completion note which stages ran or were intentionally
+skipped.</p>
+</section>
+<section id="classification" class="level2">
+<h2 class="anchored" data-anchor-id="classification">Classification</h2>
+<p>Before editing files, Codex decides which class fits the request:</p>
+<ul>
+<li><strong>Session leaf only</strong>: tiny, tactical, unlikely to matter after the session.</li>
+<li><strong>Session leaf under existing outline</strong>: small work that clearly belongs under
+a durable product/workflow area.</li>
+<li><strong>New outline task plus session leaves</strong>: new durable area, but not yet worth a
+GitHub issue or formal spec.</li>
+<li><strong>Development iteration</strong>: larger scoped effort with acceptance criteria,
+phases, possible parallel work, likely GitHub visibility, or multi-session
+continuation.</li>
+</ul>
+<p>Promote session-shaped work to development when it needs a spec/design decision,
+spans multiple sessions, should be visible on GitHub, has multiple durable
+acceptance criteria, creates a reusable product area, or requires staged
+delivery.</p>
+</section>
+<section id="specs" class="level2">
+<h2 class="anchored" data-anchor-id="specs">Specs</h2>
+<p>Create a Gest spec artifact when the request needs product/design shaping before
+implementation. A spec is appropriate when:</p>
+<ul>
+<li>the desired behavior is not yet clear</li>
+<li>there are several approaches with trade-offs</li>
+<li>acceptance criteria need to be negotiated</li>
+<li>the work affects multiple systems or future workflows</li>
+<li>GitHub-visible development is likely</li>
+</ul>
+<p>When a spec is created, implementation should happen in follow-on Gest tasks.
+Do not bury implementation work inside the spec artifact itself.</p>
+</section>
+<section id="github-promotion" class="level2">
+<h2 class="anchored" data-anchor-id="github-promotion">GitHub Promotion</h2>
+<p>GitHub issues are for durable external visibility, not for every leaf task.
+Promote work to GitHub when it is user-visible, architecture-relevant,
+multi-session, release-worthy, or worth tracking outside the local Gest ledger.
+For development depth-1 parents and development iterations, the GitHub decision
+is mandatory: create or sync the issue with <code>gpr</code>, or record why the work is
+staying local.</p>
+<p>When a GitHub issue exists, store it as metadata on both the development
+iteration and the top-level outline task when applicable:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">github.issue=&lt;number&gt;
+github.url=&lt;url&gt;
+workflow.kind=development
+outline.root=&lt;gest-task-id&gt;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>GitHub is visibility. Gest remains the local execution ledger.</p>
+</section>
+<section id="tag-and-dependency-impact" class="level2">
+<h2 class="anchored" data-anchor-id="tag-and-dependency-impact">Tag And Dependency Impact</h2>
+<p>Before creating or splitting tasks, classify the request against the existing
+Gest tag vocabulary. Record <code>classification.tags.reviewed=true</code>,
+<code>classification.tags.new=&lt;comma-separated-new-tags&gt;</code>, and
+<code>impact.ast_grep.required=true|false</code> where relevant. Use
+<a href="tag_dependency_workflow.html">tag dependency workflow</a>.</p>
+<p>For code-facing work, use <code>ast-grep</code> to inspect semantic dependers of changed
+contracts. If a tag or dependency search reveals coupled surfaces, expand the
+current task or create/link child tasks before implementation is complete.</p>
+</section>
+<section id="testing-strategy" class="level2">
+<h2 class="anchored" data-anchor-id="testing-strategy">Testing Strategy</h2>
+<p><code>gte</code> owns both test design and test execution. For implementation tasks, choose
+and record a strategy before editing production code when practical:</p>
+<ul>
+<li><code>test-first</code>: write the smallest meaningful failing test, run it to confirm a
+useful red failure, implement, confirm green, refactor, then run broader
+checks.</li>
+<li><code>characterization-first</code>: capture current behavior before refactoring,
+migration, or risky semantic change.</li>
+<li><code>test-after</code>: implement first only when test-first is awkward or the expected
+behavior is still forming; add focused behavior coverage before completion.</li>
+<li><code>exploratory</code>: probe unknown APIs, UI affordances, or tooling; record why
+test-first does not fit and what later test boundary should be created.</li>
+<li><code>no-test-needed</code>: docs-only, planning-only, or pure workflow prose, with a
+concrete reason.</li>
+</ul>
+<p>For bug fixes, parsers, exports, imports, persistence, APIs, and shared
+contracts, prefer <code>test-first</code> or <code>characterization-first</code> unless there is a
+clear reason not to. Completion notes should include the strategy, focused
+commands, broader commands, and any deferred test boundary.</p>
+</section>
+<section id="adversarial-review" class="level2">
+<h2 class="anchored" data-anchor-id="adversarial-review">Adversarial Review</h2>
+<p><code>grv</code> is the local review aggregator and should become adversarial for
+non-trivial changes. It should review through distinct lenses:</p>
+<ul>
+<li>correctness and regression risk</li>
+<li>test adequacy, including whether new tests would fail on the old code</li>
+<li>Git/GitButler workflow safety</li>
+<li>docs, setup, and command-contract drift</li>
+<li>security, privacy, or data safety when relevant</li>
+<li>browser/UI behavior when relevant</li>
+<li>language/runtime idioms when the profile is known</li>
+</ul>
+<p>Default to independent read-only review sub-agents when sub-agents are
+available, authorized, and the lenses can be checked independently. If
+sub-agents are not used, Codex should still apply the lenses explicitly and
+record why local review was sufficient. Gest mutations and checkpoint decisions
+should remain centralized unless deliberately assigned.</p>
+<p>For reusable workflow changes, reviewers must preserve adapter boundaries:
+plain Git branches, GitButler branches/stacks, and physical git worktrees are
+different execution/review tools. Do not rewrite GitButler stack guidance into
+jj bookmark semantics or treat GitButler parallel lanes as agent isolation.</p>
+</section>
+<section id="tags" class="level2">
+<h2 class="anchored" data-anchor-id="tags">Tags</h2>
+<p>Use tags as filters, not as hierarchy.</p>
+<p>Core workflow tags:</p>
+<ul>
+<li><code>development</code></li>
+<li><code>session</code></li>
+<li><code>outline</code></li>
+<li><code>issue</code></li>
+<li><code>subissue</code></li>
+<li><code>github</code></li>
+<li><code>parent</code></li>
+<li><code>leaf</code></li>
+</ul>
+<p>Area tags:</p>
+<ul>
+<li><code>close-reading</code></li>
+<li><code>workflow</code></li>
+<li><code>ai</code></li>
+<li><code>annotations</code></li>
+<li><code>ingestion</code></li>
+<li><code>export</code></li>
+<li><code>search</code></li>
+<li><code>ui</code></li>
+<li><code>db</code></li>
+<li><code>docs</code></li>
+<li><code>testing</code></li>
+</ul>
+<p>Work-type tags:</p>
+<ul>
+<li><code>bug</code></li>
+<li><code>feature</code></li>
+<li><code>research</code></li>
+<li><code>design</code></li>
+<li><code>implementation</code></li>
+<li><code>verification</code></li>
+<li><code>cleanup</code></li>
+<li><code>regression</code></li>
+</ul>
+<p>Metadata should hold source-of-truth facts such as <code>workflow.kind</code>, <code>depth</code>,
+<code>github.issue</code>, <code>github.url</code>, <code>outline.root</code>, <code>parent_task</code>, and <code>vcs.*</code>
+branch/execution metadata.</p>
+</section>
+<section id="completion-notes" class="level2">
+<h2 class="anchored" data-anchor-id="completion-notes">Completion Notes</h2>
+<p>Task descriptions are intent: what the task was created to accomplish. Do not
+rewrite descriptions at completion just to record what happened.</p>
+<p>For non-trivial completed leaf tasks, add a Gest task note before marking the
+task done. Notes are first-class Gest data, appear in <code>gest task show</code> and the
+web timeline, and sync under <code>.gest/task/notes/</code>.</p>
+<p>Use this shape:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Done: &lt;one or two concrete sentences about what changed&gt;
+Verification: &lt;commands/checks run, or why verification was limited&gt;
+Follow-up: &lt;only if a real residual issue or next step remains&gt;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Command pattern:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">gest task note add &lt;task-id&gt; --agent codex --body <span class="st">&quot;Done: ...\nVerification: ...&quot;</span>
+gest task <span class="bu">complete</span> &lt;task-id&gt; --quiet</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Use metadata for machine-queryable facts, for example changed files, GitHub
+issue IDs, or verification command lists. Use notes for prose work logs. For
+tiny mechanical tasks, the status transition and final chat summary may be
+enough.</p>
+</section>
+<section id="commit-cadence" class="level2">
+<h2 class="anchored" data-anchor-id="commit-cadence">Commit Cadence</h2>
+<p>Committing is VCS hygiene, not a Gest task by itself. Do not create a Gest task
+whose only purpose is “make a commit” unless the Git history work is itself
+substantial, such as splitting a messy changeset or recovering from a bad
+history operation.</p>
+<p>Session-mode work should not auto-commit every small leaf. Commit session work
+when the user asks, when a coherent checkpoint would be useful, or when a
+long-lived parent/subtree reaches a stable point. Small exploratory tasks may
+stay uncommitted while the workflow is still moving.</p>
+<p>Session classification alone is not a sufficient reason to skip <code>gcm</code>. A
+verified slice is a commit-required checkpoint when it changes
+deployment/runtime configuration, persistence, migrations, schemas, public APIs,
+user-visible UI, reusable workflow material, publishable docs/templates, or a
+non-trivial multi-file changeset. After verification and review, run
+<code>git status --short --branch</code> before final response. If it shows Codex-owned
+changes and any commit-required trigger applies, route through <code>gcm</code> before
+handoff. If the worktree stays dirty intentionally, record the concrete
+no-commit reason in the Gest note and final response.</p>
+<p>Development-mode work should have stronger commit checkpoints:</p>
+<ul>
+<li>after a depth-1 feature/workstream or coherent depth-2 implementation subtree
+is complete and verified</li>
+<li>before switching to a substantially different product area</li>
+<li>before handing work to another agent/session</li>
+<li>after resolving a risky bug or migration where rollback clarity matters</li>
+<li>before pushing or syncing to a GitHub issue/PR</li>
+</ul>
+<p>In development mode, do not merely ask the user whether each slice should be
+committed. After completing and verifying a coherent depth-2 implementation
+leaf or tightly related set of leaves, make the commit judgment yourself. If the
+slice changes schema, persistence, query semantics, migrations, public APIs,
+user-visible UI, or non-trivial verification, prefer committing it before
+claiming the next implementation slice. Small design-only, exploratory, or
+strictly dependent leaves may stay uncommitted until they combine into the next
+coherent checkpoint.</p>
+<p>When committing a slice, derive the commit body from the completed Gest task
+notes: summarize <code>Done</code>, include <code>Verification</code>, mention real <code>Follow-up</code>
+items, and cite changed subsystems or files when that helps future bisecting.
+The commit message must not include Gest IDs. A future <code>git bisect</code> should land
+on a narrow layer such as schema/indexing, repository/query behavior, UI, or
+verification rather than a whole multi-layer feature.</p>
+<p>When a commit is appropriate, inspect status/diff, stage explicit files, and use
+<code>gcm</code>. Never use <code>git add .</code> by default. Never put Gest IDs in commit messages.
+Use GitHub issue footers only when the relevant Gest metadata contains a real
+GitHub issue and the commit semantically closes or references it.</p>
+<p>Every Codex-created commit needs a separate push/sync decision. Do not treat
+GitHub issue promotion as a substitute for <code>git push</code>. Before and after the
+commit, inspect <code>git status --short --branch</code>; if the branch has an upstream
+and the user has not asked for local-only work, push the verified checkpoint.
+If the branch has no upstream, set one with <code>git push -u origin &lt;branch&gt;</code> or
+the repo’s equivalent; “no upstream” is not a no-push reason. If the branch is
+still local or <code>ahead</code> at handoff, the checkpoint is incomplete unless a real
+push blocker is explicit in the task note/final summary.</p>
+<p>When Codex pushes a topic or stack branch, that push must be followed by a pull-request checkpoint: create or
+update the PR for the branch, run <code>gpa</code> on that PR, report the PR review
+findings/state to the user, and ask whether to merge. Only merge when the particular merge is already authorized; authorization
+persists across turns. For reusable workflow/template repo changes, push and PR creation are
+required unless blocked; record the exact blocker instead of leaving the branch
+only pushed.</p>
+<p>After a PR is merged, inspect the repository’s project instructions and command
+contract for deploy/release expectations. If the repo defines a deploy command
+for that kind of change, run it or record the exact blocker before handoff.</p>
+<p>Before final response for substantial work, run a dirty-worktree gate for each
+edited repo. A completed Gest task is not a substitute for a Git checkpoint. If
+there are Codex-owned changes and a commit-required checkpoint trigger applies,
+run <code>gcm</code> or explicitly document why no commit is being made.</p>
+</section>
+<section id="checkpoint-hygiene" class="level2">
+<h2 class="anchored" data-anchor-id="checkpoint-hygiene">Checkpoint Hygiene</h2>
+<p>At every durable checkpoint, run the project hygiene that keeps later agents
+oriented. Durable checkpoints include:</p>
+<ul>
+<li>any Git commit created by Codex</li>
+<li>closing a depth-1 task or product/workstream parent</li>
+<li>completing an iteration</li>
+<li>handoff after a substantial implementation session</li>
+</ul>
+<p>Checkpoint steps:</p>
+<ol>
+<li>Keep native task hierarchy and dependency links current. Gest maintains
+graphs automatically; inspect them as needed without an export checkpoint.</li>
+<li>For user-visible, architecture-relevant, multi-session, or release-worthy
+work, decide whether GitHub promotion is appropriate. For development
+depth-1 parents and development iterations, this decision is mandatory. Use
+<code>gpr</code> to create/update the GitHub issue and write <code>github.issue</code> /
+<code>github.url</code> metadata back to Gest, or record the explicit reason promotion
+was skipped in the task note or final summary.</li>
+<li>For every Codex-created commit, verify push state with
+<code>git status --short --branch</code>. If an upstream exists and the branch is
+ahead, push it or record the explicit local-only/blocker reason. Report the
+final branch relationship separately from the GitHub issue decision.</li>
+<li>If Codex pushed a topic or stack branch, create/update its PR, run <code>gpa</code>,
+report the PR review findings/state, and ask before merge unless the user
+already explicitly asked for that merge.</li>
+<li>For every code change, run an explicit review pass before task completion.
+Use <code>grv</code> or a code-review stance over the current diff/commit, then fix or
+record any findings before closing the leaf, parent, or iteration. Missing
+focused tests for changed callable code or APIs are review findings.</li>
+<li>Verify the final Gest status after closing the parent or iteration and report
+the selected base, commit hashes, push status, review status, and GitHub issue
+decision.</li>
+</ol>
+</section>
+<section id="template-sync" class="level2">
+<h2 class="anchored" data-anchor-id="template-sync">Template Sync</h2>
+<p>Reusable workflow changes should not live only in one target workspace. When
+changing the <code>g*</code> skills, <code>AGENTS.md</code> workflow guidance, Gest/Codex playbook, or
+reusable tools, copy the reusable parts into the
+version-controlled workflow template repository. Then check, commit, and push
+that repository. The template repo is the source for workflow material that
+should be mixed into other projects. Keep project-specific details out of the
+template repo.</p>
+</section>
+<section id="iterations-and-phases" class="level2">
+<h2 class="anchored" data-anchor-id="iterations-and-phases">Iterations And Phases</h2>
+<p>Iterations are execution plans. Phases are parallelism boundaries.</p>
+<p>Use a <strong>session iteration</strong> for current-session work, including creative
+experimentation. Use a <strong>development iteration</strong> for larger scoped work that may
+span sessions or map to GitHub.</p>
+<p>Do not hardcode every task to <code>--phase 1</code>. Assign phases deliberately:</p>
+<ul>
+<li>Phase 1: research, reproduction, or design</li>
+<li>Phase 2: implementation</li>
+<li>Phase 3: verification</li>
+<li>Phase 4: docs, publishing, or cleanup</li>
+</ul>
+<p>Tasks in the same phase must be independent enough to run concurrently. If one
+task blocks another, put them in different phases and add a <code>blocked-by</code> link.</p>
+</section>
+<section id="parallel-work" class="level2">
+<h2 class="anchored" data-anchor-id="parallel-work">Parallel Work</h2>
+<p>Parallel work can happen in session or development iterations. Decide based on
+the task graph, not the iteration kind.</p>
+<p>Use git worktrees/subagents when tasks are independent, code-touching, and risky
+to interleave in one working tree. Keep work local and sequential when tasks are
+tightly coupled, small, or dependent on immediate context.</p>
+<p>For parallel Gest orchestration:</p>
+<ol>
+<li>Claim tasks with <code>gest iteration next &lt;iteration-id&gt; --claim --agent &lt;name&gt;</code>.</li>
+<li>Create one git worktree per independent task when useful.</li>
+<li>Run implementation in each worktree.</li>
+<li>Merge or cherry-pick results before advancing to the next phase.</li>
+<li>Clean up worktrees after verification.</li>
+</ol>
+<p>Gest commands should be short and serialized where possible. In this workspace,
+local <code>.gest/</code> sync can make read-looking commands perform database writes.</p>
+</section>
+<section id="serialization-and-storage" class="level2">
+<h2 class="anchored" data-anchor-id="serialization-and-storage">Serialization And Storage</h2>
+<p>Current forked Gest builds from June 8, 2026 and later prefer project-local
+storage for local projects:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">&lt;project-root&gt;/.gest/gest.db</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is the expected path when the project has <code>.gest/</code> and the user has not
+set an explicit <code>database.url</code> or <code>storage.data_dir</code> override. In Codex, that
+usually avoids sandbox write failures because the SQLite file is inside the
+workspace writable root. Continue to serialize Gest commands because local sync
+and SQLite writes can still conflict within one workspace.</p>
+<p>Legacy or stock system Gest builds may still store the canonical data in:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">~/Library/Application Support/gest/gest.db</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For those builds, the <code>.gest/</code> directory is a local sync mirror. The database is
+the source of truth, but commands can import/export mirror changes. Debug output
+has shown <code>sync import</code> running before <code>gest task list</code>.</p>
+<p>Current SQLite pragmas observed locally:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">journal_mode=delete
+busy_timeout=0
+locking_mode=normal</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Before the project-local fork, local and global modes both used the same global
+database, so the readonly warning was not inherently a local-mode issue. The
+recommended legacy permission normalization is:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">chmod <span class="dv">755</span> ~/Library/Application<span class="sc">\ </span>Support/gest/
+chmod <span class="dv">644</span> ~/Library/Application<span class="sc">\ </span>Support/gest/gest.db</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Those permissions were already present locally. A non-escalated Codex run with
+<code>GEST_LOG__LEVEL=trace</code> reproduced <code>attempt to write a readonly database</code> during
+sync import, while the same trace run outside the sandbox did not. Treat that
+warning as likely environment/sandbox-related unless it also reproduces in a
+normal terminal.</p>
+<p>In Codex, the legacy failure happens because the canonical Gest database is
+outside the workspace writable roots. A command such as <code>gest task list</code> can
+still write before listing because local sync imports mirrored <code>.gest/</code> state
+into tables such as <code>authors</code>, <code>tags</code>, <code>tasks</code>, <code>relationships</code>,
+<code>transactions</code>, and <code>sync_digests</code>.</p>
+<p>Codex command policy:</p>
+<ul>
+<li>with the newer project-local fork, prefer <code>.gest/gest.db</code> and avoid sandbox
+escalation unless another path or command requires it</li>
+<li>with legacy or stock system Gest, run Gest mutations with <code>require_escalated</code>
+because they may need to write to the global database</li>
+<li>for read-looking Gest commands, retry with <code>require_escalated</code> if they emit
+<code>attempt to write a readonly database</code> or a sync-import readonly warning</li>
+<li>request or use a narrow approval prefix such as <code>[&quot;gest&quot;]</code></li>
+<li>keep Gest commands serialized even when escalated, except for deliberate
+<code>gest iteration next --claim</code> orchestration</li>
+</ul>
+<p>Therefore:</p>
+<ul>
+<li>do not run Gest commands in parallel during normal Codex work</li>
+<li>use <code>--json</code> and <code>--quiet</code> for parseable outputs</li>
+<li>verify state after any <code>database is locked</code> or sync warning before retrying</li>
+<li>when diagnosing storage, check <code>gest --version</code>, <code>gest config show</code>, and
+whether <code>.gest/gest.db</code> exists before assuming the global path is canonical</li>
+</ul>
+</section>
+<section id="deferred-hooks" class="level2">
+<h2 class="anchored" data-anchor-id="deferred-hooks">Deferred Hooks</h2>
+<p>The current workflow is intentionally skill-and-instruction driven. Do not add
+blocking hooks until the workflow has been used enough to see what actually
+helps and what gets in the way.</p>
+<p>Hook ideas to revisit:</p>
+<ul>
+<li><strong>Session start</strong>: inject a concise reminder of <code>gtw</code>, the <code>g*</code> skill family,
+session/development classification, outline parenting, GitHub promotion, and
+serialized Gest commands.</li>
+<li><strong>Pre-edit</strong>: inject project-local style and testing guidance before source
+edits, for example the project’s code-style and testing guides, and
+project-specific invariants.</li>
+<li><strong>Pre-commit</strong>: inject commit conventions, remind Codex never to include Gest
+IDs in commit messages, and only use GitHub issue footers when metadata
+exists.</li>
+<li><strong>Gest safety</strong>: warn or block malformed Gest commands, such as creating a
+<code>subissue</code> without a <code>child-of</code> parent or running multiple Gest writes in
+parallel.</li>
+<li><strong>Worklog/session end</strong>: capture concise session summaries or task notes when
+a long session ends.</li>
+</ul>
+<p>Questions to answer after using the workflow:</p>
+<ul>
+<li>Which reminders do agents actually forget?</li>
+<li>Which checks are better as hooks versus <code>gtw</code> instructions?</li>
+<li>Should hooks live in project-local config, global Codex config, or both?</li>
+<li>Should hooks only inject context, or should any of them block commands?</li>
+<li>Do parallel worktrees need hook support for per-worktree context?</li>
+</ul>
+</section>
+<section id="skill-family" class="level2">
+<h2 class="anchored" data-anchor-id="skill-family">Skill Family</h2>
+<p>User-invoked Gest skills use three-letter names beginning with <code>g</code>.</p>
+<ul>
+<li><code>gtw</code>: Gest Track Work. Router/default skill for substantial work.</li>
+<li><code>gbs</code>: Gest Brainstorm. Explore ideas and decide whether a spec or outline is
+needed.</li>
+<li><code>gsu</code>: Gest Setup. Bootstrap or refresh tool choices, installs, ignore rules,
+command contracts, Justfile targets, and project setup docs.</li>
+<li><code>gsp</code>: Gest Spec. Draft or update a Gest spec artifact.</li>
+<li><code>gpl</code>: Gest Plan. Decompose a spec or outline task into tasks, phases, links,
+and iterations.</li>
+<li><code>gis</code>: Gest Issue. Create or update durable Gest outline tasks.</li>
+<li><code>gpr</code>: Gest Promote. Promote or sync durable Gest work with GitHub issues.</li>
+<li><code>gim</code>: Gest Implement. Implement one concrete Gest task end to end.</li>
+<li><code>gor</code>: Gest Orchestrate. Execute a phased iteration, sequentially or in
+parallel depending on task independence.</li>
+<li><code>grv</code>: Gest Review. Review the current changeset.</li>
+<li><code>gfm</code>: Gest Format. Run formatting, linting, typechecking, compile/static
+checks, and diff hygiene.</li>
+<li><code>gte</code>: Gest Test. Run unit, regression, smoke, API, and integration tests.</li>
+<li><code>gdo</code>: Gest Docs. Check, create, update, and verify user-facing,
+developer-facing, and in-code docs affected by the task.</li>
+<li><code>gpa</code>: Gest PR Accept. Review and accept GitHub pull requests as the
+GitHub-facing checkpoint of Gest-tracked workstreams.</li>
+<li><code>gcm</code>: Gest Commit. Create a Git commit tied to GitHub metadata when present.</li>
+</ul>
+<p>Optional later skills:</p>
+<ul>
+<li><code>gcl</code>: Gest Changelog.</li>
+<li><code>gdc</code>: Gest Doc Code.</li>
+<li><code>gps</code>: Gest Promote Spec.</li>
+</ul>
+<p><code>gtw</code> should route to these stages conceptually. The user may invoke any stage
+directly, but ordinary requests can simply use <code>gtw</code> or natural language.</p>
+</section>
+<section id="stage-responsibilities" class="level2">
+<h2 class="anchored" data-anchor-id="stage-responsibilities">Stage Responsibilities</h2>
+<section id="gtw" class="level3">
+<h3 class="anchored" data-anchor-id="gtw">GTW</h3>
+<ol>
+<li>Inspect existing Gest state.</li>
+<li>Classify request as session/development and spec/no-spec.</li>
+<li>Choose or create the best outline parent.</li>
+<li>Decide tags, metadata, and depth.</li>
+<li>Decide if parallel work is useful.</li>
+<li>Decide the branch model and execution model, recording <code>vcs.*</code> metadata for
+non-trivial writes.</li>
+<li>Create/claim concrete leaf tasks before edits. For multi-stage work, create
+a treelet with child leaves for separately verifiable stage commands.</li>
+<li>Route to the appropriate stage skill.</li>
+<li>Complete leaf tasks after verification and report IDs.</li>
+</ol>
+</section>
+<section id="gbs" class="level3">
+<h3 class="anchored" data-anchor-id="gbs">GBS</h3>
+<ol>
+<li>Explore existing code/docs/Gest context.</li>
+<li>Ask clarifying questions when necessary.</li>
+<li>Propose approaches and trade-offs.</li>
+<li>Decide whether to create a spec, issue, plan, or session leaf.</li>
+</ol>
+</section>
+<section id="gsp" class="level3">
+<h3 class="anchored" data-anchor-id="gsp">GSP</h3>
+<ol>
+<li>Draft problem, scope, proposed behavior, acceptance criteria, and open
+questions.</li>
+<li>Review with the user when the direction is not settled.</li>
+<li>Save as a Gest artifact tagged <code>spec</code>.</li>
+<li>Link the artifact to outline tasks when appropriate.</li>
+</ol>
+</section>
+<section id="gpl" class="level3">
+<h3 class="anchored" data-anchor-id="gpl">GPL</h3>
+<ol>
+<li>Read a spec, outline task, or GitHub-backed task.</li>
+<li>Decide single-task vs multi-task decomposition.</li>
+<li>Create depth 1/depth 2 tasks.</li>
+<li>Assign explicit phases and blocking links.</li>
+<li>Create or update session/development iterations.</li>
+<li>Report parallelization opportunities.</li>
+</ol>
+</section>
+<section id="gis" class="level3">
+<h3 class="anchored" data-anchor-id="gis">GIS</h3>
+<ol>
+<li>Draft user story, context, and acceptance criteria.</li>
+<li>Create or update a durable Gest task.</li>
+<li>Apply <code>outline</code>, <code>issue</code>, or <code>subissue</code> tags.</li>
+<li>Link with <code>child-of</code> and set depth metadata.</li>
+</ol>
+</section>
+<section id="gpr" class="level3">
+<h3 class="anchored" data-anchor-id="gpr">GPR</h3>
+<ol>
+<li>Read the task/iteration/spec to promote.</li>
+<li>Sanitize internal details.</li>
+<li>Draft GitHub issue body.</li>
+<li>Ask user confirmation before <code>gh issue create</code> or <code>gh issue edit</code>.</li>
+<li>Store GitHub metadata on Gest entities.</li>
+</ol>
+</section>
+<section id="gim" class="level3">
+<h3 class="anchored" data-anchor-id="gim">GIM</h3>
+<ol>
+<li>Read and claim one concrete task.</li>
+<li>Split it first if it is too broad.</li>
+<li>Confirm the task’s branch/execution mode before editing. In GitButler mode,
+use only <code>but</code> writes and keep execution sequential unless a physical
+worktree was assigned.</li>
+<li>Implement minimal scoped changes.</li>
+<li>Run <code>gfm</code> for mechanical checks.</li>
+<li>Run <code>gte</code> for tests; changed callable code and APIs need focused tests.</li>
+<li>Run <code>gdo</code> when user-facing docs, developer-facing docs, or in-code docs are
+affected.</li>
+<li>Run <code>grv</code> after every code change.</li>
+<li>Complete the leaf task and add parent notes/status updates.</li>
+</ol>
+</section>
+<section id="gor" class="level3">
+<h3 class="anchored" data-anchor-id="gor">GOR</h3>
+<ol>
+<li>Read iteration status and graph.</li>
+<li>Group tasks by phase.</li>
+<li>Decide sequential vs parallel execution per phase.</li>
+<li>Block shared GitButler workspace parallelism. If <code>vcs.tool=git-butler</code> and
+<code>vcs.execution=gitbutler-workspace</code>, run tasks sequentially even when they
+are in the same phase.</li>
+<li>Use physical git worktrees/subagents for independent tasks when useful, and
+record each <code>vcs.workspace_path</code>.</li>
+<li>Integrate results into the selected branch or stack and advance phases.</li>
+<li>Retire only worker-owned physical worktrees after the ownership, dirty-file,
+integration and dependency checks in the integration-delivery policy;
+report any retained worktrees.</li>
+</ol>
+</section>
+<section id="grv" class="level3">
+<h3 class="anchored" data-anchor-id="grv">GRV</h3>
+<p>Review the current changeset for correctness, safety, regressions, style, and
+test coverage. Findings come first. Run after every code change before task
+completion.</p>
+</section>
+<section id="gfm" class="level3">
+<h3 class="anchored" data-anchor-id="gfm">GFM</h3>
+<p>Run formatting, linting, typechecking, compile/static checks, and diff hygiene.
+Fix mechanical issues. Do not use <code>gfm</code> as a substitute for tests.</p>
+</section>
+<section id="gte" class="level3">
+<h3 class="anchored" data-anchor-id="gte">GTE</h3>
+<p>Run unit tests, API regression tests, smoke checks, and integration/browser
+checks appropriate to the change. Browser spot checks are exploratory
+implementation verification; durable browser integration tests are rerunnable
+scripts or tests. Add tests when changed callable code lacks focused coverage.</p>
+</section>
+<section id="gdo" class="level3">
+<h3 class="anchored" data-anchor-id="gdo">GDO</h3>
+<p>Check whether user-facing docs, developer-facing docs, or in-code docs are
+needed, then create or update them. Prefer documented and typed code when it
+clarifies callable behavior, public contracts, non-obvious domain logic, or
+future maintenance.</p>
+</section>
+<section id="gpa" class="level3">
+<h3 class="anchored" data-anchor-id="gpa">GPA</h3>
+<p>Review a GitHub pull request as an integration checkpoint. Gather PR metadata,
+diff, commits, checks, review state, mergeability, branch state, and related
+Gest tasks/artifacts/iterations. Produce findings first, then a Gest context
+appendix, human review checklist, merge recommendation, and post-merge
+bookkeeping plan. If the PR body lacks Gest context, offer to update it before
+approval or merge.</p>
+<p>Post-merge bookkeeping must restore a consistent local state, not merely mark
+the GitHub PR merged. Before merge, verify the PR branch actually contains the
+intended changes with <code>gh pr diff</code> or <code>git show --stat</code>; empty GitButler
+commits and zero-change <code>WIP Assignments</code> commits are red flags. After merge,
+plain-Git workstreams should fetch/prune remotes, update the selected base in
+an appropriate clean checkout when available, verify it against
+<code>origin/&lt;base&gt;</code>, and delete only verified merged temporary topic branches with
+no worktree or stack dependents. They must preserve the separately recorded
+primary checkout branch even when the PR base is a different integration
+branch.
+Preserve persistent integration branches regardless of name. Retire only
+worker-owned physical worktrees after confirming their changes reached the
+intended target, all valuable files are accounted for and no task/stack depends
+on them; see the integration-delivery policy. Confirm remaining PRs belong to
+intentional follow-on work. GitButler workstreams must not
+run raw branch-mutating Git while GitButler owns the workspace; run
+<code>but teardown</code> first when the stack is done, then synchronize the base branch in
+normal Git mode. Do not leave the user’s terminal on <code>gitbutler/workspace</code>
+unless active GitButler work is explicitly continuing.</p>
+</section>
+<section id="gcm" class="level3">
+<h3 class="anchored" data-anchor-id="gcm">GCM</h3>
+<p>Inspect status/diff/log, draft a conventional commit, ask for confirmation when
+needed, stage explicit files, and commit. In GitButler-managed workspaces, use
+<code>but status</code>, <code>but diff</code>, <code>but branch list</code>, <code>but stage</code>, and <code>but commit</code>
+instead of raw git writes. Include GitHub issue footers only when metadata
+exists. Never include Gest IDs in commit messages.</p>
+</section>
+</section>
+<section id="project-defaults" class="level2">
+<h2 class="anchored" data-anchor-id="project-defaults">Project Defaults</h2>
+<p>Replace this section in each target repository with the project-specific command
+contract. Prefer <code>just</code> targets when present, and document target arguments.
+When creating or changing Just recipes, consult:</p>
+<ul>
+<li>Just dependencies: https://just.systems/man/en/dependencies.html</li>
+<li>Just skill reference: https://raw.githubusercontent.com/casey/just/refs/heads/master/skills/just/SKILL.md</li>
+</ul>
+<p>For Just, dependency order is meaningful: dependencies run before the recipe
+that depends on them, and in the listed order. Prefer native Just dependencies
+for ordered recipe composition, such as
+<code>verify: lint typecheck static test smoke diff-check</code>, instead of recursively
+calling <code>just</code> inside a recipe. Dependencies with the same arguments run once
+per <code>just</code> invocation. This is not Make-style file freshness analysis.</p>
+<p>Common checks include:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">&lt;format <span class="bu">command</span> or just fmt <span class="op">[</span>path<span class="op">]</span>&gt;
+&lt;lint <span class="bu">command</span> or just lint <span class="op">[</span>path<span class="op">]</span>&gt;
+&lt;typecheck <span class="bu">command</span> or just typecheck&gt;
+&lt;compile/static <span class="bu">command</span> or just static&gt;
+&lt;build <span class="bu">command</span> or just build&gt;
+&lt;focused <span class="bu">test</span> <span class="bu">command</span> or just <span class="bu">test</span> <span class="op">[</span>target<span class="op">]</span>&gt;
+&lt;smoke <span class="bu">command</span> or just smoke&gt;
+git diff --check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Recommended test layout:</p>
+<ul>
+<li><code>tests/</code>: inner-function and focused callable-code unit tests.</li>
+<li><code>regression_tests/</code>: bug and API regression tests.</li>
+<li><code>integration_tests/</code>: end-to-end and browser-agent-driven checks, preferably
+as rerunnable shell scripts for repeated UI flows.</li>
+</ul>
+</section>
+<nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="integration_delivery_workflow.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Integration branches, review, and delivery</span></a></div><div class="nav-page nav-page-next"><a href="tag_dependency_workflow.html" class="pagination-link"><span class="nav-page-text">Tag Classification And Dependency Impact Workflow</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>

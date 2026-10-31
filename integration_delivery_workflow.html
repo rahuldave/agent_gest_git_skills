@@ -1,0 +1,213 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.4"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Integration branches, review, and delivery – agent_gest_git_skills</title><link rel="stylesheet" href="site_libs/themes/cosmo.min.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/themes/darkly.min.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="site_libs/smalldocs.css"><meta name="smalldocs:offset" content="./"><script src="site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="site_libs/fuse/fuse.min.js"></script><script src="site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Workflows</a></li><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Integration branches, review, and delivery</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git And GitButler Tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-Commands Cheat Sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="integration_delivery_workflow.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag Classification And Dependency Impact Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 Workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript Hello World Lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU Language Profile Labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#branch-roles" id="toc-branch-roles" class="nav-link" data-scroll-target="#branch-roles">Branch roles</a></li><li><a href="#dependent-stacks-and-parallel-work" id="toc-dependent-stacks-and-parallel-work" class="nav-link" data-scroll-target="#dependent-stacks-and-parallel-work">Dependent stacks and parallel work</a></li><li><a href="#independent-adversarial-review" id="toc-independent-adversarial-review" class="nav-link" data-scroll-target="#independent-adversarial-review">Independent adversarial review</a></li><li><a href="#ci-and-delivery-contract" id="toc-ci-and-delivery-contract" class="nav-link" data-scroll-target="#ci-and-delivery-contract">CI and delivery contract</a></li><li><a href="#issues-and-task-completion" id="toc-issues-and-task-completion" class="nav-link" data-scroll-target="#issues-and-task-completion">Issues and task completion</a></li><li><a href="#installation-and-resource-ownership" id="toc-installation-and-resource-ownership" class="nav-link" data-scroll-target="#installation-and-resource-ownership">Installation and resource ownership</a></li><li><a href="#merge-and-cleanup" id="toc-merge-and-cleanup" class="nav-link" data-scroll-target="#merge-and-cleanup">Merge and cleanup</a><ul><li><a href="#retire-an-owned-physical-worktree" id="toc-retire-an-owned-physical-worktree" class="nav-link" data-scroll-target="#retire-an-owned-physical-worktree">Retire an owned physical worktree</a></li></ul></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/integration_delivery_workflow.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Workflows</a></li><li class="breadcrumb-item"><a href="integration_delivery_workflow.html">Integration branches, review, and delivery</a></li></ol></nav><div class="quarto-title"><h1 class="title">Integration branches, review, and delivery</h1></div><div class="quarto-title-meta"></div></header><section id="branch-roles" class="level2">
+<h2 class="anchored" data-anchor-id="branch-roles">Branch roles</h2>
+<p>The repository default branch (often <code>main</code>) is its normal mainline. A persistent
+integration branch gathers an experiment or release line across many tasks.
+Both receive changes through reviewed pull requests. A temporary topic branch
+contains one reviewable change; a stack contains dependent topic branches.
+Branch roles are explicit policy, never inferred from a name or prefix.</p>
+<p>Before editing, resolve the repository default branch, the user’s selected
+integration target, and its current remote SHA. Project instructions may already
+select the target. Create the topic from that target and direct its PR back
+there. Record:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">vcs.default_branch=&lt;repository default&gt;
+vcs.integration_branch=&lt;persistent target&gt;
+vcs.base_branch=&lt;immediate PR base&gt;
+vcs.base_sha=&lt;resolved starting base commit&gt;
+vcs.branch_role=topic|stack-topic|integration
+vcs.branch=&lt;work branch&gt;
+vcs.integration_sha=&lt;resolved integration commit&gt;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For an ordinary topic, base and integration branch are equal. Do not default to
+<code>main</code> merely because it is the repository default. Keep both mainline and
+persistent integration branches buildable; do not develop by pushing work
+directly to either. Creating a new persistent branch at an existing reviewed
+commit establishes a target; it does not require an empty PR. Publishing that
+branch does not imply opening a PR from the whole experiment into mainline.
+Promotion from experiment to mainline is a separately scoped and authorized PR.</p>
+<p>The project’s branch prefix takes precedence over examples in these skills.
+Internal worker branches may be integrated into the owning topic locally and
+retired without separate remote PRs when their changes are included in that
+topic’s review. Record this integration; never use it to bypass the target PR.</p>
+</section>
+<section id="dependent-stacks-and-parallel-work" class="level2">
+<h2 class="anchored" data-anchor-id="dependent-stacks-and-parallel-work">Dependent stacks and parallel work</h2>
+<p>Use a normal topic PR for a coherent change. Use a stack when dependent slices
+benefit from separate review. The bottom PR targets the selected integration
+branch; each higher PR targets its immediate predecessor. Record
+<code>vcs.stack_root</code>, <code>vcs.stack_parent</code>, and <code>vcs.stack_index</code> alongside the common
+integration target. Merge bottom-up. After each merge, inspect actual GitHub
+base/head state, retarget or restack as needed, and rerun affected checks and
+review before merging the next slice. Do not delete a predecessor while child
+PRs still depend on it.</p>
+<p>In GitButler, inspect the installed CLI’s target configuration and PR state;
+explicitly set the chosen remote integration target before creating a stack.
+Do not assume its remote default is the intended target. Use <code>but</code> write
+commands while it owns the workspace. GitButler stacks share a checkout;
+parallel writers need separate physical worktrees, later integrated deliberately.</p>
+</section>
+<section id="independent-adversarial-review" class="level2">
+<h2 class="anchored" data-anchor-id="independent-adversarial-review">Independent adversarial review</h2>
+<p>Substantial code, executable setup, CI, and reusable workflow changes require
+independent adversarial review before recommending merge. Give a reviewer the
+requirements, scope, actual base/head commits, diff, and verification evidence.
+Ask them to seek counterexamples, missing tests, regression paths and unsafe
+workflow outcomes. They should not implement the change they are reviewing.
+Independent read-only subagents are suitable when available and authorized.
+Self-review is useful but must be labeled as such; if no independent reviewer
+is available, report that gap and hold the merge recommendation.</p>
+<p>Record reviewer identity, <code>review.base_sha</code>, <code>review.head_sha</code>, scope, findings,
+and disposition of each finding: fixed with evidence, rejected with reasoning,
+or explicitly accepted as residual risk. Fixes need review of the changed
+portion and affected contracts at the new head. Base changes require assessing
+the new integration context and refreshing affected checks/review. A prior
+clean review does not silently transfer to new commits. CI success is separate
+from review. Human authorization to merge remains separate from both.</p>
+<p>GitHub PR authors cannot approve their own PR. An independent agent using the
+author’s GitHub account can supply review evidence, but cannot count as a
+different GitHub approver. Configure rules to reflect the actual team; never
+invent an approval or bypass a required reviewer.</p>
+</section>
+<section id="ci-and-delivery-contract" class="level2">
+<h2 class="anchored" data-anchor-id="ci-and-delivery-contract">CI and delivery contract</h2>
+<p>GSU records commands and triggers; GTE verifies behavior and failure paths; GPA
+checks the exact PR’s results. Every supported target gets PR checks. Avoid
+base/path filters that prevent a required workflow from reporting. If jobs are
+conditional, a stable required summary job must run with <code>always()</code> and fail
+unless all expected jobs succeeded. A skipped test is not passing evidence.
+Verify integration pushes as well where required by the project contract.</p>
+<p>Use pinned dependencies and documented tool versions. Map relevant boundaries:
+static checks, focused tests, integration tests, build/package validation, and
+clean installation. Exercise a non-default integration target in workflow labs.
+Keep credentialed, paid, or externally destructive checks explicit and opt-in;
+ordinary untrusted PR jobs receive no publication credentials. Preserve evidence
+and document which platform or live checks remain outside automatic coverage.</p>
+<p>Delivery is a separate policy with three possible milestones:</p>
+<ol>
+<li>Reviewed source integrated into the selected branch.</li>
+<li>Installable snapshot/artifacts built and checked at an exact commit.</li>
+<li>Versioned release published and independently verified.</li>
+</ol>
+<p>A merge into an experimental branch normally reaches the first milestone and
+may reach the second; it does not authorize publishing a stable release. Record
+the actual target’s post-merge contract rather than running a generic deploy
+command unconditionally. For a skill package, validate the manifest and local
+references, test installation into an existing project, record source revision,
+and publish any requested version/tag only from checked content. A project may
+use a protected tag/manual release job; protect its credentials and verify the
+resulting artifacts. Do not call source-only delivery a package release.</p>
+</section>
+<section id="issues-and-task-completion" class="level2">
+<h2 class="anchored" data-anchor-id="issues-and-task-completion">Issues and task completion</h2>
+<p>Promote durable initiatives and independently deliverable features to GitHub;
+keep small execution leaves in Gest. Link each PR to the relevant issue and
+store issue/PR URLs back in Gest. Define the issue’s completion target up front:
+experimental integration, mainline integration, or a published release.</p>
+<p>GitHub interprets PR closing keywords only for PRs targeting the repository’s
+default branch. For a non-default target, use <code>Refs #N</code>, an explicit issue link,
+and a post-merge issue update. Manually close only when its stated acceptance
+scope is complete and that action is authorized. Keep release/initiative issues
+open when a slice has merely reached the experiment. Avoid closing footers in
+experimental commits that could unexpectedly close an issue on later promotion.</p>
+<p>Gest maintains its graphs automatically. Continue creating native hierarchy and
+dependency links and inspect <code>gest iteration graph</code> when useful. No separate
+graph exporter, graph file, or graph-path checkpoint is required.</p>
+</section>
+<section id="installation-and-resource-ownership" class="level2">
+<h2 class="anchored" data-anchor-id="installation-and-resource-ownership">Installation and resource ownership</h2>
+<p>Preserve existing project instructions, hooks, and unrelated settings during
+installation. Review configuration conflicts explicitly and test repeat installs.
+Record repository URL, exact source commit, and whether the source was dirty;
+a mutable branch name alone is insufficient provenance. Refresh installed
+skills intentionally and keep mirrored references consistent.</p>
+<p>Record owned temporary directories, server processes, ports and child processes.
+Use isolated disposable resources for tests. Stop only processes created for the
+task, verify they exited, and remove only owned temporary files. Never stop a
+user’s server to make a test pass or reuse an occupied port silently.</p>
+</section>
+<section id="merge-and-cleanup" class="level2">
+<h2 class="anchored" data-anchor-id="merge-and-cleanup">Merge and cleanup</h2>
+<p>GPA verifies the intended base, reviewed head/base, checks, finding dispositions,
+and existing merge authorization immediately before integration. Preserve user
+authorization across turns; ask only when the particular merge is not authorized.
+After a confirmed merge, fetch the actual integration target. If that branch is
+checked out in a known clean checkout, update it there with <code>git pull --ff-only</code>
+and verify it matches <code>origin/&lt;base&gt;</code>. Otherwise verify the fetched
+<code>origin/&lt;base&gt;</code> ref and leave its local branch untouched until it can be
+fast-forwarded in an appropriate checkout. Never switch the primary checkout
+to <code>&lt;base&gt;</code> solely for cleanup; record and verify its separate path and branch.
+Leave persistent branches intact. Delete only verified merged temporary topics
+with no worktree or stack dependents. Do not apply <code>--delete-branch</code> to a persistent experimental
+branch when promoting it to mainline. Prefer merging first and deciding cleanup
+separately. Report source integration, artifact installation, issue state and
+publication state distinctly.</p>
+<section id="retire-an-owned-physical-worktree" class="level3">
+<h3 class="anchored" data-anchor-id="retire-an-owned-physical-worktree">Retire an owned physical worktree</h3>
+<p>A physical worktree created for a worker is a separate checkout, not a
+GitButler branch lane. Before dispatch, record its absolute path, topic branch,
+owner/task, selected integration branch and immediate stack parent (if any),
+and the primary checkout’s absolute path <strong>and current branch</strong> separately.
+The primary branch is selected by the project and may be <code>main</code> or another
+persistent target; it need not equal this task’s integration branch. Use
+<code>git worktree list --porcelain</code> to reconcile that record; never infer ownership
+from a path prefix or delete the primary, an unrelated checkout, or one the
+user chose to retain.</p>
+<p>After the worker finishes, wait for its agent and any processes it started to
+exit. Confirm no active task, child worktree, or open stack/PR depends on its
+branch. From the owned worktree, inspect <code>git status --porcelain=v1 --untracked-files=all</code> and <code>git status --short --ignored</code>; account for tracked,
+untracked, and valuable ignored files before removing the checkout. Preserve
+valuable files deliberately or leave the worktree in place and report why.</p>
+<p>Verify that the worker’s intended commits reached the selected integration
+branch or immediate stack parent before retirement. A normal merge can use
+commit ancestry; cherry-picks and squash merges need a reviewed
+patch-equivalence/diff judgment because their commit IDs change. An open PR, a
+push, or a completed Gest task is not integration evidence. If integration or
+dependency state is uncertain, retain the worktree and topic branch.</p>
+<p>From another checkout, use <code>git worktree remove &lt;owned-absolute-path&gt;</code> without
+<code>--force</code>, then verify that <code>git worktree list --porcelain</code> no longer lists it.
+Do not use routine <code>rm -rf</code>, forced worktree removal, or pruning to bypass dirty
+state. Only afterward consider an eligible temporary topic branch. Independently
+verify <code>git merge-base --is-ancestor &lt;topic&gt; &lt;target-ref&gt;</code> for a normal merge;
+<code>git branch -d</code> is not proof of target integration because Git may compare the
+topic with its configured upstream instead of the current HEAD. Prefer a clean
+checkout on the actual merged target or immediate stack parent for
+<code>git branch -d &lt;topic&gt;</code> so the HEAD fallback is meaningful. If that context is
+unavailable or deletion is refused, retain the topic and report why. For
+cherry-pick/squash integration, make an explicit reviewed
+patch-equivalence and disposal decision; do not force-delete automatically when
+<code>git branch -d</code> rejects it. Finally, verify <code>git -C &lt;primary-path&gt; symbolic-ref --short HEAD</code> still names the recorded primary branch. If a
+GitButler teardown changed it, restore that branch only in the clean primary
+checkout after checking it is not held elsewhere; otherwise retain state and
+report the blocker. Keep persistent integration branches, stack parents with
+dependents, primary branches, and user-retained
+worktrees intact. Record what was removed and what remains.</p>
+<p><code>just worktrees</code> lists every worktree with its state. The state tells whether
+the worktree is clean or dirty, and whether it is merged into the base branch
+or its branch on origin. The list also names the ignored files that a removal
+deletes.</p>
+<p><code>just worktrees-prune</code> removes each worktree that is clean, merged
+and idle for two hours, with ordinary <code>git worktree remove</code>. A worktree is
+merged when the base has its commits. It is also merged when <code>git merge-tree</code>
+of the worktree into the base leaves the base tree unchanged. So a rebase or
+squash counts, and a revert does not.</p>
+<p>Prune keeps these worktrees:</p>
+<ul>
+<li>a locked worktree;</li>
+<li>the worktree it runs in;</li>
+<li>a detached worktree whose commits are on no branch;</li>
+<li>a worktree with ignored files that setup did not put there.
+<code>--with-ignored</code> removes those too.</li>
+</ul>
+<p>Ignored files that <code>.worktreedisposable</code> names, such as <code>.venv/</code>, can be made
+again, so they do not keep a worktree. Prune keeps all branches. It does not
+check ownership, so an agent runs it only when the user asks, after
+<code>just worktrees-prune --dry-run</code>.</p>
+</section>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ul>
+<li><a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue">GitHub issue linking and non-default targets</a></li>
+<li><a href="https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks">Required checks and skipped workflows</a></li>
+<li><a href="https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews">GitHub approval restrictions</a></li>
+</ul>
+</section>
+<nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="g_commands_cheatsheet.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Gest g-Commands Cheat Sheet</span></a></div><div class="nav-page nav-page-next"><a href="gest_codex_workflow.html" class="pagination-link"><span class="nav-page-text">Gest-Codex Workflow</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>
