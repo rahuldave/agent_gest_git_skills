@@ -1,0 +1,70 @@
+project:
+  type: website
+  output-dir: _site
+  render: ["*.md", "!README.md"]
+
+website:
+  title: agent_gest_git_skills
+  description: The tasker role, its g skills and its labs, for projects that track their work with Gest in Git
+  site-url: https://rahuldave.github.io/agent_gest_git_skills/
+  repo-url: https://github.com/rahuldave/agent_gest_git_skills
+  repo-subdir: docs
+  repo-actions: [source, issue]
+  page-navigation: true
+  navbar:
+    left:
+      - href: index.md
+        text: Home
+      - href: TUTORIAL.md
+        text: Tutorial
+      - href: g_commands_cheatsheet.md
+        text: Cheat sheet
+    right:
+      - text: Projects
+        menu:
+          - text: jnterfaces
+            href: https://rahuldave.github.io/jnterfaces/
+          - text: jnprofile-python
+            href: https://rahuldave.github.io/jnprofile-python/
+          - text: jnprofile-typescript
+            href: https://rahuldave.github.io/jnprofile-typescript/
+          - text: agent_gest_git_skills
+            href: https://rahuldave.github.io/agent_gest_git_skills/
+    tools:
+      - icon: github
+        href: https://github.com/rahuldave/agent_gest_git_skills
+  sidebar:
+    style: floating
+    contents:
+      - index.md
+      - section: Start
+        contents:
+          - TUTORIAL.md
+          - g_commands_cheatsheet.md
+      - section: Workflows
+        contents:
+          - integration_delivery_workflow.md
+          - gest_codex_workflow.md
+          - tag_dependency_workflow.md
+          - agent_task_draft_workflow.md
+      - section: Protocol labs
+        contents:
+          - protocol_flows.md
+          - live_agent_result_recursive_lab.md
+      - section: Setup labs
+        contents:
+          - gsu_typescript_hello_world.md
+          - gsu_language_profile_labs.md
+      - section: Moved
+        contents:
+          - just_command_contract.md
+          - cx_incremental_pipelines.md
+  page-footer:
+    left: "Part of [jnterfaces](https://rahuldave.github.io/jnterfaces/) and its packages."
+    right: "Built with [smalldocs](https://docs.smallish.dev/)."
+
+theme:
+  light: cosmo
+  dark: darkly
+toc: true
+code-copy: true
