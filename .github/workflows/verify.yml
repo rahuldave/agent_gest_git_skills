@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet c5593fe662901624fcb39aec563714bab0d3553e
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 7ad9df2bf80c88ba6eadc1c8cc4375f41b025cd2
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Check contracts, hooks, and source mirrors
         run: just lint

@@ -63,6 +63,14 @@ install-test:
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the install dropped the hook of the user"
   grep -q 'session-start' "$target/.claude/settings.json" || fail "the install merged no Claude hook"
   grep -q 'session-start' "$target/.codex/hooks.json" || fail "the install merged no Codex hook"
+  grep -q 'Read and follow `.agents/instructions/tasker.md`.' "$target/AGENTS.md" || fail "AGENTS.md has no pointer to the rules"
+  grep -q 'Project name:' "$target/AGENTS.md" || fail "AGENTS.md has no starter"
+  cmp -s AGENTS.instructions.md "$target/.agents/instructions/tasker.md" || fail "the rules are not in .agents/instructions/tasker.md"
+  grep -q 'Branches And Review' <(cd "$target" && CLAUDE_PROJECT_DIR="$target" .claude/hooks/session-start.sh) || fail "the Claude hook does not print the rules"
+  grep -q 'Branches And Review' <(cd "$target" && .codex/hooks/session-start.sh) || fail "the Codex hook does not print the rules"
+  for hook in .claude/hooks/session-start.sh .codex/hooks/session-start.sh; do
+    (cd "$target" && CLAUDE_PROJECT_DIR="$target" "$hook") | uv run --no-project --quiet python -c 'import json, sys; text = json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]; sys.exit(not text.startswith("Read all of .agents/instructions/tasker.md"))' || fail "$hook does not start with the line that asks for the whole rules file"
+  done
   test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"
@@ -73,6 +81,8 @@ install-test:
     if [ -e "$target/$gone" ]; then fail "$gone is still there after the removal"; fi
   done
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the removal dropped the hook of the user"
+  test ! -e "$target/.agents/instructions/tasker.md" || fail "the rules are still there after the removal"
+  if grep -q 'instructions/tasker.md' "$target/AGENTS.md"; then fail "the removal left the pointer in AGENTS.md"; fi
   if grep -q 'session-start' "$target/.claude/settings.json"; then fail "the removal left a Gest hook"; fi
   echo "install-test: install and removal passed"
 

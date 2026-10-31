@@ -7,6 +7,8 @@ mode="${1:-all}"
 required_files=(
   "README.md"
   "AGENTS.template.md"
+  "AGENTS.starter.md"
+  "AGENTS.instructions.md"
   "CLAUDE.md"
   "Justfile"
   "skill-package.json"
@@ -73,6 +75,8 @@ check_mirror() {
   }
 }
 check_mirror "AGENTS.template.md" ".agents/skills/gsu/assets/templates/AGENTS.template.md"
+# The starter and the rules that just install writes as the parts of the role are the two halves of the template.
+uv run --no-project --quiet python "$repo_root/scripts/split_agents_template.py" --check
 check_mirror "docs/gest_codex_workflow.md" ".agents/skills/gtw/references/gest_codex_workflow.md"
 for skill in gor gtw gpl gcm gpa gpr grv gsu gte; do
   check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
@@ -233,7 +237,7 @@ for stale_tutorial_text in "Latest Live Run" "422 Unprocessable Entity" "live_gi
 done
 
 # Installed copies have no docs/ tree, so shipped guidance must not point into it.
-shipped_text=("$repo_root/AGENTS.template.md")
+shipped_text=("$repo_root/AGENTS.template.md" "$repo_root/AGENTS.starter.md" "$repo_root/AGENTS.instructions.md")
 while IFS= read -r file; do shipped_text+=("$file"); done < <(
   find "$repo_root/.agents/skills" "$repo_root/.claude/hooks" "$repo_root/.codex/hooks" \
     -type f \( -name '*.md' -o -name '*.sh' -o -name '*.just' -o -name '*.yaml' -o -name '*.txt' \) | sort)
