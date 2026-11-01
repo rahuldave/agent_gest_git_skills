@@ -54,37 +54,20 @@ just setup
 direnv exec . just verify
 ```
 
-Verified command contract:
+The lab copies `python-uv.just` from the `just` skill of jnterfaces as its
+`Justfile`. Its recipes are `setup`, `hook`, `fmt`, `lint`, `typecheck`,
+`test`, `cov` and `diff-check`. `verify` runs `fmt --check`, `lint`, `test` and
+`diff-check`.
 
-```just
-export UV_CACHE_DIR := ".local/uv-cache"
+`just test` runs `uv run pytest`. This form does not put the project folder on
+the import path, so `from hello import greet` fails without help. The lab adds
+this setting to its `pyproject.toml`, as the `test` tool of jnprofile-python
+does:
 
-setup:
-  uv sync
-
-lint path=".":
-  uv run ruff check {{path}}
-
-typecheck:
-  uv run ty check
-
-build:
-  uv run python -m compileall hello.py tests
-
-test target="tests":
-  uv run python -m pytest {{target}}
-
-smoke:
-  uv run python hello.py
-
-diff-check:
-  git diff --check
-
-verify: lint typecheck build test smoke diff-check
+```toml
+[tool.pytest.ini_options]
+pythonpath = ["."]
 ```
-
-Lesson: prefer `uv run python -m ...` forms when invoking Python tools so the
-project runs through Python's normal module startup behavior.
 
 ## TypeScript With NPM
 
