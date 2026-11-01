@@ -1,0 +1,2 @@
+# Theme files are vendored as smalldocs add writes them: keep their line ends.
+docs/_extensions/** -whitespace
