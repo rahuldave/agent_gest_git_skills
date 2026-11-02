@@ -5,6 +5,7 @@ project:
 
 website:
   title: agent_gest_git_skills
+  favicon: favicon.svg
   description: The tasker role, its g skills and its labs, for projects that track their work with Gest in Git
   site-url: https://rahuldave.github.io/agent_gest_git_skills/
   repo-url: https://github.com/rahuldave/agent_gest_git_skills
