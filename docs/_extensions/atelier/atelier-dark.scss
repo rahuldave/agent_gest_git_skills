@@ -1,0 +1,47 @@
+/*-- scss:defaults --*/
+$body-bg: #152428 !default;
+$body-color: #e0eeeb !default;
+$primary: #84d0c6 !default;
+$link-color: #84d0c6 !default;
+$border-color: #365255 !default;
+$font-family-sans-serif: "DM Sans", system-ui, sans-serif !default;
+$font-family-monospace: "IBM Plex Mono", monospace !default;
+$headings-font-weight: 400 !default;
+$font-size-root: 17px !default;
+$font-size-base: 1.08rem !default;
+$line-height-base: 1.45 !default;
+/*-- scss:rules --*/
+:root, [data-bs-theme] {
+  --e-paper: #152428;
+  --e-ink: #e0eeeb;
+  --e-muted: #a0b9b9;
+  --e-panel: #1b3034;
+  --e-line: #365255;
+  --e-accent: #84d0c6;
+  --e-secondary: #efb0a0;
+  --e-code: #1b3034;
+  --bs-body-bg: #152428;
+  --bs-body-bg-rgb: 21, 36, 40;
+  --bs-body-color: #e0eeeb;
+  --bs-body-color-rgb: 224, 238, 235;
+  --bs-emphasis-color: #e0eeeb;
+  --bs-emphasis-color-rgb: 224, 238, 235;
+  --bs-secondary-color: #a0b9b9;
+  --bs-secondary-color-rgb: 160, 185, 185;
+  --bs-secondary-bg: #1b3034;
+  --bs-secondary-bg-rgb: 27, 48, 52;
+  --bs-tertiary-bg: #1b3034;
+  --bs-tertiary-bg-rgb: 27, 48, 52;
+  --bs-link-color: #84d0c6;
+  --bs-link-color-rgb: 132, 208, 198;
+  --bs-link-hover-color: #efb0a0;
+  --bs-link-hover-color-rgb: 239, 176, 160;
+  --bs-primary: #84d0c6;
+  --bs-primary-rgb: 132, 208, 198;
+  --bs-heading-color: #e0eeeb; --bs-border-color: #365255; --bs-border-color-translucent: #365255; --bs-code-color: #efb0a0;
+  --bs-primary-text-emphasis: #84d0c6; --bs-primary-bg-subtle: #1b3034; --bs-primary-border-subtle: #365255; --bs-focus-ring-color: rgba(132, 208, 198, .25);
+  --e-select-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='%23e0eeeb' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m3 6 5 5 5-5'/></svg>");
+  --e-check-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='%23152428' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m4 8 3 3 5-6'/></svg>");
+  --e-radio-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='4' fill='%23152428'/></svg>");
+  --e-dash-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path stroke='%23152428' stroke-linecap='round' stroke-width='3' d='M4 8h8'/></svg>");
+}

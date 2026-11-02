@@ -74,6 +74,10 @@ dependencies = [
   "ruff>=0.8.0",
   "ty>=0.0.1a0",
 ]
+
+# just test runs pytest, which does not put the project folder on the import path.
+[tool.pytest.ini_options]
+pythonpath = ["."]
 PYPROJECT
 
   cat >"$dir/hello.py" <<'PYTHON'
