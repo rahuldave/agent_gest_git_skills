@@ -1,8 +1,8 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.5"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Git And GitButler Tutorial – agent_gest_git_skills</title><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="site_libs/smalldocs.css"><meta name="smalldocs:offset" content="./"><script src="site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="site_libs/fuse/fuse.min.js"></script><script src="site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link active" href="TUTORIAL.html" aria-current="page"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="TUTORIAL.html">Start</a></li><li class="breadcrumb-item"><a href="TUTORIAL.html">Git And GitButler Tutorial</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="TUTORIAL.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Git And GitButler Tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-Commands Cheat Sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag Classification And Dependency Impact Workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 Workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript Hello World Lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU Language Profile Labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#pull-request-command-map" id="toc-pull-request-command-map" class="nav-link" data-scroll-target="#pull-request-command-map">Pull Request Command Map</a></li><li><a href="#what-this-tutorial-will-do" id="toc-what-this-tutorial-will-do" class="nav-link" data-scroll-target="#what-this-tutorial-will-do">What This Tutorial Will Do</a></li><li><a href="#step-0-setup-and-cleanup-contract" id="toc-step-0-setup-and-cleanup-contract" class="nav-link" data-scroll-target="#step-0-setup-and-cleanup-contract">Step 0: Setup And Cleanup Contract</a></li><li><a href="#step-1-ordinary-git-branch-pr" id="toc-step-1-ordinary-git-branch-pr" class="nav-link" data-scroll-target="#step-1-ordinary-git-branch-pr">Step 1: Ordinary Git Branch PR</a></li><li><a href="#step-2-ordinary-git-multi-commit-pr" id="toc-step-2-ordinary-git-multi-commit-pr" class="nav-link" data-scroll-target="#step-2-ordinary-git-multi-commit-pr">Step 2: Ordinary Git Multi-Commit PR</a></li><li><a href="#step-3-gitbutler-stacked-prs" id="toc-step-3-gitbutler-stacked-prs" class="nav-link" data-scroll-target="#step-3-gitbutler-stacked-prs">Step 3: GitButler Stacked PRs</a></li><li><a href="#step-4-physical-git-worktrees" id="toc-step-4-physical-git-worktrees" class="nav-link" data-scroll-target="#step-4-physical-git-worktrees">Step 4: Physical Git Worktrees</a></li><li><a href="#step-5-tags-and-ast-grep-dependency-check" id="toc-step-5-tags-and-ast-grep-dependency-check" class="nav-link" data-scroll-target="#step-5-tags-and-ast-grep-dependency-check">Step 5: Tags And ast-grep Dependency Check</a></li><li><a href="#step-6-merge-the-tutorial-prs" id="toc-step-6-merge-the-tutorial-prs" class="nav-link" data-scroll-target="#step-6-merge-the-tutorial-prs">Step 6: Merge The Tutorial PRs</a></li><li><a href="#step-7-cleanup" id="toc-step-7-cleanup" class="nav-link" data-scroll-target="#step-7-cleanup">Step 7: Cleanup</a></li><li><a href="#automated-regression-labs" id="toc-automated-regression-labs" class="nav-link" data-scroll-target="#automated-regression-labs">Automated Regression Labs</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/TUTORIAL.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="TUTORIAL.html">Start</a></li><li class="breadcrumb-item"><a href="TUTORIAL.html">Git And GitButler Tutorial</a></li></ol></nav><div class="quarto-title"><h1 class="title">Git And GitButler Tutorial</h1></div><div class="quarto-title-meta"></div></header><p>This tutorial creates four temporary GitHub repositories with fixed names,
-runs four agent workflows, and tells you exactly what to check after each turn.
-The pull-request steps create PRs first, then a later merge step merges those
-PRs before cleanup deletes the temporary repositories.</p>
-<p>You will learn:</p>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.5"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Git and GitButler tutorial – agent_gest_git_skills</title><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="site_libs/smalldocs.css"><meta name="smalldocs:offset" content="./"><script src="site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="site_libs/fuse/fuse.min.js"></script><script src="site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link active" href="TUTORIAL.html" aria-current="page"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="TUTORIAL.html">Start</a></li><li class="breadcrumb-item"><a href="TUTORIAL.html">Git and GitButler tutorial</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="TUTORIAL.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Git and GitButler tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#pull-request-command-map" id="toc-pull-request-command-map" class="nav-link" data-scroll-target="#pull-request-command-map">Pull request command map</a></li><li><a href="#what-the-tutorial-does" id="toc-what-the-tutorial-does" class="nav-link" data-scroll-target="#what-the-tutorial-does">What the tutorial does</a></li><li><a href="#step-0-setup-and-cleanup-contract" id="toc-step-0-setup-and-cleanup-contract" class="nav-link" data-scroll-target="#step-0-setup-and-cleanup-contract">Step 0: Setup and cleanup contract</a></li><li><a href="#step-1-ordinary-git-branch-pr" id="toc-step-1-ordinary-git-branch-pr" class="nav-link" data-scroll-target="#step-1-ordinary-git-branch-pr">Step 1: Ordinary git branch PR</a></li><li><a href="#step-2-ordinary-git-multi-commit-pr" id="toc-step-2-ordinary-git-multi-commit-pr" class="nav-link" data-scroll-target="#step-2-ordinary-git-multi-commit-pr">Step 2: Ordinary git multi-commit PR</a></li><li><a href="#step-3-gitbutler-stacked-prs" id="toc-step-3-gitbutler-stacked-prs" class="nav-link" data-scroll-target="#step-3-gitbutler-stacked-prs">Step 3: GitButler stacked PRs</a></li><li><a href="#step-4-physical-git-worktrees" id="toc-step-4-physical-git-worktrees" class="nav-link" data-scroll-target="#step-4-physical-git-worktrees">Step 4: Physical git worktrees</a></li><li><a href="#step-5-tags-and-ast-grep-dependency-check" id="toc-step-5-tags-and-ast-grep-dependency-check" class="nav-link" data-scroll-target="#step-5-tags-and-ast-grep-dependency-check">Step 5: Tags and ast-grep dependency check</a></li><li><a href="#step-6-merge-the-tutorial-prs" id="toc-step-6-merge-the-tutorial-prs" class="nav-link" data-scroll-target="#step-6-merge-the-tutorial-prs">Step 6: Merge the tutorial PRs</a></li><li><a href="#step-7-cleanup" id="toc-step-7-cleanup" class="nav-link" data-scroll-target="#step-7-cleanup">Step 7: Cleanup</a></li><li><a href="#automated-regression-labs" id="toc-automated-regression-labs" class="nav-link" data-scroll-target="#automated-regression-labs">Automated regression labs</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/TUTORIAL.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="TUTORIAL.html">Start</a></li><li class="breadcrumb-item"><a href="TUTORIAL.html">Git and GitButler tutorial</a></li></ol></nav><div class="quarto-title"><h1 class="title">Git and GitButler tutorial</h1></div><div class="quarto-title-meta"></div></header><p>This tutorial creates four temporary GitHub repositories with fixed names, and it runs four
+agent workflows in them. After each turn of the agent, it tells you what to check. The
+steps for pull requests (PRs) first create the PRs. A later step merges them, and then the
+cleanup deletes the temporary repositories.</p>
+<p>You learn these review shapes and checks:</p>
 <ol>
 <li>ordinary git branch PR</li>
 <li>ordinary git multi-commit PR</li>
@@ -12,8 +12,8 @@ PRs before cleanup deletes the temporary repositories.</p>
 </ol>
 <p>Only step 3 uses GitButler as the main tool.</p>
 <section id="pull-request-command-map" class="level2">
-<h2 class="anchored" data-anchor-id="pull-request-command-map">Pull Request Command Map</h2>
-<p>This tutorial uses these PR creation commands:</p>
+<h2 class="anchored" data-anchor-id="pull-request-command-map">Pull request command map</h2>
+<p>The tutorial creates its PRs with these commands:</p>
 <ul>
 <li>Step 1: <code>gh pr create --base main --head tutorial/plain</code></li>
 <li>Step 2: <code>gh pr create --base main --head tutorial/multi</code></li>
@@ -21,35 +21,34 @@ PRs before cleanup deletes the temporary repositories.</p>
 <li>Step 4: <code>gh pr create --base main --head tutorial/worktree-a</code> and
 <code>gh pr create --base main --head tutorial/worktree-b</code></li>
 </ul>
-<p>For stacked PRs, select the top stack branch with <code>but pr new</code>. GitButler walks
-the stack from bottom to top and creates the lower PR first, so one command
-creates both the base and child PRs with the correct targets.</p>
+<p>For stacked PRs, select the top branch of the stack with <code>but pr new</code>. GitButler walks the
+stack from the bottom to the top, and it creates the lower PR first. So one command creates
+both the base PR and the child PR, with the correct targets.</p>
 </section>
-<section id="what-this-tutorial-will-do" class="level2">
-<h2 class="anchored" data-anchor-id="what-this-tutorial-will-do">What This Tutorial Will Do</h2>
-<p>The agent will create and later delete these GitHub repositories under your
-GitHub account:</p>
+<section id="what-the-tutorial-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-tutorial-does">What the tutorial does</h2>
+<p>The agent creates these GitHub repositories under your GitHub account, and it deletes them
+later:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">agent-gest-git-tutorial-plain
 agent-gest-git-tutorial-multi
 agent-gest-git-tutorial-stack
 agent-gest-git-tutorial-worktrees</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Do not use those names for anything valuable. The prompts below tell the agent
-to delete any existing repositories with those names before starting, then
-delete them again during cleanup. Cleanup uses <code>gh repo delete --yes</code>.</p>
-<p>Prerequisites:</p>
+<p>Do not use these names for anything valuable. Before the agent starts, the prompts below tell it
+to delete each repository that has one of these names. The cleanup deletes them again with
+<code>gh repo delete --yes</code>.</p>
+<p>Before you start, make sure of these things:</p>
 <ul>
 <li><code>gh auth status -h github.com</code> succeeds.</li>
-<li>Your GitHub auth has <code>repo</code> and <code>delete_repo</code> scopes.</li>
-<li><code>git</code>, <code>gh</code>, <code>gest</code>, <code>just</code>, and <code>but</code> are installed.</li>
-<li>You are comfortable letting the agent create and delete the four temporary
-repositories named above.</li>
+<li>Your GitHub auth has the <code>repo</code> and <code>delete_repo</code> scopes.</li>
+<li><code>git</code>, <code>gh</code>, <code>gest</code>, <code>just</code> and <code>but</code> are installed.</li>
+<li>You agree that the agent creates and deletes the four temporary repositories above.</li>
 </ul>
 </section>
 <section id="step-0-setup-and-cleanup-contract" class="level2">
-<h2 class="anchored" data-anchor-id="step-0-setup-and-cleanup-contract">Step 0: Setup And Cleanup Contract</h2>
+<h2 class="anchored" data-anchor-id="step-0-setup-and-cleanup-contract">Step 0: Setup and cleanup contract</h2>
 <p>What this step teaches:</p>
-<p>The agent should use fixed repo names, clean up before and after the tutorial,
-and tell you where it wrote logs.</p>
+<p>The agent uses fixed names for the repositories, and it cleans up before and after the
+tutorial. It also tells you where it wrote the logs.</p>
 <p>Ask the agent:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run the Git/GitButler tutorial setup.
 
@@ -72,12 +71,12 @@ PR-opening steps finish, merge the PRs in Step 6. After the merge step, delete
 the four GitHub repos unless I explicitly ask to keep them.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>After the agent finishes, check:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="bu">test</span> -d /tmp/agent-gest-git-tutorial/logs</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The agent should report your GitHub owner and the exact log directory.</p>
+<p>The agent reports your GitHub owner and the exact directory of the logs.</p>
 </section>
 <section id="step-1-ordinary-git-branch-pr" class="level2">
-<h2 class="anchored" data-anchor-id="step-1-ordinary-git-branch-pr">Step 1: Ordinary Git Branch PR</h2>
+<h2 class="anchored" data-anchor-id="step-1-ordinary-git-branch-pr">Step 1: Ordinary git branch PR</h2>
 <p>What this step teaches:</p>
-<p>Use ordinary git for one simple review branch. GitButler is not needed.</p>
+<p>Use ordinary git for one simple review branch. You do not need GitButler.</p>
 <p>Repository:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">agent-gest-git-tutorial-plain</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ask the agent:</p>
@@ -100,29 +99,28 @@ gh pr create \
   --base main \
   --head tutorial/plain \
   --title &#x27;test: plain git branch flow&#x27; \
-  --body &#x27;Tutorial plain git branch flow.&#x27;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Write all commands and key outputs to
-<code>/tmp/agent-gest-git-tutorial/logs/01-plain-git-branch.log</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode code-with-copy"><code class="sourceCode ">
-After the agent finishes, check:
+  --body &#x27;Tutorial plain git branch flow.&#x27;
+```
 
-```bash
-gh pr view tutorial/plain \
-  --repo &quot;$(gh api user -q .login)/agent-gest-git-tutorial-plain&quot; \
-  --json state,baseRefName,headRefName,title</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+Write all commands and key outputs to
+`/tmp/agent-gest-git-tutorial/logs/01-plain-git-branch.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After the agent finishes, check:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">gh pr view tutorial/plain <span class="sc">\
+</span>  --repo <span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">/agent-gest-git-tutorial-plain</span><span class="st">&quot;</span> <span class="sc">\
+</span>  --json state,baseRefName,headRefName,title</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">state: OPEN
 baseRefName: main
 headRefName: tutorial/plain
 title: test: plain git branch flow</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Commands it should have used:</p>
+<p>Commands that the agent should use:</p>
 <ul>
-<li><code>git checkout -b tutorial/plain</code> or equivalent ordinary git branch creation</li>
+<li><code>git checkout -b tutorial/plain</code>, or another ordinary git command that creates the branch</li>
 <li><code>git commit</code></li>
 <li><code>git push</code></li>
 <li><code>gh pr create</code></li>
 </ul>
-<p>Commands it should not have used:</p>
+<p>Commands that the agent should not use:</p>
 <ul>
 <li><code>but setup</code></li>
 <li><code>but branch new</code></li>
@@ -130,10 +128,10 @@ title: test: plain git branch flow</code></pre></div><button title="Copy to Clip
 </ul>
 </section>
 <section id="step-2-ordinary-git-multi-commit-pr" class="level2">
-<h2 class="anchored" data-anchor-id="step-2-ordinary-git-multi-commit-pr">Step 2: Ordinary Git Multi-Commit PR</h2>
+<h2 class="anchored" data-anchor-id="step-2-ordinary-git-multi-commit-pr">Step 2: Ordinary git multi-commit PR</h2>
 <p>What this step teaches:</p>
-<p>Use ordinary git when one review branch needs more than one commit.
-GitButler is still not needed.</p>
+<p>Use ordinary git when one review branch needs more than one commit. You still do not need
+GitButler.</p>
 <p>Repository:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">agent-gest-git-tutorial-multi</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ask the agent:</p>
@@ -158,24 +156,23 @@ gh pr create \
   --base main \
   --head tutorial/multi \
   --title &#x27;test: multi commit git branch flow&#x27; \
-  --body &#x27;Tutorial multi-commit git branch flow.&#x27;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Write all commands and key outputs to
-<code>/tmp/agent-gest-git-tutorial/logs/02-multi-commit-git-branch.log</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode code-with-copy"><code class="sourceCode ">
-After the agent finishes, check:
+  --body &#x27;Tutorial multi-commit git branch flow.&#x27;
+```
 
-```bash
-owner=&quot;$(gh api user -q .login)&quot;
-gh pr view tutorial/multi \
-  --repo &quot;$owner/agent-gest-git-tutorial-multi&quot; \
-  --json state,baseRefName,headRefName,title,commits</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+Write all commands and key outputs to
+`/tmp/agent-gest-git-tutorial/logs/02-multi-commit-git-branch.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After the agent finishes, check:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
+gh pr view tutorial/multi <span class="sc">\
+</span>  --repo <span class="st">&quot;</span><span class="va">$owner</span><span class="st">/agent-gest-git-tutorial-multi</span><span class="st">&quot;</span> <span class="sc">\
+</span>  --json state,baseRefName,headRefName,title,commits</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">state: OPEN
 baseRefName: main
 headRefName: tutorial/multi
 title: test: multi commit git branch flow
 commits: two commits on the PR branch</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Commands it should not have used:</p>
+<p>Commands that the agent should not use:</p>
 <ul>
 <li><code>but setup</code></li>
 <li><code>but branch new</code></li>
@@ -183,10 +180,10 @@ commits: two commits on the PR branch</code></pre></div><button title="Copy to C
 </ul>
 </section>
 <section id="step-3-gitbutler-stacked-prs" class="level2">
-<h2 class="anchored" data-anchor-id="step-3-gitbutler-stacked-prs">Step 3: GitButler Stacked PRs</h2>
+<h2 class="anchored" data-anchor-id="step-3-gitbutler-stacked-prs">Step 3: GitButler stacked PRs</h2>
 <p>What this step teaches:</p>
-<p>Use GitButler when you have multiple dependent, meaty slices that should be
-reviewed separately. This is the GitButler step.</p>
+<p>Use GitButler when you have several large slices that depend on each other, and each slice
+needs its own review. Step 3 is the only step that uses GitButler as the main tool.</p>
 <p>Repository:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">agent-gest-git-tutorial-stack</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ask the agent:</p>
@@ -215,21 +212,21 @@ Open two PRs:
 Create the stacked PRs with one `but pr new` command on the top branch:
 
 ```bash
-but pr new tutorial/stack-child --default --json</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Do not create the base PR in a separate earlier command. <code>but pr new</code> walks the
-stack from bottom to top for the selected branch, so the top-branch command
-creates both PRs in the right order.</p>
-<p>Write all commands and key outputs to
-<code>/tmp/agent-gest-git-tutorial/logs/03-gitbutler-stack.log</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode code-with-copy"><code class="sourceCode ">
-After the agent finishes, check:
+but pr new tutorial/stack-child --default --json
+```
 
-```bash
-owner=&quot;$(gh api user -q .login)&quot;
-gh pr list \
-  --repo &quot;$owner/agent-gest-git-tutorial-stack&quot; \
-  --state open \
-  --json title,baseRefName,headRefName</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+Do not create the base PR in a separate earlier command. `but pr new` walks the
+stack from bottom to top for the selected branch, so the top-branch command
+creates both PRs in the right order.
+
+Write all commands and key outputs to
+`/tmp/agent-gest-git-tutorial/logs/03-gitbutler-stack.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After the agent finishes, check:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
+gh pr list <span class="sc">\
+</span>  --repo <span class="st">&quot;</span><span class="va">$owner</span><span class="st">/agent-gest-git-tutorial-stack</span><span class="st">&quot;</span> <span class="sc">\
+</span>  --state open <span class="sc">\
+</span>  --json title,baseRefName,headRefName</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">PR: test: stack base flow
 baseRefName: main
@@ -238,7 +235,7 @@ headRefName: tutorial/stack-base
 PR: test: stack child flow
 baseRefName: tutorial/stack-base
 headRefName: tutorial/stack-child</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Commands it should have used:</p>
+<p>Commands that the agent should use:</p>
 <ul>
 <li><code>but setup</code></li>
 <li><code>but branch new tutorial/stack-base</code></li>
@@ -247,13 +244,14 @@ headRefName: tutorial/stack-child</code></pre></div><button title="Copy to Clipb
 <li><code>but push</code></li>
 <li><code>but pr new tutorial/stack-child --default --json</code></li>
 </ul>
-<p>This step should not use physical git worktrees.</p>
+<p>The step does not use physical git worktrees.</p>
 </section>
 <section id="step-4-physical-git-worktrees" class="level2">
-<h2 class="anchored" data-anchor-id="step-4-physical-git-worktrees">Step 4: Physical Git Worktrees</h2>
+<h2 class="anchored" data-anchor-id="step-4-physical-git-worktrees">Step 4: Physical git worktrees</h2>
 <p>What this step teaches:</p>
-<p>Use physical git worktrees for independent parallel slices. Do not use
-GitButler parallel lanes as an agent parallelism primitive.</p>
+<p>Use physical git worktrees for independent slices that run in parallel. A physical worktree is
+a separate folder with its own checkout of a branch. Do not use the parallel lanes of GitButler
+as the way to run agents in parallel.</p>
 <p>Repository:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">agent-gest-git-tutorial-worktrees</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ask the agent:</p>
@@ -281,70 +279,75 @@ gh pr create \
   --base main \
   --head tutorial/worktree-a \
   --title &#x27;test: worktree a flow&#x27; \
-  --body &#x27;Tutorial physical worktree A flow.&#x27;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>In worktree B, add <code>worktree-b.txt</code> containing <code>worktree b isolated change</code>,
-commit with message <code>test: add worktree b change</code>, push the branch, and open a
-PR:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">gh pr create <span class="sc">\
-</span>  --repo <span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">/agent-gest-git-tutorial-worktrees</span><span class="st">&quot;</span> <span class="sc">\
-</span>  --base main <span class="sc">\
-</span>  --head tutorial/worktree-b <span class="sc">\
-</span>  --title <span class="st">&#x27;test: worktree b flow&#x27;</span> <span class="sc">\
-</span>  --body <span class="st">&#x27;Tutorial physical worktree B flow.&#x27;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Remove both physical worktrees after the PRs are open.</p>
-<p>Write all commands and key outputs to
-<code>/tmp/agent-gest-git-tutorial/logs/04-physical-worktrees.log</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode code-with-copy"><code class="sourceCode ">
-After the agent finishes, check:
+  --body &#x27;Tutorial physical worktree A flow.&#x27;
+```
+
+In worktree B, add `worktree-b.txt` containing `worktree b isolated change`,
+commit with message `test: add worktree b change`, push the branch, and open a
+PR:
 
 ```bash
-owner=&quot;$(gh api user -q .login)&quot;
-gh pr list \
-  --repo &quot;$owner/agent-gest-git-tutorial-worktrees&quot; \
-  --state open \
-  --json title,baseRefName,headRefName</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+gh pr create \
+  --repo &quot;$(gh api user -q .login)/agent-gest-git-tutorial-worktrees&quot; \
+  --base main \
+  --head tutorial/worktree-b \
+  --title &#x27;test: worktree b flow&#x27; \
+  --body &#x27;Tutorial physical worktree B flow.&#x27;
+```
+
+Remove both physical worktrees after the PRs are open.
+
+Write all commands and key outputs to
+`/tmp/agent-gest-git-tutorial/logs/04-physical-worktrees.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After the agent finishes, check:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
+gh pr list <span class="sc">\
+</span>  --repo <span class="st">&quot;</span><span class="va">$owner</span><span class="st">/agent-gest-git-tutorial-worktrees</span><span class="st">&quot;</span> <span class="sc">\
+</span>  --state open <span class="sc">\
+</span>  --json title,baseRefName,headRefName</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">PR: test: worktree a flow
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">PR: test: worktree a flow
 baseRefName: main
 headRefName: tutorial/worktree-a
 
 PR: test: worktree b flow
 baseRefName: main
 headRefName: tutorial/worktree-b</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Commands it should have used:</p>
+<p>Commands that the agent should use:</p>
 <ul>
 <li><code>GEST_VCS_EXECUTION=git-worktrees git worktree add ...</code></li>
 <li>ordinary <code>git commit</code> inside each physical worktree</li>
 <li><code>gh pr create</code></li>
 </ul>
-<p>Commands it should not have used:</p>
+<p>What the agent should not use:</p>
 <ul>
 <li>GitButler parallel lanes</li>
-<li>two write agents in one GitButler workspace</li>
+<li>two agents that write in one GitButler workspace</li>
 </ul>
 </section>
 <section id="step-5-tags-and-ast-grep-dependency-check" class="level2">
-<h2 class="anchored" data-anchor-id="step-5-tags-and-ast-grep-dependency-check">Step 5: Tags And ast-grep Dependency Check</h2>
+<h2 class="anchored" data-anchor-id="step-5-tags-and-ast-grep-dependency-check">Step 5: Tags and ast-grep dependency check</h2>
 <p>What this step teaches:</p>
-<p>Before the agent edits code, it should classify the task with project tags and
-run ast-grep against the semantic contract that is changing. If another surface
-depends on that contract, the agent should expand the task or create a tagged
-child task before implementation.</p>
-<p>This is a live local TypeScript repo lab. It demonstrates two different
-dependency signals:</p>
+<p>Before the agent edits code, it classifies the task with the tags of the project. A tag is a
+label on a Gest task that names a concern of the code. The agent also runs ast-grep, a tool that
+searches code by its syntax, on the semantic contract that the change touches. If another
+surface depends on that contract, before implementation the agent expands the task, or
+creates a child task with the same tag.</p>
+<p>The step is a live lab in a local TypeScript repository. It shows two different signals of a
+dependency:</p>
 <ul>
-<li>tag dependency: Gest tasks already tagged with the same semantic concern</li>
-<li>ast-grep dependency: TypeScript call sites that use the changing function</li>
+<li>tag dependency: Gest tasks that already have a tag for the same semantic concern</li>
+<li>ast-grep dependency: TypeScript call sites that use the function that changes</li>
 </ul>
 <p>Local fixture:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">/tmp/agent-gest-git-tutorial/tag-ast-grep-live</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you are running from this reusable skills repository, this command performs
-the whole step:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">scripts/run_tag_dependency_typescript_lab.sh <span class="sc">\
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">/tmp/agent-gest-git-tutorial/tag-ast-grep-live</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If you run the tutorial from this repository of reusable skills, one command does the whole
+step:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">scripts/run_tag_dependency_typescript_lab.sh <span class="sc">\
 </span>  /tmp/agent-gest-git-tutorial/tag-ast-grep-live <span class="sc">\
 </span>  /tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Ask the agent:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial step 5: live TypeScript tag and ast-grep dependency lab.
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial step 5: live TypeScript tag and ast-grep dependency lab.
 
 Create or replace `/tmp/agent-gest-git-tutorial/tag-ast-grep-live`.
 Initialize it as a git repo and a local Gest project.
@@ -366,76 +369,81 @@ Collect the existing tag vocabulary from Gest before choosing tags:
 ```bash
 gest task list --all --json
 gest artifact list --all --json
-gest iteration list --all --json</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Create a small TypeScript project with:</p>
-<ul>
-<li><code>src/colors.ts</code>, exporting <code>countOrProbabilityColorScale</code></li>
-<li><code>src/histogram.ts</code>, calling <code>countOrProbabilityColorScale</code></li>
-<li><code>src/pill.ts</code>, calling <code>countOrProbabilityColorScale</code></li>
-<li><code>src/readerHover.ts</code>, not calling <code>countOrProbabilityColorScale</code></li>
-</ul>
-<p>Run <code>npm install</code> and <code>npm exec -- tsc --noEmit</code>.</p>
-<p>Before editing anything, classify the requested change “change histogram colors
-for low-count bins” against the Gest vocabulary:</p>
-<ul>
-<li>selected existing tag: <code>count-or-probability-coloring</code></li>
-<li>selected existing tag: <code>histogram-colors</code></li>
-<li>selected existing tag: <code>probability-pill-colors</code></li>
-<li>rejected near miss: <code>reader-ui</code></li>
-<li>new dynamic tags: none</li>
-</ul>
-<p>Then run:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">ast-grep run <span class="sc">\
-</span>  --lang typescript <span class="sc">\
-</span>  --pattern <span class="st">&#x27;countOrProbabilityColorScale($$$)&#x27;</span> <span class="sc">\
-</span>  --json<span class="op">=</span>compact <span class="sc">\
-</span>  src</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The tag dependency expansion should show the histogram and probability-pill
-tasks are linked by <code>count-or-probability-coloring</code>. The ast-grep dependency
-expansion should find both <code>src/histogram.ts</code> and <code>src/pill.ts</code>, and it should
-not match <code>src/readerHover.ts</code>.</p>
-<p>Write the selected tags, rejected tag, new-tag decision, tag-linked work,
-ast-grep command, matched files, non-matched reader file, and dependency-impact
-conclusion to <code>/tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode code-with-copy"><code class="sourceCode ">
-After the agent finishes, check:
+gest iteration list --all --json
+```
+
+Create a small TypeScript project with:
+
+- `src/colors.ts`, exporting `countOrProbabilityColorScale`
+- `src/histogram.ts`, calling `countOrProbabilityColorScale`
+- `src/pill.ts`, calling `countOrProbabilityColorScale`
+- `src/readerHover.ts`, not calling `countOrProbabilityColorScale`
+
+Run `npm install` and `npm exec -- tsc --noEmit`.
+
+Before editing anything, classify the requested change &quot;change histogram colors
+for low-count bins&quot; against the Gest vocabulary:
+
+- selected existing tag: `count-or-probability-coloring`
+- selected existing tag: `histogram-colors`
+- selected existing tag: `probability-pill-colors`
+- rejected near miss: `reader-ui`
+- new dynamic tags: none
+
+Then run:
 
 ```bash
-rg &quot;tag dependency expansion|ast-grep dependency expansion|count-or-probability-coloring|src/histogram.ts|src/pill.ts|src/readerHover.ts|reader-ui&quot; \
-  /tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+ast-grep run \
+  --lang typescript \
+  --pattern &#x27;countOrProbabilityColorScale($$$)&#x27; \
+  --json=compact \
+  src
+```
+
+The tag dependency expansion should show the histogram and probability-pill
+tasks are linked by `count-or-probability-coloring`. The ast-grep dependency
+expansion should find both `src/histogram.ts` and `src/pill.ts`, and it should
+not match `src/readerHover.ts`.
+
+Write the selected tags, rejected tag, new-tag decision, tag-linked work,
+ast-grep command, matched files, non-matched reader file, and dependency-impact
+conclusion to `/tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After the agent finishes, check:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">rg <span class="st">&quot;tag dependency expansion|ast-grep dependency expansion|count-or-probability-coloring|src/histogram.ts|src/pill.ts|src/readerHover.ts|reader-ui&quot;</span> <span class="sc">\
+</span>  /tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">tag dependency expansion
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">tag dependency expansion
 ast-grep dependency expansion
 count-or-probability-coloring
 src/histogram.ts
 src/pill.ts
 src/readerHover.ts
 reader-ui</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The agent should report that a histogram-color implementation must also account
-for the probability-pill color surface, or create a child task tagged with the
-same semantic dependency before completion.</p>
-<p>Commands it should have used:</p>
+<p>The agent reports that an implementation of the histogram colors must also cover the colors of
+the probability pill. Or, before completion, it creates a child task with the tag of the same
+semantic dependency.</p>
+<p>Commands that the agent should use:</p>
 <ul>
-<li><code>gest task list --all --json</code>, <code>gest artifact list --all --json</code>, and
-<code>gest iteration list --all --json</code> before choosing tags</li>
+<li><code>gest task list --all --json</code>, <code>gest artifact list --all --json</code> and
+<code>gest iteration list --all --json</code>, before it chooses tags</li>
 <li><code>npm install</code> and <code>npm exec -- tsc --noEmit</code></li>
 <li><code>ast-grep run --lang typescript --pattern &#x27;countOrProbabilityColorScale($$$)&#x27;</code></li>
 </ul>
-<p>Commands it should not have used:</p>
+<p>What the agent should not do:</p>
 <ul>
-<li>invented “existing” tags without first collecting a Gest tag vocabulary</li>
-<li>raw string-only dependency search as the primary check when <code>ast-grep</code> is
-available for the language</li>
+<li>invent “existing” tags before it collects the tag vocabulary of Gest</li>
+<li>use a raw search for a string as the main dependency check, when <code>ast-grep</code> supports the
+language</li>
 </ul>
 </section>
 <section id="step-6-merge-the-tutorial-prs" class="level2">
-<h2 class="anchored" data-anchor-id="step-6-merge-the-tutorial-prs">Step 6: Merge The Tutorial PRs</h2>
+<h2 class="anchored" data-anchor-id="step-6-merge-the-tutorial-prs">Step 6: Merge the tutorial PRs</h2>
 <p>What this step teaches:</p>
-<p>Opening PRs is not the end of a durable checkpoint. Review and accept each PR
-before merging, then merge the PRs before cleanup so branch deletion, PR state,
-and stacked-PR ordering are exercised.</p>
+<p>A durable checkpoint does not end when the PRs are open. Review and accept each PR before you
+merge it. Then merge the PRs before the cleanup. The merge before the cleanup tests the deletion
+of branches, the state of the PRs and the order of the stacked PRs.</p>
 <p>Ask the agent:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial step 6: accept and merge tutorial PRs.
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial step 6: accept and merge tutorial PRs.
 
 Use my GitHub account from `gh api user -q .login`.
 
@@ -468,7 +476,7 @@ For repo `agent-gest-git-tutorial-stack`, merge in this order:
 Write all commands and key outputs to
 `/tmp/agent-gest-git-tutorial/logs/06-merge-prs.log`.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>After the agent finishes, check:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
 
 gh pr list <span class="sc">\
 </span>  --repo <span class="st">&quot;</span><span class="va">$owner</span><span class="st">/agent-gest-git-tutorial-plain</span><span class="st">&quot;</span> <span class="sc">\
@@ -492,30 +500,30 @@ gh pr list <span class="sc">\
 </span>  --state merged <span class="sc">\
 </span>  --json title,baseRefName,headRefName</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">plain PR: state MERGED, baseRefName main, headRefName tutorial/plain
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">plain PR: state MERGED, baseRefName main, headRefName tutorial/plain
 multi PR: state MERGED, baseRefName main, headRefName tutorial/multi
 stack child PR: state MERGED, baseRefName tutorial/stack-base
 stack base PR: state MERGED, baseRefName main
 worktree A PR: state MERGED, baseRefName main
 worktree B PR: state MERGED, baseRefName main</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Commands it should have used:</p>
+<p>Commands that the agent should use:</p>
 <ul>
-<li><code>gh pr view &lt;branch&gt; --json number</code> before deleting PR branches</li>
-<li><code>gh pr view &lt;number&gt; --json ...</code>, <code>gh pr diff &lt;number&gt; --patch</code>, and
-<code>gh pr checks &lt;number&gt;</code> as the PR acceptance checkpoint before merging</li>
+<li><code>gh pr view &lt;branch&gt; --json number</code>, before it deletes the branches of the PRs</li>
+<li><code>gh pr view &lt;number&gt; --json ...</code>, <code>gh pr diff &lt;number&gt; --patch</code> and
+<code>gh pr checks &lt;number&gt;</code>, as the PR acceptance checkpoint before each merge</li>
 <li><code>gh pr merge &lt;number&gt; --merge</code></li>
 <li><code>gh pr view</code> or <code>gh pr list --state merged</code></li>
 </ul>
-<p>Commands it should not have used:</p>
+<p>What the agent should not do:</p>
 <ul>
-<li>deleting the temporary repositories before PR state is verified as <code>MERGED</code></li>
-<li>deleting stacked branches before the child and base stack PRs are merged</li>
+<li>delete the temporary repositories before it verifies that each PR has the state <code>MERGED</code></li>
+<li>delete the stacked branches before it merges the child PR and the base PR of the stack</li>
 </ul>
 </section>
 <section id="step-7-cleanup" class="level2">
 <h2 class="anchored" data-anchor-id="step-7-cleanup">Step 7: Cleanup</h2>
 <p>Ask the agent:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial cleanup.
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">Run tutorial cleanup.
 
 Delete these GitHub repositories if they exist:
 - agent-gest-git-tutorial-plain
@@ -527,24 +535,25 @@ Use `gh repo delete &lt;owner&gt;/&lt;repo&gt; --yes`.
 Remove `/tmp/agent-gest-git-tutorial/worktree-a` and
 `/tmp/agent-gest-git-tutorial/worktree-b` if they still exist.
 Keep `/tmp/agent-gest-git-tutorial/logs` unless I ask you to remove logs.</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>After cleanup, check one repo:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
+<p>After the cleanup, check one repo:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span class="va">owner</span><span class="op">=</span><span class="st">&quot;</span><span class="kw">$(</span>gh api user -q .login<span class="kw">)</span><span class="st">&quot;</span>
 gh repo view <span class="st">&quot;</span><span class="va">$owner</span><span class="st">/agent-gest-git-tutorial-plain</span><span class="st">&quot;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Expected:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">repository not found</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">repository not found</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="automated-regression-labs" class="level2">
-<h2 class="anchored" data-anchor-id="automated-regression-labs">Automated Regression Labs</h2>
-<p>The scripts in this repo are regression checks, not the beginner tutorial:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">just workflow-lab
+<h2 class="anchored" data-anchor-id="automated-regression-labs">Automated regression labs</h2>
+<p>The scripts in this repo are regression checks. They are not the beginner tutorial:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">just workflow-lab
 just tag-dependency-live-lab
 just language-profile-labs
 just integration-live</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>They intentionally stress GitButler itself. Read this tutorial first; use those
-scripts when you want to verify the reusable skill repository.</p>
-<p>For this tutorial, <code>main</code> is the selected integration target. In an existing
-project, use the declared target (including a persistent experiment) throughout.
-Clean up only verified merged temporary topics with no stack/worktree dependents;
-keep persistent branches. See <a href="integration_delivery_workflow.html">the integration contract</a>.</p>
+<p>The labs put a load on GitButler itself on purpose. Read this tutorial first. Use the labs
+when you want to verify the repository of reusable skills.</p>
+<p>For this tutorial, <code>main</code> is the selected integration target. In an existing project, use the
+declared target in every step. The declared target can be a persistent experiment branch.
+Clean up only a temporary topic branch that you verified as merged, and that no stack and no
+worktree depends on. Keep the persistent branches. For the details, read
+<a href="integration_delivery_workflow.html">the integration contract</a>.</p>
 </section>
-<nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="index.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">agent_gest_git_skills</span></a></div><div class="nav-page nav-page-next"><a href="g_commands_cheatsheet.html" class="pagination-link"><span class="nav-page-text">Gest g-Commands Cheat Sheet</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>
+<nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="index.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">agent_gest_git_skills</span></a></div><div class="nav-page nav-page-next"><a href="g_commands_cheatsheet.html" class="pagination-link"><span class="nav-page-text">Gest g-commands cheat sheet</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>
