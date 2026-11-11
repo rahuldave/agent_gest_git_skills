@@ -1,9 +1,11 @@
-# GSU TypeScript Hello World Lab
+# GSU TypeScript hello world lab
 
-This disposable lab exercises `gsu` concepts on a tiny TypeScript project. It is
-meant to prove the setup surface before doing real work in a target repository.
+The lab tries the concepts of `gsu` on a tiny TypeScript project, and you can
+throw it away after. Use it to prove the setup surface before you do real work
+in a target repository. The setup surface is the set of files and `just`
+targets that `gsu` sets up.
 
-## Create The Repo
+## Create the repo
 
 ```bash
 jnterfaces=/path/to/jnterfaces
@@ -113,7 +115,7 @@ test("greet accepts a name", () => {
 });
 ```
 
-## Add The Command Contract
+## Add the command contract
 
 Create `Justfile`:
 
@@ -156,9 +158,9 @@ dev:
   npm run start
 ```
 
-Update `AGENTS.md` from the template placeholders so it maps setup, format,
-lint, typecheck, build, test, smoke, verify, and dev to the `just` targets. For
-the disposable lab, appending a concrete section is enough:
+Replace the template placeholders in `AGENTS.md`, so that the file maps setup,
+format, lint, typecheck, build, test, smoke, verify and dev to the `just`
+targets. For this lab, it is enough to add a concrete section at the end:
 
 ````md
 ## Lab Command Contract
@@ -205,16 +207,18 @@ just verify
 
 Expected result:
 
-- `just setup` installs dependencies using `.local/npm-cache`.
-- `just lint src/index.ts` proves focused argument passing.
-- `just verify` runs lint, typecheck, build, tests, smoke, and diff hygiene
-  through native Just dependencies.
+- `just setup` installs the dependencies, with `.local/npm-cache` as the npm cache.
+- `just lint src/index.ts` proves that a target passes a path argument to the
+  tool.
+- `just verify` runs lint, typecheck, build, tests, smoke and diff hygiene
+  through the native dependencies of Just.
 
-## Lessons For GSU
+## Lessons for GSU
 
-- Prefer project-local caches for npm setup when reproducibility matters.
-- Include `@types/node` for Node-targeted TypeScript projects.
-- Scope lint defaults to source/config files so generated `dist/` output is not
-  checked by default.
-- Keep tool choices in `AGENTS.md` and `Justfile`; the reusable skills stay
-  language-agnostic.
+- If the setup must give the same result on each machine, prefer an npm cache
+  in the project.
+- Include `@types/node` in a TypeScript project that targets Node.
+- Limit the default paths of lint to the source and config files. Then lint
+  does not check the generated output in `dist/` by default.
+- Keep the choice of tools in `AGENTS.md` and the `Justfile`. Then the reusable
+  skills stay free of any one language.
