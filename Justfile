@@ -63,14 +63,26 @@ install-test:
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the install dropped the hook of the user"
   grep -q 'session-start' "$target/.claude/settings.json" || fail "the install merged no Claude hook"
   grep -q 'session-start' "$target/.codex/hooks.json" || fail "the install merged no Codex hook"
-  grep -q 'Read and follow `.agents/instructions/tasker.md`.' "$target/AGENTS.md" || fail "AGENTS.md has no pointer to the rules"
+  grep -qxF 'Read and follow @.agents/instructions/tasker.md' "$target/AGENTS.md" || fail "AGENTS.md has no pointer to the rules"
+  grep -qxF '@AGENTS.md' "$target/CLAUDE.md" || fail "CLAUDE.md does not import AGENTS.md"
   grep -q 'Project name:' "$target/AGENTS.md" || fail "AGENTS.md has no starter"
   cmp -s AGENTS.instructions.md "$target/.agents/instructions/tasker.md" || fail "the rules are not in .agents/instructions/tasker.md"
-  grep -q 'Branches And Review' <(cd "$target" && CLAUDE_PROJECT_DIR="$target" .claude/hooks/session-start.sh) || fail "the Claude hook does not print the rules"
+  # Claude Code imports the rules through CLAUDE.md and AGENTS.md, so its hook prints them only without the import.
+  claude() {
+    local out
+    out="$(cd "$target" && CLAUDE_PROJECT_DIR="$target" .claude/hooks/session-start.sh)" || fail "the Claude hook failed"
+    printf '%s' "$out" | uv run --no-project --quiet python -c 'import json, sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])' || fail "the Claude hook printed no JSON"
+  }
+  out="$(claude)"
+  if grep -q 'Branches And Review' <<<"$out"; then fail "the Claude hook prints the rules that Claude Code imports"; fi
+  mv "$target/CLAUDE.md" "$target/CLAUDE.md.off"
+  out="$(claude)"
+  grep -q 'Branches And Review' <<<"$out" || fail "the Claude hook does not print the rules without the import"
   grep -q 'Branches And Review' <(cd "$target" && .codex/hooks/session-start.sh) || fail "the Codex hook does not print the rules"
   for hook in .claude/hooks/session-start.sh .codex/hooks/session-start.sh; do
     (cd "$target" && CLAUDE_PROJECT_DIR="$target" "$hook") | uv run --no-project --quiet python -c 'import json, sys; text = json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]; sys.exit(not text.startswith("Read all of .agents/instructions/tasker.md"))' || fail "$hook does not start with the line that asks for the whole rules file"
   done
+  mv "$target/CLAUDE.md.off" "$target/CLAUDE.md"
   test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"

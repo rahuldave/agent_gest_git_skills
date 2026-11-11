@@ -9,7 +9,7 @@ The package gives a project these parts:
 - **The tasker role.** The rules of the role go to `.agents/instructions/tasker.md`, and `AGENTS.md` points to them.
 - **The g skills.** Each skill does one step of the work, such as planning (`gpl`), implementation (`gim`), review (`grv`) or a commit (`gcm`). `gtw` sends each request to the right skill.
 - **Hooks.** Claude Code and Codex run them at these times:
-  - At the start of each session, they give the agent the rules.
+  - At the start of each session, they give the agent the rules. The Claude Code hook leaves them out when `CLAUDE.md` already imports them.
   - Before a tool runs, they give context for a commit or an edit. While GitButler owns the workspace, they block a raw `git` command that writes. The agent then uses `but` instead.
   - When the agent stops, a GitButler hook takes a snapshot.
 - **Labs.** Each lab runs a workflow on throwaway repositories, so that you can see the workflow before you use it.
