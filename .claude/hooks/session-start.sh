@@ -52,10 +52,45 @@ $ready Tell the user; remove them only when the user asks."
   fi
 fi
 
-# The rules of the tasker role. just install writes them to .agents/instructions/tasker.md, and the line in
-# AGENTS.md only points to them, so this hook is the step that loads them.
+# The rules of the tasker role. just install writes them to .agents/instructions/tasker.md, and AGENTS.md has the
+# line "Read and follow @.agents/instructions/tasker.md". Claude Code imports the rules through that line when
+# CLAUDE.md imports AGENTS.md, so the hook leaves them out then, and they are not in the context twice. Markdown
+# decides what is an import, so the hook leaves the rules out only for the files that the installer writes:
+# - CLAUDE.md at the top of the project holds only the line @AGENTS.md, or is a symlink to AGENTS.md.
+# - AGENTS.md is a file and not a symlink. It has the pointer on a line of its own, and before it only blank lines,
+#   comments of one line and the pointers of other roles.
+# - No settings file that the hook can read names claudeMdExcludes. The hook cannot see claude --settings.
+# In each other case the hook prints the rules, so at worst they are in the context twice. With no CLAUDE.md,
+# Claude Code 2.1.277 and later also read AGENTS.md, so the rules are there twice; older versions need the hook.
 rules="$project_root/.agents/instructions/tasker.md"
-if [ -f "$rules" ]; then
+# points FILE: FILE has the pointer of the rules on a line of its own. Before it are only the lines that the
+# installer writes: blank lines, comments of one line, and the pointers of other roles. Any other line before it
+# could make the pointer code, HTML or front matter, so the hook is not sure.
+points() {
+  awk '
+    { sub(/\r$/, "") }
+    $0 == "Read and follow @.agents/instructions/tasker.md" { found = 1; exit }
+    $0 ~ /^[ \t]*$/ { next }
+    $0 ~ /^<!--/ && $0 ~ /-->$/ && index(substr($0, 5), "<!--") == 0 && index($0, "-->") == length($0) - 2 { next }
+    $0 ~ /^Read and follow @\.agents\/instructions\/[A-Za-z0-9_-]+\.md$/ { next }
+    { exit }
+    END { exit !found }' "$1"
+}
+imported() {
+  local claude="$project_root/CLAUDE.md" agents="$project_root/AGENTS.md" settings
+  [ -f "$agents" ] && [ ! -L "$agents" ] && points "$agents" || return 1
+  for settings in "$project_root/.claude/settings.json" "$project_root/.claude/settings.local.json" \
+    "${CLAUDE_CONFIG_DIR:-${HOME:-/nonexistent}/.claude}/settings.json" \
+    "/Library/Application Support/ClaudeCode/managed-settings.json" "/etc/claude-code/managed-settings.json"; do
+    if [ -f "$settings" ] && grep -q claudeMdExcludes "$settings"; then return 1; fi
+  done
+  if [ -L "$claude" ]; then
+    case "$(readlink "$claude")" in AGENTS.md | ./AGENTS.md) return 0 ;; esac
+    return 1
+  fi
+  [ -f "$claude" ] && [ "$(tr -d '\r' < "$claude" | awk 'NF')" = '@AGENTS.md' ]
+}
+if [ -f "$rules" ] && ! imported; then
   # Claude Code and Codex show a long hook output only as a short preview and a file. So the first line, which is
   # always in the preview, asks for the whole file.
   CONTEXT="Read all of .agents/instructions/tasker.md before you start work. It holds the rules of this project.

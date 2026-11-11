@@ -25,7 +25,7 @@ if [ -f "$script" ] && command -v uv >/dev/null 2>&1; then
 fi
 
 # The rules of the tasker role. just install writes them to .agents/instructions/tasker.md, and the line in
-# AGENTS.md only points to them, so this hook is the step that loads them.
+# AGENTS.md only points to them. Codex does not import them, so this hook is the step that loads them.
 rules="$project_root/.agents/instructions/tasker.md"
 if [ -f "$rules" ]; then
   # Claude Code and Codex show a long hook output only as a short preview and a file. So the first line, which is

@@ -572,5 +572,108 @@ class TaskerHookTests(unittest.TestCase):
             self.assertIn("tab?bed", text)
 
 
+    def rules_in(self, home: Path | None = None) -> bool:
+        """Whether the Claude SessionStart hook prints the rules of the tasker role."""
+        env = os.environ.copy()
+        env["CLAUDE_PROJECT_DIR"] = str(self.repo)
+        env["HOME"] = str(home or self.base)
+        env.pop("CLAUDE_CONFIG_DIR", None)
+        done = subprocess.run(["bash", str(ROOT / ".claude/hooks/session-start.sh")], input="{}", text=True,
+                              capture_output=True, cwd=self.repo, env=env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return "Branches And Review" in json.loads(done.stdout)["hookSpecificOutput"]["additionalContext"]
+
+    def install_rules(self, claude: str | None = "@AGENTS.md\n") -> None:
+        (self.repo / ".agents/instructions").mkdir(parents=True)
+        (self.repo / ".agents/instructions/tasker.md").write_text("# Rules\n\n## Branches And Review\n")
+        (self.repo / "AGENTS.md").write_text("<!-- begin lines of tasker -->\nRead and follow "
+                                             "@.agents/instructions/tasker.md\n<!-- end lines of tasker -->\n")
+        if claude is not None:
+            (self.repo / "CLAUDE.md").write_text(claude)
+
+    def test_the_claude_hook_leaves_out_the_rules_that_claude_code_imports(self) -> None:
+        self.install_rules()
+        self.assertFalse(self.rules_in())
+        (self.repo / "CLAUDE.md").write_text("\r\n@AGENTS.md\r\n")
+        self.assertFalse(self.rules_in())
+        (self.repo / "CLAUDE.md").unlink()
+        (self.repo / "CLAUDE.md").symlink_to("AGENTS.md")
+        self.assertFalse(self.rules_in())
+        # The Codex hook does not know the import, so it prints the rules.
+        text = json.loads(self.hook(".codex/hooks/session-start.sh"))["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Branches And Review", text)
+
+    def test_the_claude_hook_prints_the_rules_unless_it_is_sure_of_the_import(self) -> None:
+        self.install_rules(claude=None)
+        self.assertTrue(self.rules_in(), "no CLAUDE.md")
+        # Markdown decides what is an import, so the hook is sure only of a CLAUDE.md that holds the import alone.
+        cases = {
+            "an import in a fence": "```\n@AGENTS.md\n```\n",
+            "an import in a comment": "<!--\n@AGENTS.md\n-->\n",
+            "an import in a sentence": "Read `x @AGENTS.md y`.\n",
+            "an import of another file": "@AGENTS.md.bak\n",
+            "an indented import": "    @AGENTS.md\n",
+            "an import in an HTML block": "<details>\n@AGENTS.md\n</details>\n",
+            "a CLAUDE.md of the user": "# Mine\n@./AGENTS.md\n",
+        }
+        for name, text in cases.items():
+            (self.repo / "CLAUDE.md").write_text(text)
+            self.assertTrue(self.rules_in(), name)
+        # An import in .claude/CLAUDE.md resolves from .claude/, so @AGENTS.md there is not the file at the top.
+        (self.repo / "CLAUDE.md").unlink()
+        (self.repo / ".claude").mkdir()
+        (self.repo / ".claude/CLAUDE.md").write_text("@AGENTS.md\n")
+        self.assertTrue(self.rules_in(), ".claude/CLAUDE.md")
+        (self.repo / "CLAUDE.md").write_text("@AGENTS.md\n")
+        self.assertFalse(self.rules_in())
+        # A symlinked AGENTS.md resolves its import from the folder of the real file.
+        (self.repo / "docs").mkdir()
+        (self.repo / "AGENTS.md").rename(self.repo / "docs/AGENTS.md")
+        (self.repo / "AGENTS.md").symlink_to("docs/AGENTS.md")
+        self.assertTrue(self.rules_in(), "a symlinked AGENTS.md")
+        (self.repo / "AGENTS.md").unlink()
+        (self.repo / "docs/AGENTS.md").rename(self.repo / "AGENTS.md")
+        # A pointer that Markdown makes code or HTML is not read.
+        pointer = "Read and follow @.agents/instructions/tasker.md\n"
+        cases = {
+            "a pointer in a comment": f"<!--\n{pointer}-->\n",
+            "a pointer after a comment opened mid-line": f"Note <!--\n{pointer}-->\n",
+            "an indented pointer": f"# Rules\n\n    {pointer}",
+            "a pointer in nested fences": f"````\n```\n{pointer}```\n````\n",
+            "a pointer in mixed fences": f"```\n~~~\n{pointer}~~~\n```\n",
+            "a pointer in an HTML block": f"<details>\n{pointer}</details>\n",
+            "a pointer in a code span": f"See `this\n{pointer}that`.\n",
+            "a pointer in a code span of two backticks": f"See ``this\n{pointer}that``.\n",
+            "a pointer in inline HTML": f'Text <span title="\n{pointer}">x</span>\n',
+            "a pointer as the title of a link": f'[x]: /url "\n{pointer}"\n',
+            "a pointer as the title of a link in brackets": f"[x]: /url (\n{pointer})\n",
+            "a pointer in the text of an image": f"![\n{pointer}](x.png)\n",
+            "a pointer after HTML in a list": f"- <div>\n{pointer}",
+            "a pointer in front matter": f"---\nx: 1\n{pointer}---\n",
+            "a pointer after a comment with text after it": f"<!-- x --> y\n{pointer}",
+        }
+        for name, text in cases.items():
+            (self.repo / "AGENTS.md").write_text(text)
+            self.assertTrue(self.rules_in(), name)
+        (self.repo / "AGENTS.md").write_text("Read and follow `.agents/instructions/tasker.md`.\n")
+        self.assertTrue(self.rules_in(), "the old pointer")
+        (self.repo / "AGENTS.md").write_text("Read and follow @.agents/instructions/tasker.md\n")
+        self.assertFalse(self.rules_in())
+        # The blocks of the installer, with the pointer of another role before this one.
+        (self.repo / "AGENTS.md").write_text(
+            "<!-- begin lines of prose -->\r\nRead and follow @.agents/instructions/prose.md\r\n<!-- end lines of prose -->"
+            f"\r\n\r\n<!-- begin lines of tasker -->\r\n{pointer}<!-- end lines of tasker -->\r\n\r\n# Project\r\n")
+        self.assertFalse(self.rules_in())
+        # A setting that leaves out CLAUDE.md files.
+        (self.repo / ".claude/settings.local.json").write_text('{"claudeMdExcludes": ["**/AGENTS.md"]}\n')
+        self.assertTrue(self.rules_in(), "claudeMdExcludes")
+        (self.repo / ".claude/settings.local.json").unlink()
+        home = self.base / "home"
+        (home / ".claude").mkdir(parents=True)
+        (home / ".claude/settings.json").write_text('{"claudeMdExcludes": ["**/AGENTS.md"]}\n')
+        self.assertTrue(self.rules_in(home), "claudeMdExcludes of the user")
+        (home / ".claude/settings.json").unlink()
+        self.assertFalse(self.rules_in(home))
+
 if __name__ == "__main__":
     unittest.main()
