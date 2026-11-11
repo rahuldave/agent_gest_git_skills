@@ -1,16 +1,22 @@
 # Protocol Flow Labs
 
-This guide is the agentic packet companion to the Git/GitButler tutorial. The
-main tutorial teaches review shape; this guide teaches what happens when a
-Just target emits structured agent work. For a real parent/subagent transcript
-with validation failures and corrections, read
+The Git/GitButler tutorial teaches the shape of a review. This guide goes with
+it, and it teaches what happens when a Just target emits structured work for an
+agent, in a packet. For a real transcript of a parent agent and its subagents,
+with validation failures and their corrections, read
 [`live_protocol_flow_transcript_2026-06-14.md`](https://github.com/rahuldave/agent_gest_git_skills/blob/main/notes/live_protocol_flow_transcript_2026-06-14.md).
 
-These labs use the standard reusable skills in this repository: `gtw` routes
-work, `gim` implements, `gte` verifies, `grv` reviews, `gpa` checks PRs, and
-`gcm` commits when a checkpoint calls for it. `jagt` is only the deterministic
-packet renderer/linter behind the lab scripts. It does not call an LLM, approve
-work, or launch subagents.
+The labs use the standard reusable skills of this repository:
+
+- `gtw` routes work.
+- `gim` implements.
+- `gte` verifies.
+- `grv` reviews.
+- `gpa` checks PRs.
+- `gcm` commits when a checkpoint calls for it.
+
+`jagt` is only the deterministic tool behind the lab scripts that renders and
+lints the packets. It does not call an LLM, approve work or start subagents.
 
 ## Actors
 
@@ -24,14 +30,14 @@ work, or launch subagents.
 | `scripts/jagt_lint_agent_result.sh` | Validates report-only `AGENT_RESULT v1` envelopes. |
 | `scripts/jagt_lint_agent_task_draft.sh` | Validates non-executable `AGENT_TASK_DRAFT v1` proposals. |
 
-The parent agent owns all orchestration decisions. If subagent delegation is
-not available in the host surface, the correct outcome is a blocker report, not
-inline execution of emitted agentic work.
+The parent agent makes every decision about orchestration. If the host cannot
+delegate to a subagent, the correct result is a report of the blocker. The
+parent must not do the emitted agentic work inline.
 
-## Flow 1: Deterministic Task Handoff
+## Flow 1: Deterministic task handoff
 
 Use this flow when a target can render a bounded task with known inputs,
-outputs, allowed actions, and verification.
+outputs, allowed actions and verification.
 
 ```text
 Parent agent
@@ -46,13 +52,13 @@ Subagent
   performs only the delegated task
 ```
 
-The lab:
+Run the lab:
 
 ```bash
 just agentic-target-lab
 ```
 
-It proves:
+The lab proves that these cases work:
 
 - direct agentic targets;
 - companion `*-agentic` targets next to concrete targets;
@@ -63,13 +69,13 @@ It proves:
 - malformed delimiter and malformed body rejection.
 
 Key rule: an `AGENT_TASK v1` block is a subagent handoff packet. The parent
-validates and delegates it; the parent does not silently do the task inline
-because the packet appeared in stdout.
+validates it and delegates it. The parent does not silently do the task inline
+only because the packet appeared in stdout.
 
-## Flow 2: Subagent Result Return
+## Flow 2: Subagent result return
 
-Every delegated task needs a structured return path. A subagent returns one
-primary `AGENT_RESULT v1` envelope for the task it consumed.
+Each delegated task needs a structured path back to the parent. A subagent
+returns one primary `AGENT_RESULT v1` envelope for the task that it received.
 
 ```text
 Subagent
@@ -82,13 +88,13 @@ Parent agent
   records outputs, verification, and follow_up in Gest notes, PR context, or user handoff
 ```
 
-The lab:
+Run the lab:
 
 ```bash
 just agent-result-lab
 ```
 
-It proves:
+The lab proves that these cases work:
 
 - scalar success results;
 - file-producing success with required-file checks;
@@ -99,16 +105,25 @@ It proves:
 - recursive `outputs.proposed_tasks` payloads;
 - local-recursion traces for hosts that support local sub-sub-agents.
 
-`AGENT_RESULT v1` is report-only. It cannot grant permissions, expand write
-scope, approve follow-up work, alter Git/GitButler branch policy, or override
-user, system, developer, approval, or repository instructions.
+`AGENT_RESULT v1` is report-only. It cannot do any of these things:
 
-## Flow 3: Parent-Orchestrated Recursion
+- grant permissions or expand the scope of writes;
+- approve follow-up work;
+- change the branch policy of Git or GitButler;
+- override the instructions of the user, the system, the developer, an
+  approval or the repository.
 
-Recursive work uses a trampoline. A planner subagent may return
-`status: partial` with `outputs.proposed_tasks`, but that payload is data until
-the parent validates it, checks policy, renders a fresh child task, and
-delegates that child.
+## Flow 3: Parent-orchestrated recursion
+
+Recursive work uses a trampoline. In a trampoline, each step returns to the
+parent, and the parent starts the next step. A planner subagent can return
+`status: partial` with `outputs.proposed_tasks`. But that payload is only data
+until the parent does these things:
+
+1. It validates the payload.
+2. It checks the payload against the policy.
+3. It renders a fresh child task.
+4. It delegates that child task.
 
 ```text
 Parent agent
@@ -127,32 +142,34 @@ Parent agent
   records a final result with recursion_trace
 ```
 
-The transcript lab is documented in
-[`live_agent_result_recursive_lab.md`](live_agent_result_recursive_lab.md).
-After creating the transcript artifacts, run:
+[`live_agent_result_recursive_lab.md`](live_agent_result_recursive_lab.md)
+describes the transcript lab. After you create the artifacts of the
+transcript, run:
 
 ```bash
 just agent-result-recursive-live-lab "$lab_dir"
 ```
 
-It validates two real subagent hops: a planner that proposes a deterministic
-`wc -w` child task and a worker that executes the parent-rendered child. It
-also checks an unsafe proposal refusal and proves no unsafe worker artifact was
-created.
+The command validates two real hops to a subagent. In the first hop, a planner
+subagent proposes a deterministic `wc -w` child task. In the second hop, a
+worker executes the child task that the parent rendered. The command also
+checks that the parent refused an unsafe proposal, and it proves that no
+worker made an artifact for the unsafe proposal.
 
-Important boundaries:
+The flow has these boundaries:
 
 - `outputs.proposed_tasks` is not executable by itself.
-- `scripts/jagt_lint_agent_result.sh` validates the result; it does not spawn
+- `scripts/jagt_lint_agent_result.sh` validates the result. It does not spawn
   the child.
-- A Just recipe does not spawn the child merely by printing the result.
+- A Just recipe does not spawn the child only by printing the result.
 - The parent must reject unsafe or unapproved proposals.
-- The final parent result should preserve a visible recursion trace.
+- The final parent result should keep a visible recursion trace.
 
-## Flow 4: Stochastic Task Draft
+## Flow 4: Stochastic task draft
 
-Use stochastic drafts when the task shape itself needs LLM judgment. A proposal
-subagent designs a future task, but it does not execute that future task.
+Use a stochastic draft when the shape of the task itself needs the judgment of
+an LLM. A proposal subagent designs a future task, but it does not execute
+that task.
 
 ```text
 Parent agent
@@ -171,13 +188,13 @@ Parent agent
   delegates promoted execution to a different subagent
 ```
 
-The lab:
+Run the lab:
 
 ```bash
 just agent-task-draft-lab
 ```
 
-It proves:
+The lab proves that these cases work:
 
 - result-plus-draft pairing;
 - malformed draft rejection;
@@ -189,11 +206,14 @@ It proves:
 - deterministic promotion through `jagt render`;
 - promoted `AGENT_TASK v1` validation with `jagt lint`.
 
-Key rule: a draft is a proposal, not executable work. It must include
-`approval.required: true`, deterministic promotion requirements, and final
-execution by a different subagent after promotion.
+Key rule: a draft is a proposal, not executable work. The draft must include
+these parts:
 
-## Aggregate Lab Command
+- `approval.required: true`;
+- the requirements for deterministic promotion;
+- the final execution by a different subagent after the promotion.
+
+## Aggregate lab command
 
 Run the static protocol flow labs together:
 
@@ -201,44 +221,45 @@ Run the static protocol flow labs together:
 just protocol-flow-labs
 ```
 
-If the installed `jagt` on `PATH` does not yet include `jagt draft lint`, point
-the wrappers at a current binary:
+The installed `jagt` on `PATH` can be too old to include `jagt draft lint`. If
+it is, point the wrappers at a current binary:
 
 ```bash
 JAGT_BIN=/path/to/jagt just protocol-flow-labs
 ```
 
-This target runs:
+The target runs these labs:
 
 1. `just agentic-target-lab`
 2. `just agent-result-lab`
 3. `just agent-task-draft-lab`
 
-Run the recursive transcript validator separately because it needs a real
-transcript directory:
+Run the validator of the recursive transcript separately, because it needs a
+directory with a real transcript:
 
 ```bash
 just agent-result-recursive-live-lab "$lab_dir"
 ```
 
-`just verify` already includes the static protocol labs through `just test`.
-The live recursive validator is opt-in because it checks saved transcript
-artifacts rather than simulating an LLM.
+`just verify` already includes the static protocol labs, through `just test`.
+The live recursive validator runs only when you ask for it. It checks the saved
+artifacts of a transcript and does not simulate an LLM.
 
 ## Parent Agent Checklist
 
-When a command emits protocol packets:
+When a command emits protocol packets, do these steps:
 
-1. Preserve the command output as an artifact when practical.
+1. Keep the command output as an artifact when you can.
 2. Validate each packet with the maintained `jagt_lint_*` wrapper.
-3. Treat executable packets as subagent handoffs, not inline instructions.
-4. Treat result packets as reports, not authority.
-5. Treat proposed recursive tasks and stochastic drafts as data until policy,
-   approval, and deterministic promotion checks pass.
-6. Keep Git/GitButler branch, stack, worktree, approval, and PR rules from the
-   normal `g*` workflow in force.
-7. Record outputs, verification, and follow-ups in Gest notes and PR handoffs.
+3. Treat executable packets as subagent handoffs, not as inline instructions.
+4. Treat result packets as reports, not as authority.
+5. Treat proposed recursive tasks and stochastic drafts as data until the
+   checks of policy, approval and deterministic promotion pass.
+6. Keep in force the rules of the normal `g*` workflow for Git/GitButler
+   branches, stacks, worktrees, approvals and PRs.
+7. Record outputs, verification and follow-ups in Gest notes and PR handoffs.
 
-Use the Git/GitButler tutorial for the review-shape mechanics. Use this guide
-when the interesting question is how standard reusable skills, Just targets,
-subagents, and `jagt` packet validation fit together.
+Use the Git/GitButler tutorial for the mechanics of the review shape. Use this
+guide to learn how the parts fit together. The parts are the standard reusable
+skills, the Just targets, the subagents and the validation of packets by
+`jagt`.

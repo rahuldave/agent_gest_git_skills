@@ -1,11 +1,11 @@
-# Git And GitButler Tutorial
+# Git and GitButler tutorial
 
-This tutorial creates four temporary GitHub repositories with fixed names,
-runs four agent workflows, and tells you exactly what to check after each turn.
-The pull-request steps create PRs first, then a later merge step merges those
-PRs before cleanup deletes the temporary repositories.
+This tutorial creates four temporary GitHub repositories with fixed names, and it runs four
+agent workflows in them. After each turn of the agent, it tells you what to check. The
+steps for pull requests (PRs) first create the PRs. A later step merges them, and then the
+cleanup deletes the temporary repositories.
 
-You will learn:
+You learn these review shapes and checks:
 
 1. ordinary git branch PR
 2. ordinary git multi-commit PR
@@ -15,9 +15,9 @@ You will learn:
 
 Only step 3 uses GitButler as the main tool.
 
-## Pull Request Command Map
+## Pull request command map
 
-This tutorial uses these PR creation commands:
+The tutorial creates its PRs with these commands:
 
 - Step 1: `gh pr create --base main --head tutorial/plain`
 - Step 2: `gh pr create --base main --head tutorial/multi`
@@ -25,14 +25,14 @@ This tutorial uses these PR creation commands:
 - Step 4: `gh pr create --base main --head tutorial/worktree-a` and
   `gh pr create --base main --head tutorial/worktree-b`
 
-For stacked PRs, select the top stack branch with `but pr new`. GitButler walks
-the stack from bottom to top and creates the lower PR first, so one command
-creates both the base and child PRs with the correct targets.
+For stacked PRs, select the top branch of the stack with `but pr new`. GitButler walks the
+stack from the bottom to the top, and it creates the lower PR first. So one command creates
+both the base PR and the child PR, with the correct targets.
 
-## What This Tutorial Will Do
+## What the tutorial does
 
-The agent will create and later delete these GitHub repositories under your
-GitHub account:
+The agent creates these GitHub repositories under your GitHub account, and it deletes them
+later:
 
 ```text
 agent-gest-git-tutorial-plain
@@ -41,24 +41,23 @@ agent-gest-git-tutorial-stack
 agent-gest-git-tutorial-worktrees
 ```
 
-Do not use those names for anything valuable. The prompts below tell the agent
-to delete any existing repositories with those names before starting, then
-delete them again during cleanup. Cleanup uses `gh repo delete --yes`.
+Do not use these names for anything valuable. Before the agent starts, the prompts below tell it
+to delete each repository that has one of these names. The cleanup deletes them again with
+`gh repo delete --yes`.
 
-Prerequisites:
+Before you start, make sure of these things:
 
 - `gh auth status -h github.com` succeeds.
-- Your GitHub auth has `repo` and `delete_repo` scopes.
-- `git`, `gh`, `gest`, `just`, and `but` are installed.
-- You are comfortable letting the agent create and delete the four temporary
-  repositories named above.
+- Your GitHub auth has the `repo` and `delete_repo` scopes.
+- `git`, `gh`, `gest`, `just` and `but` are installed.
+- You agree that the agent creates and deletes the four temporary repositories above.
 
-## Step 0: Setup And Cleanup Contract
+## Step 0: Setup and cleanup contract
 
 What this step teaches:
 
-The agent should use fixed repo names, clean up before and after the tutorial,
-and tell you where it wrote logs.
+The agent uses fixed names for the repositories, and it cleans up before and after the
+tutorial. It also tells you where it wrote the logs.
 
 Ask the agent:
 
@@ -90,13 +89,13 @@ After the agent finishes, check:
 test -d /tmp/agent-gest-git-tutorial/logs
 ```
 
-The agent should report your GitHub owner and the exact log directory.
+The agent reports your GitHub owner and the exact directory of the logs.
 
-## Step 1: Ordinary Git Branch PR
+## Step 1: Ordinary git branch PR
 
 What this step teaches:
 
-Use ordinary git for one simple review branch. GitButler is not needed.
+Use ordinary git for one simple review branch. You do not need GitButler.
 
 Repository:
 
@@ -106,7 +105,7 @@ agent-gest-git-tutorial-plain
 
 Ask the agent:
 
-```text
+````text
 Run tutorial step 1: ordinary git branch PR.
 
 Create private GitHub repo `agent-gest-git-tutorial-plain`.
@@ -131,7 +130,7 @@ gh pr create \
 
 Write all commands and key outputs to
 `/tmp/agent-gest-git-tutorial/logs/01-plain-git-branch.log`.
-```
+````
 
 After the agent finishes, check:
 
@@ -150,25 +149,25 @@ headRefName: tutorial/plain
 title: test: plain git branch flow
 ```
 
-Commands it should have used:
+Commands that the agent should use:
 
-- `git checkout -b tutorial/plain` or equivalent ordinary git branch creation
+- `git checkout -b tutorial/plain`, or another ordinary git command that creates the branch
 - `git commit`
 - `git push`
 - `gh pr create`
 
-Commands it should not have used:
+Commands that the agent should not use:
 
 - `but setup`
 - `but branch new`
 - `but commit`
 
-## Step 2: Ordinary Git Multi-Commit PR
+## Step 2: Ordinary git multi-commit PR
 
 What this step teaches:
 
-Use ordinary git when one review branch needs more than one commit.
-GitButler is still not needed.
+Use ordinary git when one review branch needs more than one commit. You still do not need
+GitButler.
 
 Repository:
 
@@ -178,7 +177,7 @@ agent-gest-git-tutorial-multi
 
 Ask the agent:
 
-```text
+````text
 Run tutorial step 2: ordinary git multi-commit PR.
 
 Create private GitHub repo `agent-gest-git-tutorial-multi`.
@@ -205,7 +204,7 @@ gh pr create \
 
 Write all commands and key outputs to
 `/tmp/agent-gest-git-tutorial/logs/02-multi-commit-git-branch.log`.
-```
+````
 
 After the agent finishes, check:
 
@@ -226,18 +225,18 @@ title: test: multi commit git branch flow
 commits: two commits on the PR branch
 ```
 
-Commands it should not have used:
+Commands that the agent should not use:
 
 - `but setup`
 - `but branch new`
 - `but commit`
 
-## Step 3: GitButler Stacked PRs
+## Step 3: GitButler stacked PRs
 
 What this step teaches:
 
-Use GitButler when you have multiple dependent, meaty slices that should be
-reviewed separately. This is the GitButler step.
+Use GitButler when you have several large slices that depend on each other, and each slice
+needs its own review. Step 3 is the only step that uses GitButler as the main tool.
 
 Repository:
 
@@ -247,7 +246,7 @@ agent-gest-git-tutorial-stack
 
 Ask the agent:
 
-```text
+````text
 Run tutorial step 3: GitButler stacked PRs.
 
 Create private GitHub repo `agent-gest-git-tutorial-stack`.
@@ -282,7 +281,7 @@ creates both PRs in the right order.
 
 Write all commands and key outputs to
 `/tmp/agent-gest-git-tutorial/logs/03-gitbutler-stack.log`.
-```
+````
 
 After the agent finishes, check:
 
@@ -306,7 +305,7 @@ baseRefName: tutorial/stack-base
 headRefName: tutorial/stack-child
 ```
 
-Commands it should have used:
+Commands that the agent should use:
 
 - `but setup`
 - `but branch new tutorial/stack-base`
@@ -315,14 +314,15 @@ Commands it should have used:
 - `but push`
 - `but pr new tutorial/stack-child --default --json`
 
-This step should not use physical git worktrees.
+The step does not use physical git worktrees.
 
-## Step 4: Physical Git Worktrees
+## Step 4: Physical git worktrees
 
 What this step teaches:
 
-Use physical git worktrees for independent parallel slices. Do not use
-GitButler parallel lanes as an agent parallelism primitive.
+Use physical git worktrees for independent slices that run in parallel. A physical worktree is
+a separate folder with its own checkout of a branch. Do not use the parallel lanes of GitButler
+as the way to run agents in parallel.
 
 Repository:
 
@@ -332,7 +332,7 @@ agent-gest-git-tutorial-worktrees
 
 Ask the agent:
 
-```text
+````text
 Run tutorial step 4: physical git worktrees.
 
 Create private GitHub repo `agent-gest-git-tutorial-worktrees`.
@@ -377,7 +377,7 @@ Remove both physical worktrees after the PRs are open.
 
 Write all commands and key outputs to
 `/tmp/agent-gest-git-tutorial/logs/04-physical-worktrees.log`.
-```
+````
 
 After the agent finishes, check:
 
@@ -401,31 +401,32 @@ baseRefName: main
 headRefName: tutorial/worktree-b
 ```
 
-Commands it should have used:
+Commands that the agent should use:
 
 - `GEST_VCS_EXECUTION=git-worktrees git worktree add ...`
 - ordinary `git commit` inside each physical worktree
 - `gh pr create`
 
-Commands it should not have used:
+What the agent should not use:
 
 - GitButler parallel lanes
-- two write agents in one GitButler workspace
+- two agents that write in one GitButler workspace
 
-## Step 5: Tags And ast-grep Dependency Check
+## Step 5: Tags and ast-grep dependency check
 
 What this step teaches:
 
-Before the agent edits code, it should classify the task with project tags and
-run ast-grep against the semantic contract that is changing. If another surface
-depends on that contract, the agent should expand the task or create a tagged
-child task before implementation.
+Before the agent edits code, it classifies the task with the tags of the project. A tag is a
+label on a Gest task that names a concern of the code. The agent also runs ast-grep, a tool that
+searches code by its syntax, on the semantic contract that the change touches. If another
+surface depends on that contract, before implementation the agent expands the task, or
+creates a child task with the same tag.
 
-This is a live local TypeScript repo lab. It demonstrates two different
-dependency signals:
+The step is a live lab in a local TypeScript repository. It shows two different signals of a
+dependency:
 
-- tag dependency: Gest tasks already tagged with the same semantic concern
-- ast-grep dependency: TypeScript call sites that use the changing function
+- tag dependency: Gest tasks that already have a tag for the same semantic concern
+- ast-grep dependency: TypeScript call sites that use the function that changes
 
 Local fixture:
 
@@ -433,8 +434,8 @@ Local fixture:
 /tmp/agent-gest-git-tutorial/tag-ast-grep-live
 ```
 
-If you are running from this reusable skills repository, this command performs
-the whole step:
+If you run the tutorial from this repository of reusable skills, one command does the whole
+step:
 
 ```bash
 scripts/run_tag_dependency_typescript_lab.sh \
@@ -444,7 +445,7 @@ scripts/run_tag_dependency_typescript_lab.sh \
 
 Ask the agent:
 
-```text
+````text
 Run tutorial step 5: live TypeScript tag and ast-grep dependency lab.
 
 Create or replace `/tmp/agent-gest-git-tutorial/tag-ast-grep-live`.
@@ -506,7 +507,7 @@ not match `src/readerHover.ts`.
 Write the selected tags, rejected tag, new-tag decision, tag-linked work,
 ast-grep command, matched files, non-matched reader file, and dependency-impact
 conclusion to `/tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log`.
-```
+````
 
 After the agent finishes, check:
 
@@ -527,30 +528,30 @@ src/readerHover.ts
 reader-ui
 ```
 
-The agent should report that a histogram-color implementation must also account
-for the probability-pill color surface, or create a child task tagged with the
-same semantic dependency before completion.
+The agent reports that an implementation of the histogram colors must also cover the colors of
+the probability pill. Or, before completion, it creates a child task with the tag of the same
+semantic dependency.
 
-Commands it should have used:
+Commands that the agent should use:
 
-- `gest task list --all --json`, `gest artifact list --all --json`, and
-  `gest iteration list --all --json` before choosing tags
+- `gest task list --all --json`, `gest artifact list --all --json` and
+  `gest iteration list --all --json`, before it chooses tags
 - `npm install` and `npm exec -- tsc --noEmit`
 - `ast-grep run --lang typescript --pattern 'countOrProbabilityColorScale($$$)'`
 
-Commands it should not have used:
+What the agent should not do:
 
-- invented "existing" tags without first collecting a Gest tag vocabulary
-- raw string-only dependency search as the primary check when `ast-grep` is
-  available for the language
+- invent "existing" tags before it collects the tag vocabulary of Gest
+- use a raw search for a string as the main dependency check, when `ast-grep` supports the
+  language
 
-## Step 6: Merge The Tutorial PRs
+## Step 6: Merge the tutorial PRs
 
 What this step teaches:
 
-Opening PRs is not the end of a durable checkpoint. Review and accept each PR
-before merging, then merge the PRs before cleanup so branch deletion, PR state,
-and stacked-PR ordering are exercised.
+A durable checkpoint does not end when the PRs are open. Review and accept each PR before you
+merge it. Then merge the PRs before the cleanup. The merge before the cleanup tests the deletion
+of branches, the state of the PRs and the order of the stacked PRs.
 
 Ask the agent:
 
@@ -628,18 +629,18 @@ worktree A PR: state MERGED, baseRefName main
 worktree B PR: state MERGED, baseRefName main
 ```
 
-Commands it should have used:
+Commands that the agent should use:
 
-- `gh pr view <branch> --json number` before deleting PR branches
-- `gh pr view <number> --json ...`, `gh pr diff <number> --patch`, and
-  `gh pr checks <number>` as the PR acceptance checkpoint before merging
+- `gh pr view <branch> --json number`, before it deletes the branches of the PRs
+- `gh pr view <number> --json ...`, `gh pr diff <number> --patch` and
+  `gh pr checks <number>`, as the PR acceptance checkpoint before each merge
 - `gh pr merge <number> --merge`
 - `gh pr view` or `gh pr list --state merged`
 
-Commands it should not have used:
+What the agent should not do:
 
-- deleting the temporary repositories before PR state is verified as `MERGED`
-- deleting stacked branches before the child and base stack PRs are merged
+- delete the temporary repositories before it verifies that each PR has the state `MERGED`
+- delete the stacked branches before it merges the child PR and the base PR of the stack
 
 ## Step 7: Cleanup
 
@@ -660,7 +661,7 @@ Remove `/tmp/agent-gest-git-tutorial/worktree-a` and
 Keep `/tmp/agent-gest-git-tutorial/logs` unless I ask you to remove logs.
 ```
 
-After cleanup, check one repo:
+After the cleanup, check one repo:
 
 ```bash
 owner="$(gh api user -q .login)"
@@ -673,9 +674,9 @@ Expected:
 repository not found
 ```
 
-## Automated Regression Labs
+## Automated regression labs
 
-The scripts in this repo are regression checks, not the beginner tutorial:
+The scripts in this repo are regression checks. They are not the beginner tutorial:
 
 ```bash
 just workflow-lab
@@ -684,10 +685,11 @@ just language-profile-labs
 just integration-live
 ```
 
-They intentionally stress GitButler itself. Read this tutorial first; use those
-scripts when you want to verify the reusable skill repository.
+The labs put a load on GitButler itself on purpose. Read this tutorial first. Use the labs
+when you want to verify the repository of reusable skills.
 
-For this tutorial, `main` is the selected integration target. In an existing
-project, use the declared target (including a persistent experiment) throughout.
-Clean up only verified merged temporary topics with no stack/worktree dependents;
-keep persistent branches. See [the integration contract](integration_delivery_workflow.md).
+For this tutorial, `main` is the selected integration target. In an existing project, use the
+declared target in every step. The declared target can be a persistent experiment branch.
+Clean up only a temporary topic branch that you verified as merged, and that no stack and no
+worktree depends on. Keep the persistent branches. For the details, read
+[the integration contract](integration_delivery_workflow.md).
