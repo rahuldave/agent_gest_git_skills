@@ -5,7 +5,7 @@
 <li><strong>The g skills.</strong> Each skill does one step of the work, such as planning (<code>gpl</code>), implementation (<code>gim</code>), review (<code>grv</code>) or a commit (<code>gcm</code>). <code>gtw</code> sends each request to the right skill.</li>
 <li><strong>Hooks.</strong> Claude Code and Codex run them at these times:
 <ul>
-<li>At the start of each session, they give the agent the rules.</li>
+<li>At the start of each session, they give the agent the rules. The Claude Code hook leaves them out when <code>CLAUDE.md</code> already imports them.</li>
 <li>Before a tool runs, they give context for a commit or an edit. While GitButler owns the workspace, they block a raw <code>git</code> command that writes. The agent then uses <code>but</code> instead.</li>
 <li>When the agent stops, a GitButler hook takes a snapshot.</li>
 </ul>
