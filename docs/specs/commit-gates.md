@@ -220,8 +220,11 @@ just check     fmt-check lint typecheck test coverage-check integration docstrin
   - A line with a `-` prefix, which ignores a failure.
   - `[no-cd]` or `working-directory`, which change the folder in which `jlog`
     looks for the log folder.
-- **`prose-check`** runs the nossaifd `check.py` on the changed Markdown. For
-  the API pages, it runs `smalldocs api module NAME` for each changed module
+- **`prose-check`** runs the nossaifd `check.py` on the changed pages. A page
+  is a file that `is_page` of nossaifd's `prose_gate.py` accepts, so
+  `prose-check` and the turn gate use one rule. It takes `.md` and `.qmd`
+  files, and it skips files such as `AGENTS.md`, `CHANGELOG.md` and the folder
+  `.agents/`. For the API pages, it runs `smalldocs api module NAME` for each changed module
   into a temporary file, and checks that file. It writes nothing into the
   repository. When `check.py` is missing, the step fails and prints the install
   line.
@@ -433,6 +436,25 @@ only place for them.
   no files, so they can run in either order on the same tree.
 - **What a record must hold.** A record counts only if its status is
   `success`, and each finding is fixed with a test or has a reason not to fix it.
+- **The turn gate of nossaifd stays, with a different job.** nossaifd has its
+  own hooks, `UserPromptSubmit` and `Stop`, in Claude Code and Codex. At the end
+  of a turn, the `Stop` hook blocks once when a page that the turn changed has
+  a hard problem or no recorded pass.
+  - **The jobs.** The turn gate asks early, inside a turn, at little cost. The
+    commit gate decides. Only the `prose` record and the `prose-check` step let
+    a commit through.
+  - **One store of page passes.** nossaifd records the pass of a page with
+    `prose_gate.py record`, in `nossaifd/` under `git rev-parse
+    --git-common-dir`. Every worktree shares it. The store stays there, with or
+    without the gates, so it needs no migration.
+  - **The `prose` target records each page.** The fresh agent of `just prose`
+    runs `prose_gate.py record` for each page that it passed. So a page that
+    `just prose` passed does not block a later turn.
+  - **A page pass is not a `prose` record.** The gate needs the `prose` record
+    of the tree, from the fresh agent.
+  - **When the gates are installed,** `.agents/stack.json` lists the tasker
+    role. Then the message of the `Stop` block says "run `just prose`". The
+    steps by hand alone give a page pass, but no `prose` record.
 - **The records are in the shared log folder,** in `records/`. A fresh agent can
   work in another worktree, for example in the parallel work of the `gor`
   skill. The packet holds the path of its worktree, so the hook computes the
@@ -721,8 +743,8 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   ```text
   review       **
   test-review  @code
-  docs         docs/**  README.md  **/*.md  @api
-  prose        docs/**  README.md  **/*.md  @api
+  docs         @pages  @api
+  prose        @pages  @api
   ```
 
   - **The default.** When the file is missing, the gate uses these lines.
@@ -732,6 +754,9 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     package `pkg.sub`, it is `src/pkg/sub/**` or `pkg/sub/**`, whichever
     exists, plus the `check` globs of the `api` settings. The `api` tool of
     each profile defines `@api` for its language. Only Python has one now.
+  - **`@pages`** names the files that `is_page` of nossaifd accepts. So
+    `AGENTS.md` and `CHANGELOG.md` need no `prose` record. Without the
+    `nossaifd` role, `@pages` is `**/*.md` and `**/*.qmd`.
   - **`@code`** names the source files of each language in `.agents/stack.json`.
     Each profile gives its globs, for example `**/*.py`, `**/*.ts` or
     `**/*.rs`. With no profile, `@code` is empty.
@@ -813,7 +838,14 @@ adds to:
 | `.pre-commit-config.yaml` | The tasker role | A `local` hook that runs the gate. The writer keys the entries of `repos` by `repo`, so all `local` entries share one key. `formats.json` changes to key a `local` entry by the `id` of its hook. |
 | `.claude/settings.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The hooks of GitButler go: `Stop` with `gitbutler-snapshot.sh`, and `gitbutler-vcs-context.sh`. |
 | `.codex/hooks.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The GitButler hooks and text go. |
+| `.claude/settings.json`, `.codex/hooks.json` | The `nossaifd` role | The turn gate of nossaifd, `UserPromptSubmit` and `Stop`, as now. |
 | The smalldocs config | The `docs` tool and the `api` tool | The site settings, and the `api` settings. `formats.json` needs a new entry for this file. |
+
+The `nossaifd` role also writes `.github/workflows/nossaifd-prose.yml`, as a
+`seed` and as a `starter`. Each is a whole file, not a piece. When the tasker
+role is installed, `just check` in CI runs `prose-check`. So the installer
+removes that file, whichever entry wrote it, and does not write it again while
+the tasker role is installed.
 
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
@@ -835,7 +867,8 @@ in the log folders.
 | The `test-paths` recipe of each profile | each profile |
 | The recipe `test-parent` | agent_gest_git_skills |
 | The `api` tool of TypeScript, after the smalldocs release that reads JSDoc | jnprofile-typescript |
-| The base task of `prose`, and `check.py` | nossaifd |
+| The base task of `prose`, `check.py`, `is_page`, and the turn gate with its message when the gates are installed | nossaifd |
+| The removal of `nossaifd-prose.yml` when the tasker role is installed, and the rule that keeps a reinstall from writing it again | jnterfaces, in the installer |
 | `jlog`, and the plugins, one folder and one uv project for each harness | jlog |
 | The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, `just record` | agent_gest_git_skills |
 | The removal of GitButler from the hooks, the skills and the docs | agent_gest_git_skills |
@@ -982,6 +1015,21 @@ needs it.
 - In a Python project, the gate runs as a local hook of the pre-commit
   framework, and removing the `lint` tool keeps the gate.
 
+**The turn gate of nossaifd:**
+
+- A page that `just prose` passed, in any worktree, does not block the end of
+  a later turn.
+- A page with a recorded pass and no `prose` record still stops a commit that
+  needs a `prose` record.
+- With the tasker role installed, the `Stop` block says "run `just prose`".
+- When the tasker role is installed, `nossaifd-prose.yml` is removed. Without
+  it, the file stays as now.
+- A reinstall of nossaifd after the tasker role does not bring back
+  `nossaifd-prose.yml`.
+- `prose-check` and the turn gate accept the same pages, a `.qmd` file
+  included. A change to `CHANGELOG.md` alone needs no `prose` record.
+- The removal of the GitButler `Stop` hook keeps the nossaifd `Stop` hook.
+
 **Tests and docstrings:**
 
 - In each of the three profiles, a changed line that no test runs fails
@@ -1025,7 +1073,8 @@ needs it.
   function with no docments fails `just check`.
 - Until the smalldocs release that reads JSDoc, a new TypeScript project with
   the `docs` tool passes `just check`, with no `api` step.
-- `prose-check` runs `check.py` on the changed Markdown, and writes nothing
+- `prose-check` runs `check.py` on the changed pages, the files that `is_page`
+  accepts, and writes nothing
   into the repository. When `check.py` is missing, the step fails and prints
   the install line.
 - In a Python project with the `api` tool, `prose-check` also checks the API
