@@ -42,6 +42,9 @@ website:
         contents:
           - TUTORIAL.md
           - g_commands_cheatsheet.md
+      - section: Specs
+        contents:
+          - specs/commit-gates.md
       - section: Workflows
         contents:
           - integration_delivery_workflow.md
