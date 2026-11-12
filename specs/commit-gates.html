@@ -375,8 +375,11 @@ looks for the log folder.</li>
 </ul>
 </li>
 <li>
-<p><strong><code>prose-check</code></strong> runs the nossaifd <code>check.py</code> on the changed Markdown. For
-the API pages, it runs <code>smalldocs api module NAME</code> for each changed module
+<p><strong><code>prose-check</code></strong> runs the nossaifd <code>check.py</code> on the changed pages. A page
+is a file that <code>is_page</code> of nossaifd’s <code>prose_gate.py</code> accepts, so
+<code>prose-check</code> and the turn gate use one rule. It takes <code>.md</code> and <code>.qmd</code>
+files, and it skips files such as <code>AGENTS.md</code>, <code>CHANGELOG.md</code> and the folder
+<code>.agents/</code>. For the API pages, it runs <code>smalldocs api module NAME</code> for each changed module
 into a temporary file, and checks that file. It writes nothing into the
 repository. When <code>check.py</code> is missing, the step fails and prints the install
 line.</p>
@@ -693,6 +696,28 @@ no files, so they can run in either order on the same tree.</p>
 <li>
 <p><strong>What a record must hold.</strong> A record counts only if its status is
 <code>success</code>, and each finding is fixed with a test or has a reason not to fix it.</p>
+</li>
+<li>
+<p><strong>The turn gate of nossaifd stays, with a different job.</strong> nossaifd has its
+own hooks, <code>UserPromptSubmit</code> and <code>Stop</code>, in Claude Code and Codex. At the end
+of a turn, the <code>Stop</code> hook blocks once when a page that the turn changed has
+a hard problem or no recorded pass.</p>
+<ul>
+<li><strong>The jobs.</strong> The turn gate asks early, inside a turn, at little cost. The
+commit gate decides. Only the <code>prose</code> record and the <code>prose-check</code> step let
+a commit through.</li>
+<li><strong>One store of page passes.</strong> nossaifd records the pass of a page with
+<code>prose_gate.py record</code>, in <code>nossaifd/</code> under <code>git rev-parse --git-common-dir</code>. Every worktree shares it. The store stays there, with or
+without the gates, so it needs no migration.</li>
+<li><strong>The <code>prose</code> target records each page.</strong> The fresh agent of <code>just prose</code>
+runs <code>prose_gate.py record</code> for each page that it passed. So a page that
+<code>just prose</code> passed does not block a later turn.</li>
+<li><strong>A page pass is not a <code>prose</code> record.</strong> The gate needs the <code>prose</code> record
+of the tree, from the fresh agent.</li>
+<li><strong>When the gates are installed,</strong> <code>.agents/stack.json</code> lists the tasker
+role. Then the message of the <code>Stop</code> block says “run <code>just prose</code>”. The
+steps by hand alone give a page pass, but no <code>prose</code> record.</li>
+</ul>
 </li>
 <li>
 <p><strong>The records are in the shared log folder,</strong> in <code>records/</code>. A fresh agent can
@@ -1095,8 +1120,8 @@ in place of the framework hook, so the gate stays.</li>
 names a target and the paths that make it required:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">review       **
 test-review  @code
-docs         docs/**  README.md  **/*.md  @api
-prose        docs/**  README.md  **/*.md  @api</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+docs         @pages  @api
+prose        @pages  @api</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
 <li><strong>The default.</strong> When the file is missing, the gate uses these lines.</li>
 <li><strong>The syntax</strong> is that of git pathspecs with <code>:(glob)</code>. So <code>*</code> does not
@@ -1105,6 +1130,9 @@ match <code>/</code>, and <code>**</code> does. A deleted path counts as a chang
 package <code>pkg.sub</code>, it is <code>src/pkg/sub/**</code> or <code>pkg/sub/**</code>, whichever
 exists, plus the <code>check</code> globs of the <code>api</code> settings. The <code>api</code> tool of
 each profile defines <code>@api</code> for its language. Only Python has one now.</li>
+<li><strong><code>@pages</code></strong> names the files that <code>is_page</code> of nossaifd accepts. So
+<code>AGENTS.md</code> and <code>CHANGELOG.md</code> need no <code>prose</code> record. Without the
+<code>nossaifd</code> role, <code>@pages</code> is <code>**/*.md</code> and <code>**/*.qmd</code>.</li>
 <li><strong><code>@code</code></strong> names the source files of each language in <code>.agents/stack.json</code>.
 Each profile gives its globs, for example <code>**/*.py</code>, <code>**/*.ts</code> or
 <code>**/*.rs</code>. With no profile, <code>@code</code> is empty.</li>
@@ -1256,6 +1284,11 @@ adds to:</p>
 <td>The hooks <code>SessionStart</code>, <code>SubagentStop</code> and <code>PreToolUse</code>. The GitButler hooks and text go.</td>
 </tr>
 <tr>
+<td><code>.claude/settings.json</code>, <code>.codex/hooks.json</code></td>
+<td>The <code>nossaifd</code> role</td>
+<td>The turn gate of nossaifd, <code>UserPromptSubmit</code> and <code>Stop</code>, as now.</td>
+</tr>
+<tr>
 <td>The smalldocs config</td>
 <td>The <code>docs</code> tool and the <code>api</code> tool</td>
 <td>The site settings, and the <code>api</code> settings. <code>formats.json</code> needs a new entry for this file.</td>
@@ -1263,6 +1296,11 @@ adds to:</p>
 </tbody>
 </table>
 </div>
+<p>The <code>nossaifd</code> role also writes <code>.github/workflows/nossaifd-prose.yml</code>, as a
+<code>seed</code> and as a <code>starter</code>. Each is a whole file, not a piece. When the tasker
+role is installed, <code>just check</code> in CI runs <code>prose-check</code>. So the installer
+removes that file, whichever entry wrote it, and does not write it again while
+the tasker role is installed.</p>
 <p>The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.</p>
 </section>
@@ -1330,8 +1368,12 @@ in the log folders.</p>
 <td>jnprofile-typescript</td>
 </tr>
 <tr>
-<td>The base task of <code>prose</code>, and <code>check.py</code></td>
+<td>The base task of <code>prose</code>, <code>check.py</code>, <code>is_page</code>, and the turn gate with its message when the gates are installed</td>
 <td>nossaifd</td>
+</tr>
+<tr>
+<td>The removal of <code>nossaifd-prose.yml</code> when the tasker role is installed, and the rule that keeps a reinstall from writing it again</td>
+<td>jnterfaces, in the installer</td>
 </tr>
 <tr>
 <td><code>jlog</code>, and the plugins, one folder and one uv project for each harness</td>
@@ -1502,6 +1544,21 @@ commit, because the gate does not run the steps.</li>
 <li>In a Python project, the gate runs as a local hook of the pre-commit
 framework, and removing the <code>lint</code> tool keeps the gate.</li>
 </ul>
+<p><strong>The turn gate of nossaifd:</strong></p>
+<ul>
+<li>A page that <code>just prose</code> passed, in any worktree, does not block the end of
+a later turn.</li>
+<li>A page with a recorded pass and no <code>prose</code> record still stops a commit that
+needs a <code>prose</code> record.</li>
+<li>With the tasker role installed, the <code>Stop</code> block says “run <code>just prose</code>”.</li>
+<li>When the tasker role is installed, <code>nossaifd-prose.yml</code> is removed. Without
+it, the file stays as now.</li>
+<li>A reinstall of nossaifd after the tasker role does not bring back
+<code>nossaifd-prose.yml</code>.</li>
+<li><code>prose-check</code> and the turn gate accept the same pages, a <code>.qmd</code> file
+included. A change to <code>CHANGELOG.md</code> alone needs no <code>prose</code> record.</li>
+<li>The removal of the GitButler <code>Stop</code> hook keeps the nossaifd <code>Stop</code> hook.</li>
+</ul>
 <p><strong>Tests and docstrings:</strong></p>
 <ul>
 <li>In each of the three profiles, a changed line that no test runs fails
@@ -1545,7 +1602,8 @@ result.” gives a finding.</li>
 function with no docments fails <code>just check</code>.</li>
 <li>Until the smalldocs release that reads JSDoc, a new TypeScript project with
 the <code>docs</code> tool passes <code>just check</code>, with no <code>api</code> step.</li>
-<li><code>prose-check</code> runs <code>check.py</code> on the changed Markdown, and writes nothing
+<li><code>prose-check</code> runs <code>check.py</code> on the changed pages, the files that <code>is_page</code>
+accepts, and writes nothing
 into the repository. When <code>check.py</code> is missing, the step fails and prints
 the install line.</li>
 <li>In a Python project with the <code>api</code> tool, <code>prose-check</code> also checks the API
