@@ -38,6 +38,9 @@ branch `gh-pages`.
   validate the skills and the executable prerequisites. Its `install_extras` names the
   hooks, hook settings and `AGENTS.md` starter that the jnterfaces installer
   copies.
+- `scripts/run_stack_rebase_lab.sh`: a local lab for a stack of three branches. It runs the
+  documented restack commands after one amend, two amends, a new commit and a squash merge. It
+  checks that none of them conflicts, and that the old form without `--onto` conflicts.
 - `scripts/run_tag_dependency_agent_dry_run.sh`: a local dry run that classifies tags and
   expands the dependencies with `ast-grep`.
 - `scripts/run_tag_dependency_typescript_lab.sh`: a live local TypeScript lab. It expands
@@ -334,8 +337,12 @@ A stack of dependent PRs uses plain git and `gh`:
 2. Open the PR of each branch with `gh pr create --base <parent-branch>`, from the bottom
    branch up.
 3. After a change to a lower branch, switch to the top branch and run
-   `git rebase --update-refs <lower-branch>`. The rebase also moves each branch of the stack
-   between them. The option needs git 2.38 or later.
+   `git rebase --update-refs --onto <lower-branch> <old-lower-tip>`. `<old-lower-tip>` is the
+   commit of the lower branch before the change. Save it with `git rev-parse <lower-branch>`
+   before you change the branch. `<lower-branch>@{1}` is that commit only after one change.
+   The rebase replays only the commits above the lower branch, and it moves each branch of the
+   stack between them. It does not move a branch that another worktree has checked out. The
+   option needs git 2.38 or later.
 4. Push each moved branch with `git push --force-with-lease`.
 
 After the PRs are merged and no stack work remains, do these steps:

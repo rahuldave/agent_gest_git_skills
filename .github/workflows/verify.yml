@@ -27,6 +27,8 @@ jobs:
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Check contracts, hooks, and source mirrors
         run: just lint
+      - name: Restack a plain-git stack after an amend, a new commit and a squash merge
+        run: just stack-rebase-lab
       - name: Install this package with the jnterfaces installer, then remove it
         run: just install-test
       - name: Validate package manifest with skill-package-maker

@@ -94,12 +94,17 @@ vcs.parallel_allowed=false
 ```
 
 If those values apply, do not launch parallel write agents. Run the phase in
-order, and switch to each branch with `git switch <branch>`. Open the PR of
+order, and switch to each branch with `git switch <branch>`.
+
+Open the PR of
 each branch with `gh pr create --base <parent-branch>`, from the bottom branch
-up. After a change to a lower branch, run `git rebase --update-refs
-<lower-branch>` on the top branch, with the branch that changed, so the stack
-above it moves together. Git 2.38
-and later have it.
+up. After a change to a lower branch, run
+`git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top
+branch, so the stack above it moves together. `<old-lower-tip>` is the lower
+branch before the change, saved with `git rev-parse <lower-branch>`.
+`<lower-branch>@{1}` is that commit only after one change. Restack where no
+worktree holds a branch of the stack, because `--update-refs` skips such a
+branch. Git 2.38 and later have `--update-refs`.
 
 If the phase needs parallel work, make physical git worktrees first. Set the
 metadata to `vcs.execution=git-worktrees`, with its own `vcs.workspace_path` for

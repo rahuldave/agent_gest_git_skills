@@ -258,8 +258,12 @@ Codex builds a stack with plain git, and Git 2.38 and later have each command:
 
 1. Start each branch from the branch below it, with `git switch -c <child> <parent-branch>`.
 2. Open the PR of each branch with `gh pr create --base <parent-branch>`.
-3. After a change to a lower branch, run `git rebase --update-refs <lower-branch>` on the top
-   branch. Git moves each branch of the stack together.
+3. After a change to a lower branch, run
+   `git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top branch.
+   `<old-lower-tip>` is the lower branch before the change, saved with
+   `git rev-parse <lower-branch>`. `<lower-branch>@{1}` is that commit only after one change.
+   Git moves each branch of the stack together, except a branch that another worktree has
+   checked out.
 
 ## Just agent contracts
 

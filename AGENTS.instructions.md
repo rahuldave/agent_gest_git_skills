@@ -86,9 +86,19 @@ names, such as `.venv/`, do not keep a worktree.
 Build a stack of dependent PRs with plain git. Start each branch from the
 branch below it. Open the PR of each branch with
 `gh pr create --base <parent-branch>`. The bottom PR uses the integration
-branch as its base. After a change to a lower branch, run
-`git rebase --update-refs <lower-branch>` on the top branch, so that Git moves
-each branch of the stack together. Git 2.38 and later have `--update-refs`.
+branch as its base.
+
+After a change to a lower branch, run
+`git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top
+branch, so that Git moves each branch of the stack together.
+`<old-lower-tip>` is the commit of the lower branch before the change. Save it
+with `git rev-parse <lower-branch>` before you change the branch.
+`<lower-branch>@{1}` is that commit only after one change. With `--onto`, Git
+replays only the commits above the lower branch, and not its old commits.
+
+Git 2.38 and later have `--update-refs`. It does not move a branch that another
+worktree has checked out, so restack where no worktree holds a branch of the
+stack.
 
 One checkout holds one branch, so parallel write agents each need a physical
 worktree. Plain `git commit`, `git switch` and `git checkout` need no marker.

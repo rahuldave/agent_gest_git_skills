@@ -7,6 +7,7 @@ lint:
 static: lint
 
 test:
+  scripts/run_stack_rebase_lab.sh
   scripts/run_tag_dependency_agent_dry_run.sh
   scripts/run_tag_dependency_typescript_lab.sh
   scripts/run_language_profile_labs.sh
@@ -14,6 +15,9 @@ test:
   scripts/run_agentic_target_lab.sh
   scripts/run_agent_result_lab.sh
   scripts/run_agent_task_draft_lab.sh
+
+stack-rebase-lab:
+  scripts/run_stack_rebase_lab.sh
 
 tag-dependency-dry-run:
   scripts/run_tag_dependency_agent_dry_run.sh
@@ -102,7 +106,7 @@ install-test:
   if grep -q 'session-start' "$target/.claude/settings.json"; then fail "the removal left a Gest hook"; fi
   echo "install-test: install and removal passed"
 
-ci-local: lint install-test
+ci-local: lint install-test stack-rebase-lab
 
 diff-check:
   scripts/check_repo.sh --diff

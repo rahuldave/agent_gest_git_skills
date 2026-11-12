@@ -254,10 +254,14 @@ For a stack of dependent PRs:
    `git switch -c <child-branch> <parent-branch>`.
 2. Open the PR of each branch with `gh pr create --base <parent-branch>`, from
    the bottom branch up.
-3. After a change to a lower branch, run `git rebase --update-refs <lower-branch>`
-   on the top branch, with the branch that changed. It moves every branch of the
-   stack above it together. Git 2.38 and
-   later have it. Then push each moved branch with `git push --force-with-lease`.
+3. After a change to a lower branch, run
+   `git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top
+   branch. `<old-lower-tip>` is the lower branch before the change, saved with
+   `git rev-parse <lower-branch>`. `<lower-branch>@{1}` is that commit only
+   after one change. The rebase moves every branch of the stack above it,
+   except a branch that another worktree has checked out. Git 2.38 and later
+   have `--update-refs`. Then push each moved branch with
+   `git push --force-with-lease`.
 
 ## Test And Review Policy
 

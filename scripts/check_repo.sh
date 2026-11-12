@@ -25,6 +25,7 @@ required_files=(
   "docs/just_command_contract.md"
   "docs/agent_task_draft_workflow.md"
   "docs/live_agent_result_recursive_lab.md"
+  "scripts/run_stack_rebase_lab.sh"
   "scripts/run_tag_dependency_agent_dry_run.sh"
   "scripts/run_tag_dependency_typescript_lab.sh"
   "scripts/run_language_profile_labs.sh"
@@ -227,38 +228,84 @@ done
 # The package dropped one version-control tool, and its hooks blocked plain git. No file may name that tool or its
 # commands again. Only the specs, which describe the removal, and the historical notes may. The patterns are split,
 # so that this script does not name the tool either.
-tool='[g]it[-_ ]?[b]utler'
-# git grep -E on macOS has no \< or \>, so the word edges are spelled out.
-edge='(^|[^[:alnum:]_-])'
-tool_command="\`[b]ut[ \`]|${edge}[b]ut (setup|status|branch|commit|push|pr|stage|diff|absorb|rub|oplog|undo|mark|amend|apply|unapply|pull|update|teardown|--version)([^[:alnum:]_-]|\$)|\"[b]ut\"|-v [b]ut([^[:alnum:]_-]|\$)"
-# The patterns must find each sample line, or the scan below could never fail.
+tool='[g]it[-_[:space:]]*[b]utler'
+# A command of the tool counts only where a command can stand, so "Tests pass, but update the docs" is plain
+# English:
+# - anywhere: in backticks, after a "$ " prompt, after "command -v", or as a "name" in JSON;
+# - in code, which is each file that is not Markdown and each fenced block of a Markdown file: at the start of a
+#   line or after ;, &, |, (, sudo, exec or run:, with a known subcommand or a flag.
+# Global flags such as -j or --json can come before the subcommand. git grep -E on macOS has no \< or \>, so the
+# word edges are spelled out.
+flags='([[:space:]]+--?[[:alnum:]][[:alnum:]-]*)*'
+subcommands='status|st|diff|show|log|branch|commit|push|pull|pr|stage|unstage|absorb|rub|oplog|undo|restore|mark|unmark|amend|apply|unapply|update|teardown|setup|init|base|worktree|config|describe|new|merge|squash|move|discard|resolve|reword|uncommit|forge|review|gui|help|completions|claude|mcp|skill|alias|lazy'
+inline_command="\`[b]ut[[:space:]\`]|\\\$[[:space:]]+[b]ut([[:space:]]|\$)|-v[[:space:]]+[b]ut([^[:alnum:]_-]|\$)|\"name\"[[:space:]]*:[[:space:]]*\"[b]ut\""
+position='(^|[;&|(]|(sudo|exec|run:)[[:space:]])[[:space:]]*'
+code_command="${position}[b]ut${flags}[[:space:]]+(${subcommands})([^[:alnum:]_-]|\$)|${position}[b]ut[[:space:]]+--?[[:alnum:]]"
+# fenced DIR: copies of the Markdown files of DIR, in a new folder, that keep only the lines of fenced blocks.
+# The other lines become empty, so the line numbers stay.
+fenced() {
+  local dir="$1" out file
+  out="$(mktemp -d)"
+  while IFS= read -r -d '' file; do
+    file="${file#./}"
+    mkdir -p "$out/$(dirname "$file")"
+    awk '/^[[:space:]]*(```|~~~)/ { fence = !fence; print ""; next } { print (fence ? $0 : "") }' \
+      "$dir/$file" > "$out/$file"
+  done < <(if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
+             git -C "$dir" ls-files -z -co --exclude-standard -- '*.md' ':!docs/specs/' ':!notes/'
+           else (cd "$dir" && find . -name '*.md' -print0); fi)
+  printf '%s\n' "$out"
+}
+# hits DIR: the lines of DIR that name the tool or run one of its commands. In a repository, only the files that
+# git tracks or would add count, outside docs/specs/ and notes/. git grep exits 1 when no line matches.
+hits() {
+  local dir="$1" index=(--untracked) code
+  [ -d "$dir/.git" ] || [ -f "$dir/.git" ] || index=(--no-index)
+  (cd "$dir" && git grep "${index[@]}" -nIiE -e "$tool" -- . ':!docs/specs/' ':!notes/') || [ $? -eq 1 ] || exit 1
+  (cd "$dir" && git grep "${index[@]}" -nIE -e "$inline_command" -- . ':!docs/specs/' ':!notes/') || [ $? -eq 1 ] || exit 1
+  (cd "$dir" && git grep "${index[@]}" -nIE -e "$code_command" -- . ':!*.md' ':!docs/specs/' ':!notes/') \
+    || [ $? -eq 1 ] || exit 1
+  code="$(fenced "$dir")"
+  (cd "$code" && git grep --no-index -nIE -e "$code_command" -- .) || [ $? -eq 1 ] || { rm -rf -- "$code"; exit 1; }
+  rm -rf -- "$code"
+}
+# The scan must find each positive sample and no negative one, or it could pass when it should fail. The samples
+# split the words, so that this script does not match itself.
 samples="$(mktemp -d)"
-printf '%s\n' 'Git''Butler' 'git''-butler' 'Git ''Butler' 'git''_butler' > "$samples/tool.txt"
-printf '%s\n' 'run bu''t status now' 'command -v bu''t >/dev/null' '`bu''t commit`' '"name": "bu''t"' 'bu''t push origin' > "$samples/command.txt"
-check_samples() {
-  local flags="$1" pattern="$2" file="$3" line
-  while IFS= read -r line; do
-    printf '%s\n' "$line" > "$samples/one.txt"
-    git -C "$samples" grep --no-index -q $flags -e "$pattern" -- one.txt || {
-      echo "the scan pattern misses the sample line: $line" >&2; rm -rf -- "$samples"; exit 1; }
-  done < "$file"
+sample() {
+  local want="$1" name="$2" line found
+  shift 2
+  for line in "$@"; do
+    rm -rf -- "$samples/s"; mkdir "$samples/s"
+    if [ "${name##*.}" = md ] && [ "$want" = fenced ]; then
+      printf '```bash\n%s\n```\n' "$line" > "$samples/s/$name"
+    else
+      printf '%s\n' "$line" > "$samples/s/$name"
+    fi
+    found="$(hits "$samples/s")"
+    if [ "$want" = none ] && [ -n "$found" ]; then
+      echo "the scan matches the plain English line: $line" >&2; rm -rf -- "$samples"; exit 1
+    elif [ "$want" != none ] && [ -z "$found" ]; then
+      echo "the scan misses the sample line in $name: $line" >&2; rm -rf -- "$samples"; exit 1
+    fi
+  done
 }
-check_samples -iE "$tool" "$samples/tool.txt"
-check_samples -E "$tool_command" "$samples/command.txt"
-printf '%s\n' 'but commits are fine' 'a butter knife' 'about pushes' > "$samples/one.txt"
-if git -C "$samples" grep --no-index -q -E -e "$tool_command" -- one.txt; then
-  echo "the scan pattern matches plain English" >&2; rm -rf -- "$samples"; exit 1
-fi
+sample hit a.md 'Git''Butler' 'GIT''BUTLER' 'git''-butler' 'Git ''Butler' 'git''_butler' 'git  ''butler' \
+  '`bu''t log`' '`bu''t -j status`' '$ bu''t status' 'run `bu''t push` now' 'command -v bu''t >/dev/null' \
+  '"name": "bu''t"'
+sample hit a.sh 'bu''t -j status' 'bu''t --json status' 'bu''t log' 'bu''t init' 'bu''t base update' \
+  'bu''t worktree' 'bu''t restore' 'bu''t config' '    bu''t commit -m x' 'sudo bu''t status' 'x && bu''t status' \
+  'y="$(bu''t status)"' 'exec bu''t commit' 'bu''t claude' 'bu''t mcp'
+sample hit a.yml '  - run: bu''t push' '    run: bu''t status'
+sample fenced a.md 'bu''t log' 'bu''t -j status' '  bu''t base update'
+sample none a.md 'Tests pass, bu''t update the docs first.' 'It builds, bu''t push only after review.' \
+  'Small, bu''t branch protection blocks it.' 'Fine bu''t status checks fail.' 'Not "bu''t" alone.' \
+  'bu''t it does not simulate the agents.' 'bu''t update the docs.' 'bu''t status reports differ.' \
+  'bu''t push back if needed.' 'bu''t commit to it.' 'bu''t new tests fail.' 'bu''t log the time later' \
+  'bu''t -1 day' 'bu''t commits are fine' 'a butter knife' 'about pushes'
+sample none a.sh '# Fine bu''t status checks fail.' 'echo "it builds, bu''t push later"'
 rm -rf -- "$samples"
-# scan FLAGS PATTERN: the lines that match, in the files that git tracks or would add, outside those two folders.
-# git grep exits 1 when no line matches.
-scan() {
-  git -C "$repo_root" grep --untracked -nI "$1" -e "$2" -- ':!docs/specs/' ':!notes/' || [ $? -eq 1 ] || exit 1
-}
-tool_hits="$(scan -iE "$tool")"
-command_hits="$(scan -E "$tool_command")"
-tool_hits="$tool_hits${command_hits:+
-$command_hits}"
+tool_hits="$(hits "$repo_root")"
 if [ -n "$tool_hits" ]; then
   printf '%s\n' "$tool_hits" >&2
   echo "a file outside docs/specs/ and notes/ names the dropped version-control tool or one of its commands" >&2

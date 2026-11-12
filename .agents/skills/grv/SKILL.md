@@ -103,7 +103,7 @@ Plain Git branches, stacks of Git branches, physical git worktrees, and JJ
 bookmarks and workspaces must stay separate models. In this Git skill family,
 keep physical git worktrees as the way to run parallel writes. Keep stacks on
 plain git, with `gh pr create --base <parent-branch>` and
-`git rebase --update-refs`.
+`git rebase --update-refs --onto <lower-branch> <old-lower-tip>`.
 
 ## Tag And Dependency Findings
 

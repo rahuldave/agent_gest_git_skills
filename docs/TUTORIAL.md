@@ -257,8 +257,10 @@ and commit with message `test: add base note`. Then switch to
 `tutorial/stack-child` and run:
 
 ```bash
-git rebase --update-refs tutorial/stack-base
+git rebase --update-refs --onto tutorial/stack-base 'tutorial/stack-base@{1}'
 ```
+
+`tutorial/stack-base@{1}` is the lower branch before the new commit.
 
 Push both branches.
 Open the two PRs from the bottom branch up:
@@ -310,7 +312,8 @@ Commands that the agent should use:
 - `git switch -c tutorial/stack-base main`
 - `git switch -c tutorial/stack-child tutorial/stack-base`
 - `git commit`
-- `git rebase --update-refs tutorial/stack-base`, after a change to the lower branch
+- `git rebase --update-refs --onto tutorial/stack-base 'tutorial/stack-base@{1}'`, after a
+  change to the lower branch
 - `git push`
 - `gh pr create --base main` for the bottom PR, and
   `gh pr create --base tutorial/stack-base` for the child PR

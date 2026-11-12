@@ -95,9 +95,12 @@ the same working tree. Follow these rules:
   a branch or stack after that
 - to build a stack with plain git, start each branch from the branch below it,
   and open the PR of each branch with `gh pr create --base <parent-branch>`
-- after a change to a lower branch, run `git rebase --update-refs <lower-branch>`
-  on the top branch, so that Git moves each branch of the stack together. Git
-  2.38 and later have `--update-refs`.
+- after a change to a lower branch, run
+  `git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top
+  branch, so that Git moves each branch of the stack together.
+  `<old-lower-tip>` is the lower branch before the change, saved with
+  `git rev-parse <lower-branch>`. `<lower-branch>@{1}` is that commit only
+  after one change. Git 2.38 and later have `--update-refs`.
 - plain `git commit`, `git switch` and `git checkout` need no marker
 
 Default integration:
@@ -855,8 +858,12 @@ details. Confirm that each remaining PR belongs to follow-on work that someone
 intends.
 
 For a stack, merge from the bottom up. After each merge, retarget the next PR
-with `gh pr edit <number> --base <new-base>`, and run
-`git rebase --update-refs <new-base>` on the top branch of the stack.
+with `gh pr edit <number> --base <new-base>`. Then fetch, and run
+`git rebase --update-refs --onto origin/<new-base> <old-lower-tip>` on the top
+branch of the stack. `<old-lower-tip>` is the commit of the merged branch
+before the merge, which is the local branch, because the merge on GitHub does
+not move it. With `--onto`, Git does not replay the merged commits after a
+squash merge.
 
 ### GCM
 

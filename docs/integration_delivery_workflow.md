@@ -73,8 +73,13 @@ Build the stack with plain git. Git 2.38 and later have each command:
 2. Open the PR of each branch with `gh pr create --base <parent-branch>`. The
    bottom PR uses the chosen integration branch as its base.
 3. After a change to a lower branch, check out the top branch of the stack, and
-   run `git rebase --update-refs <lower-branch>`. Git then moves each branch of
-   the stack together.
+   run `git rebase --update-refs --onto <lower-branch> <old-lower-tip>`.
+   `<old-lower-tip>` is the lower branch before the change. Save it with
+   `git rev-parse <lower-branch>` before you change the branch.
+   `<lower-branch>@{1}` is that commit only after one change. Git then moves
+   each branch of the stack together, and it replays only the commits above
+   the lower branch. It does not move a branch that another worktree has
+   checked out, so restack where no worktree holds a branch of the stack.
 4. Push the moved branches with `git push --force-with-lease`.
 
 One checkout holds one branch at a time. So two writers in parallel need

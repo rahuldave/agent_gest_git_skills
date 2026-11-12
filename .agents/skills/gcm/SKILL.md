@@ -117,8 +117,13 @@ gh pr create --base <parent-branch> --head <child-branch>
 3. Commit review feedback to the branch where it belongs, and not to the top of
    the stack by default.
 4. After a change to a lower branch, switch to the top branch and run
-   `git rebase --update-refs <lower-branch>`, with the branch that changed. It
-   moves every branch of the stack above it together. Git 2.38 and later have it.
+   `git rebase --update-refs --onto <lower-branch> <old-lower-tip>`, with the
+   branch that changed. `<old-lower-tip>` is that branch before the change.
+   Save it with `git rev-parse <lower-branch>` before you change the branch.
+   `<lower-branch>@{1}` is that commit only after one change. Git replays only
+   the commits above it, and moves every branch of the stack above it together.
+   It does not move a branch that another worktree has checked out. Git 2.38
+   and later have `--update-refs`.
 5. Push each moved branch with `git push --force-with-lease origin <branch>`.
 
 Merge and review the stack bottom-up. GitHub merge commits are acceptable for a

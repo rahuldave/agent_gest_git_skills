@@ -284,7 +284,9 @@ For a stack, merge the PRs bottom-up. After a lower PR merges, retarget the
 next PR to the new base with `gh pr edit <next-pr> --base <base>`. Then fetch,
 and run `git rebase --update-refs --onto origin/<base> <old-lower-tip>` on the
 top branch. `<old-lower-tip>` is the commit of the merged branch before the
-merge. With `--onto`, Git replays only the commits above the merged branch, so
+merge. It is the local `<lower-branch>`, which the merge on GitHub does not
+move.
+With `--onto`, Git replays only the commits above the merged branch, so
 a squash merge does not apply the merged commits twice. Push each moved branch
 with `git push --force-with-lease`. Git 2.38 and later have `--update-refs`.
 
