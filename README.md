@@ -38,10 +38,6 @@ branch `gh-pages`.
   validate the skills and the executable prerequisites. Its `install_extras` names the
   hooks, hook settings and `AGENTS.md` starter that the jnterfaces installer
   copies.
-- `scripts/run_gitbutler_workflow_lab.sh`: a local lab for four flows. They use a plain
-  branch, a branch with several commits, stacked branches and physical worktrees.
-- `scripts/run_gitbutler_github_integration_lab.sh`: a live GitHub lab that runs the
-  same four flows on temporary repos, and then cleans the repos up.
 - `scripts/run_tag_dependency_agent_dry_run.sh`: a local dry run that classifies tags and
   expands the dependencies with `ast-grep`.
 - `scripts/run_tag_dependency_typescript_lab.sh`: a live local TypeScript lab. It expands
@@ -131,9 +127,9 @@ When you create `.gitignore`, `.envrc`, `.env.example` or the command contracts 
 does not fill `docs/`, `templates/` or `tools/` at the root of the target.
 
 If you are new, read [`docs/TUTORIAL.md`](docs/TUTORIAL.md) next. It is the
-only beginner tutorial. It uses ordinary git for simple PRs, GitButler only for
-stacked dependent PRs, and physical git worktrees for independent parallel
-slices.
+only beginner tutorial. It uses ordinary git for simple PRs, stacked PRs with
+plain git for dependent slices, and physical git worktrees for independent
+parallel slices.
 
 For a map of the other reference docs, read
 [`docs/README.md`](docs/README.md).
@@ -235,7 +231,7 @@ result report. The parent does these steps with it:
    of the PR.
 
 AGENT_RESULT only reports. It cannot grant permissions. It also cannot override the safety rules
-of the user, the system, the developer, an approval, Git or GitButler.
+of the user, the system, the developer, an approval or Git.
 
 A child returns its recursive work as `outputs.proposed_tasks`. The field is a list of task
 descriptors. After the normal safety checks, the parent or the orchestrator can turn them into
@@ -322,10 +318,8 @@ choose both a branch model and an execution model:
 - Several large slices that depend on each other use stacked branches or stacked PRs.
 - Several independent slices that run at the same time use separate physical git worktrees.
 
-GitButler support is sequential by default. The parallel branches and the stacked branches of
-GitButler share one managed workspace. So they are tools to arrange branches, and not the way
-to run agents in parallel. Do not start agents that write in parallel in one GitButler
-workspace, and do not use the parallel lanes of GitButler to run agents in parallel.
+Two agents must not write in one folder at the same time. A branch in the main checkout is
+for work in order, one task after the other.
 
 If work must run in parallel, use physical worktrees first. Then integrate the results into
 the intended branch or stack. Record the owner, the path and the branch of each worker
@@ -333,18 +327,21 @@ worktree, and the path and the branch of the separate primary checkout. After th
 retire only the clean worktrees that you own, with the checks of the integration-delivery
 policy.
 
-In the mode where GitButler manages the workspace, write with the current commands of the
-`but` CLI, for example `but branch new`, `but stage`, `but commit`, `but push` and `but pr`.
-While GitButler owns the workspace, do not use raw `git commit`, `git switch` or
-`git checkout`. Also do not use other git commands that change branches.
+A stack of dependent PRs uses plain git and `gh`:
 
-After GitButler PRs are merged and no stack work remains, do these steps:
+1. Start each branch from the branch below it, for example with
+   `git switch -c <child-branch> <parent-branch>`.
+2. Open the PR of each branch with `gh pr create --base <parent-branch>`, from the bottom
+   branch up.
+3. After a change to a lower branch, switch to the top branch and run
+   `git rebase --update-refs <lower-branch>`. The rebase also moves each branch of the stack
+   between them. The option needs git 2.38 or later.
+4. Push each moved branch with `git push --force-with-lease`.
 
-1. Leave GitButler mode with `but teardown`.
-2. Return to the merged base branch, and verify that it matches its remote.
-3. Clean merged local `session/*` and `gest/*` branches.
+After the PRs are merged and no stack work remains, do these steps:
 
-Do not leave the terminal on `gitbutler/workspace`, if no GitButler work is still active.
+1. Return to the merged base branch, and verify that it matches its remote.
+2. Clean merged local `session/*` and `gest/*` branches.
 
 ### Variants and worktree recipes
 
@@ -463,35 +460,23 @@ exists. They record the selected, the rejected and the new tags. For a change to
 The installer copies the `.claude/` and `.codex/` hooks. The session-start
 hooks name the tasker variant, and they report the worktrees that are ready to
 prune. They remove nothing. In `gitwt`, a `git commit` in the main checkout gets
-a warning, not a block. The GitButler context appears only when `but` is
-installed and the checkout is on `gitbutler/workspace`, and never in `gitwt`.
+a warning, not a block.
 
-While a GitButler branch or a series of stacked branches is active, the GitButler hooks
-enforce the strict GitButler mode. The hooks enforce these rules:
-
-- Use `but` for writes.
-- Use raw git writes only for explicit physical worktree execution.
-- Keep the tag and dependency checks in view.
-
-A planned flow can leave GitButler mode to create physical worktrees on purpose. Then prefix
-the raw git worktree commands with `GEST_VCS_EXECUTION=git-worktrees`. A repo that already has
-the hooks refreshes them with `just install`.
+No hook blocks a git command, so `git commit`, `git switch` and
+`git checkout` work as usual. Before a commit, a push or `gh pr create`, the Claude Code
+hook gives the agent the commit rules of `docs/dev/commits.md`, if the project has that file.
+A repo that already has the hooks refreshes them with `just install`.
 
 ## Automatic checks and delivery
 
 GitHub runs `verify-skill-package` on PRs to any branch and on each push to a branch.
 It checks the shell and JSON contracts, the behavior of the hooks, the mirrors of the
-canonical references and the package manifest. Then it runs GitButler 0.19.9 against both the
-mainline and a separate persistent integration target. It builds and verifies a source archive,
-and it uploads the archive as a CI artifact.
+canonical references and the package manifest. It builds and verifies a source archive, and it
+uploads the archive as a CI artifact.
 
 `just ci-local` runs the part of the checks that runs locally without other setup. `just verify`
 also runs the broader labs for languages and protocols, with the prerequisites that their docs
 give. The automatic CI does not claim that these extra local labs ran.
-
-The authenticated live GitHub lab runs only by hand. It needs an explicit typed confirmation and
-a `GEST_GITHUB_LAB_TOKEN` that you configure separately. Ordinary PR checks get no such
-credential.
 
 A merge integrates the source. A release with a version or a tag is a separate request. It
 needs the validation of the package, an install into a scratch folder, reviewed source and the

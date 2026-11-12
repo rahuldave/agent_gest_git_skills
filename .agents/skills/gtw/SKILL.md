@@ -155,9 +155,9 @@ github.issue=<number>
 github.url=<url>
 outline.root=<gest-task-id>
 parent_task=<gest-task-id>
-vcs.tool=git|git-butler|jj
+vcs.tool=git|jj
 vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-development|parallel-worktrees
-vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
+vcs.execution=main-worktree|git-worktrees|jj-workspaces
 vcs.parallel_allowed=true|false
 vcs.branch=<branch-name>
 vcs.integration_branch=<selected-persistent-target>
@@ -196,11 +196,9 @@ coherent durable slice, and `stacked-session` or `stacked-development` when a
 session contains multiple meaty dependent slices that should remain separately
 reviewable.
 
-Keep branch structure separate from agent execution. GitButler stacks are fine
-for sequential branch curation, but shared GitButler workspaces are not an
-agent-parallelism primitive. If `vcs.tool=git-butler` and
-`vcs.execution=gitbutler-workspace`, set `vcs.parallel_allowed=false` and run
-write tasks sequentially. If work must run in parallel, use physical
+Keep branch structure separate from agent execution. A stack of branches is
+sequential work in one checkout, so set `vcs.parallel_allowed=false` for it and
+run its write tasks one after another. If work must run in parallel, use physical
 `git-worktrees` first; each writable task needs its own `vcs.workspace_path`,
 recorded owner and topic branch. Afterward, integrate the results into the
 selected branch or stack and follow the owned-worktree retirement procedure in
@@ -245,12 +243,21 @@ In a project that jnterfaces did not start, these recipes are missing. Run
 `uv run --no-project --quiet python .agents/skills/gtw/scripts/worktree.py`
 with `mode`, `new`, `sync`, `list` or `prune` instead.
 
-In GitButler-managed mode, use current `but` CLI write commands such as
-`but branch new`, `but stage`, `but commit`, `but push`, and `but pr`. Do not
-use raw `git commit`, `git switch`, `git checkout`, or branch-mutating git
-commands while GitButler owns the workspace. Read-only git commands such as
-`git log` and `git diff` are acceptable when they clarify history, but prefer
-`but status` and `but diff` for branch ownership.
+Use plain git for every write, such as `git switch`, `git commit` and
+`git push`. No hook blocks plain git, and no command needs a marker. In the
+`gitwt` variant, a commit in the main checkout gets a warning, and the commit
+still runs.
+
+For a stack of dependent PRs:
+
+1. Start each branch from the branch below it, for example
+   `git switch -c <child-branch> <parent-branch>`.
+2. Open the PR of each branch with `gh pr create --base <parent-branch>`, from
+   the bottom branch up.
+3. After a change to a lower branch, run `git rebase --update-refs <lower-branch>`
+   on the top branch, with the branch that changed. It moves every branch of the
+   stack above it together. Git 2.38 and
+   later have it. Then push each moved branch with `git push --force-with-lease`.
 
 ## Test And Review Policy
 
@@ -410,7 +417,7 @@ At every durable checkpoint, run the cleanup that future agents need:
 - report selected PR base, commit hashes, push status, review status, and GitHub
   issue decision
 - report the final branch/execution mode for substantial write work, including
-  whether GitButler stack work was sequential or whether parallel work used
+  whether the work was a sequential stack of branches or whether parallel work used
   physical worktrees; reconcile every owned worktree before handoff and report
   any retained worktree and its reason
 

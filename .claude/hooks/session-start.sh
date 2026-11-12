@@ -15,12 +15,12 @@ Use the project-local `g*` skills for substantial work:
 - `gpl`: plan tasks and iterations
 - `gis`: create durable tasks
 - `gim`: implement one concrete task
-- `gor`: execute phased work, using GitButler sequentially or physical git worktrees for parallel writes
+- `gor`: execute phased work, on one branch in order or in physical git worktrees for parallel writes
 - `gfm`: format/lint/static checks
 - `gte`: tests and smoke/integration checks
 - `gdo`: docs audit
 - `grv`: review current changes
-- `gcm`: GitButler commit/push/PR checkpoint
+- `gcm`: commit, push and PR checkpoint, with stacked PRs in plain git
 - `gpr`: GitHub issue promotion decision
 - `gpa`: GitHub PR acceptance review
 

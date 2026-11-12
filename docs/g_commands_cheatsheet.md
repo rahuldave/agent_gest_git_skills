@@ -6,7 +6,7 @@ reusable Codex and Gest skills installed. Give the commands in natural language,
 `/gtw fix the search bug`, `$gtw plan annotation import` or `gcm: commit the verified slice`.
 
 If you are new to the workflow, read [`TUTORIAL.md`](TUTORIAL.md) first. It is the
-Git and GitButler tutorial, and each run of it gives the same result. For a TypeScript
+Git tutorial, and each run of it gives the same result. For a TypeScript
 hello-world lab about setup, read [`gsu_typescript_hello_world.md`](gsu_typescript_hello_world.md).
 For the verified profile labs for Python, TypeScript, Go and Rust, read
 [`gsu_language_profile_labs.md`](gsu_language_profile_labs.md).
@@ -250,21 +250,16 @@ model. Each shape of the work has its model:
 - **Several large dependent slices** use stacked branches or stacked PRs.
 - **Several independent slices that run at the same time** use physical worktrees.
 
-GitButler support is sequential by default. The parallel branches and the stacked branches of
-GitButler share one managed workspace. So agents must not use the parallel lanes of GitButler for
-writes at the same time. If writes must happen at the same time, use separate physical worktrees.
-Then integrate the results into the intended branch or stack.
+One checkout holds one branch at a time. So agents that write at the same time each need their own
+physical worktree, and `just worktree-new NAME` makes one. Then integrate the results into the
+intended branch or stack.
 
-In the mode where GitButler manages the workspace, Codex writes with `but` commands, for example
-`but branch new`, `but stage`, `but commit`, `but push` and `but pr`. It does not use raw
-`git commit`, `git switch`, `git checkout` or other git commands that change branches.
+Codex builds a stack with plain git, and Git 2.38 and later have each command:
 
-The full guide includes a lab on throwaway repositories that repeats these flows:
-
-- GitButler plain branch
-- multi-commit session branch
-- GitButler stacked base/child branches
-- physical git worktrees integrated by rebase and fast-forward
+1. Start each branch from the branch below it, with `git switch -c <child> <parent-branch>`.
+2. Open the PR of each branch with `gh pr create --base <parent-branch>`.
+3. After a change to a lower branch, run `git rebase --update-refs <lower-branch>` on the top
+   branch. Git moves each branch of the stack together.
 
 ## Just agent contracts
 

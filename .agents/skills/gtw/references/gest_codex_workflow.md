@@ -84,31 +84,28 @@ Use these execution modes:
 
 - `main-worktree`: one agent writes in the current checkout.
 - `git-worktrees`: one git worktree for each parallel task.
-- `gitbutler-workspace`: one sequential agent in the workspace that GitButler
-  manages.
 - `jj-workspaces`: one jj workspace for each parallel task, if the project uses
   jj.
 
-GitButler stacks use the GitButler model of a workspace of applied branches.
-The model suits the curation of a stack in sequence. It does not suit several
-agents that write to the same working tree. So follow these rules:
+One checkout holds one branch at a time, so several agents must not write to
+the same working tree. Follow these rules:
 
-- never run parallel write agents in one `gitbutler-workspace`
-- never use GitButler parallel lanes as the primitive for agent parallelism
-- if work must be parallel, use physical `git-worktrees` first, and integrate
-  the results into a branch or stack after that
-- in GitButler mode, use the writes of the current `but` CLI, for example
-  `but branch new`, `but stage`, `but commit`, `but push` and `but pr`
-- in GitButler mode, do not use raw `git commit`, `git switch`, `git checkout`
-  or other git commands that change branches
+- if work must be parallel, give each writer its own physical worktree, with
+  `just worktree-new NAME` or `git worktree add`, and integrate the results into
+  a branch or stack after that
+- to build a stack with plain git, start each branch from the branch below it,
+  and open the PR of each branch with `gh pr create --base <parent-branch>`
+- after a change to a lower branch, run `git rebase --update-refs <lower-branch>`
+  on the top branch, so that Git moves each branch of the stack together. Git
+  2.38 and later have `--update-refs`.
+- plain `git commit`, `git switch` and `git checkout` need no marker
 
 Default integration:
 
 - simple branches: rebase onto the target branch, then fast-forward or squash
   when that is correct
-- GitButler stacks: review and merge from the bottom up. GitHub merge commits
-  are acceptable for GitButler stacked PRs, because they make the stack easier
-  to handle.
+- stacks: review and merge from the bottom up. GitHub merge commits are
+  acceptable for stacked PRs, because they make the stack easier to handle.
 - parallel worktrees: integrate each finished worktree on purpose before you
   start follow-on work that depends on it
 
@@ -116,14 +113,14 @@ When work is more than a tiny local edit, record the state of the branch and of
 the execution in Gest metadata:
 
 ```text
-vcs.tool=git|git-butler|jj
+vcs.tool=git|jj
 vcs.default_branch=<repository-default>
 vcs.integration_branch=<selected-persistent-target>
 vcs.base_branch=<immediate-PR-base>
 vcs.branch_role=topic|stack-topic|integration
 vcs.base_sha=<sha>
 vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-development|parallel-worktrees
-vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
+vcs.execution=main-worktree|git-worktrees|jj-workspaces
 vcs.parallel_allowed=true|false
 vcs.branch=<branch-name>
 vcs.stack_root=<branch-name>
@@ -140,10 +137,9 @@ language.profile=python|ruby|typescript|go|rust|mixed|unknown
 contract.source=agents-md|just-agent-contract|manual
 ```
 
-If `vcs.tool=git-butler` and `vcs.execution=gitbutler-workspace`, set
-`vcs.parallel_allowed=false`. Parallel claims are allowed only when each task
-that writes has its own physical `vcs.workspace_path`, for example separate git
-worktrees.
+If `vcs.execution=main-worktree`, set `vcs.parallel_allowed=false`. Parallel
+claims are allowed only when each task that writes has its own physical
+`vcs.workspace_path`, for example separate git worktrees.
 
 ## Task hierarchy
 
@@ -275,7 +271,7 @@ not trivial. It reviews through separate lenses:
 
 - correctness and the risk of a regression
 - whether the tests are enough, including whether new tests fail on the old code
-- the safety of the Git and GitButler workflow
+- the safety of the Git workflow
 - drift in the docs, the setup and the command contract
 - security, privacy or data safety, when relevant
 - browser and UI behavior, when relevant
@@ -289,10 +285,10 @@ changes and checkpoint decisions in one place, if you do not assign them on
 purpose.
 
 Reviewers of reusable workflow changes keep the boundaries between adapters.
-Plain Git branches, GitButler branches and stacks, and physical git worktrees
-are different tools for execution and review. Do not rewrite the guidance for
-GitButler stacks into the semantics of jj bookmarks. Do not treat GitButler
-parallel lanes as isolation for agents.
+Plain Git branches, stacks of branches, and physical git worktrees are
+different tools for execution and review. Do not rewrite the guidance for
+stacks into the semantics of jj bookmarks. Do not treat two branches in one
+checkout as isolation for agents.
 
 ## Tags
 
@@ -770,9 +766,8 @@ But an ordinary request can use `gtw` or natural language.
 
 1. Read and claim one concrete task.
 2. If the task is too broad, split it first.
-3. Confirm the branch and execution mode of the task before you edit. In
-   GitButler mode, use only `but` writes. Keep the execution sequential, if no
-   one assigned a physical worktree.
+3. Confirm the branch and execution mode of the task before you edit. Keep the
+   execution sequential, if no one assigned a physical worktree.
 4. Make small changes inside the scope.
 5. Run `gfm` for mechanical checks.
 6. Run `gte` for tests. Changed callable code and APIs need focused tests.
@@ -786,9 +781,9 @@ But an ordinary request can use `gtw` or natural language.
 1. Read the status and the graph of the iteration.
 2. Group the tasks by phase.
 3. For each phase, decide between sequential and parallel execution.
-4. Block parallel work in a shared GitButler workspace. If
-   `vcs.tool=git-butler` and `vcs.execution=gitbutler-workspace`, run the tasks
-   in sequence, even when they are in the same phase.
+4. Block parallel work in one shared checkout. If
+   `vcs.execution=main-worktree`, run the tasks in sequence, even when they are
+   in the same phase.
 5. Use physical git worktrees and subagents for independent tasks when that
    helps. Record each `vcs.workspace_path`.
 6. Integrate the results into the selected branch or stack, and go to the next
@@ -840,10 +835,9 @@ update it before approval or merge.
 The bookkeeping after the merge must bring back a consistent local state. To
 mark the GitHub PR merged is not enough. Before the merge, check with
 `gh pr diff` or `git show --stat` that the PR branch contains the intended
-changes. Empty GitButler commits, and `WIP Assignments` commits with no changes,
-are warning signs.
+changes. Empty commits, and commits with no changes, are warning signs.
 
-After the merge, plain-Git workstreams do these things:
+After the merge, do these things:
 
 - fetch and prune the remotes
 - update the selected base in a suitable clean checkout, when one exists
@@ -860,18 +854,15 @@ that no task or stack depends on them. The integration-delivery policy gives the
 details. Confirm that each remaining PR belongs to follow-on work that someone
 intends.
 
-GitButler workstreams must not run raw Git commands that change branches while
-GitButler owns the workspace. When the stack is done, run `but teardown` first.
-Then sync the base branch in normal Git mode. Do not leave the terminal of the
-user on `gitbutler/workspace`, if active GitButler work does not explicitly
-continue.
+For a stack, merge from the bottom up. After each merge, retarget the next PR
+with `gh pr edit <number> --base <new-base>`, and run
+`git rebase --update-refs <new-base>` on the top branch of the stack.
 
 ### GCM
 
 Read the status, the diff and the log. Write a conventional commit, ask for
-confirmation when necessary, stage explicit files and commit. In workspaces that
-GitButler manages, use `but status`, `but diff`, `but branch list`, `but stage`
-and `but commit` in place of raw git writes. Include GitHub issue footers only
+confirmation when necessary, stage explicit files and commit with plain git.
+Include GitHub issue footers only
 when metadata exists. Never include Gest IDs in commit messages.
 
 ## Project defaults

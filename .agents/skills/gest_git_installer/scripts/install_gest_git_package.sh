@@ -18,14 +18,14 @@ for exe in git uv just gest; do # git --version, uv --version, just --version an
 done
 if [ "${#missing_required[@]}" -gt 0 ]; then
   printf 'Missing required workflow executable(s): %s\n' "${missing_required[*]}" >&2
-  printf 'Install these before relying on the Git/GitButler Gest workflow.\n' >&2
+  printf 'Install these before relying on the Git Gest workflow.\n' >&2
 fi
 for exe in git uv; do
   command -v "$exe" >/dev/null 2>&1 || { printf 'The installer needs %s.\n' "$exe" >&2; exit 1; }
 done
 
 optional_missing=()
-for exe in rsync gh but ast-grep direnv cx; do # rsync --version, gh --version and the others are optional
+for exe in rsync gh ast-grep direnv cx; do # rsync --version, gh --version and the others are optional
   if ! command -v "$exe" >/dev/null 2>&1; then
     optional_missing+=("$exe")
   fi

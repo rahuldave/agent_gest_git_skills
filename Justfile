@@ -1,5 +1,5 @@
 setup:
-  @echo "No repository-local dependencies to install. Ensure git, gest, just, uv, rsync, and optional gh, but, ast-grep, direnv, cx are available."
+  @echo "No repository-local dependencies to install. Ensure git, gest, just, uv, rsync, and optional gh, ast-grep, direnv, cx are available."
 
 lint:
   scripts/check_repo.sh
@@ -7,7 +7,6 @@ lint:
 static: lint
 
 test:
-  scripts/run_gitbutler_workflow_lab.sh
   scripts/run_tag_dependency_agent_dry_run.sh
   scripts/run_tag_dependency_typescript_lab.sh
   scripts/run_language_profile_labs.sh
@@ -41,9 +40,6 @@ agent-result-recursive-live-lab TRANSCRIPT_DIR:
   scripts/run_agent_result_recursive_live_lab.sh "{{TRANSCRIPT_DIR}}"
 
 protocol-flow-labs: agentic-target-lab agent-result-lab agent-task-draft-lab
-
-workflow-lab:
-  scripts/run_gitbutler_workflow_lab.sh
 
 # Install this package into a scratch repository with the installer of a jnterfaces clone, and check the result
 install-test:
@@ -86,6 +82,14 @@ install-test:
   test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"
+  # The old hooks blocked plain git on the branch of the old workspace, so the check runs there.
+  branch="$(git -C "$target" symbolic-ref HEAD)"
+  git -C "$target" symbolic-ref HEAD "refs/heads/git""butler/workspace"
+  for hook in .claude/hooks/raw-git-write-guard.sh .codex/hooks/raw-git-write-guard.sh; do
+    out="$(cd "$target" && printf '%s' '{"tool_input": {"command": "git commit -m x", "cmd": "git commit -m x"}}' | CLAUDE_PROJECT_DIR="$target" "$hook")" || fail "$hook failed"
+    if grep -q permissionDecision <<<"$out"; then fail "$hook blocks a plain git commit"; fi
+  done
+  git -C "$target" symbolic-ref HEAD "$branch"
   install tasker=gitwt
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = gitwt ] || fail "just tasker-mode does not print gitwt"
   install --without tasker
@@ -98,13 +102,7 @@ install-test:
   if grep -q 'session-start' "$target/.claude/settings.json"; then fail "the removal left a Gest hook"; fi
   echo "install-test: install and removal passed"
 
-lab-safety-test:
-  uv run --no-project --quiet python -m unittest scripts/test_gitbutler_live_cleanup.py -q
-
-ci-local: lint install-test lab-safety-test workflow-lab
-
-integration-live:
-  scripts/run_gitbutler_github_integration_lab.sh
+ci-local: lint install-test
 
 diff-check:
   scripts/check_repo.sh --diff

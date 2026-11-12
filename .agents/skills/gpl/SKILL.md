@@ -61,9 +61,9 @@ For every non-trivial write slice, decide or leave clear metadata placeholders
 for:
 
 ```text
-vcs.tool=git|git-butler|jj
+vcs.tool=git|jj
 vcs.branch_mode=session-branch|development-branch|stacked-session|stacked-development|parallel-worktrees
-vcs.execution=main-worktree|git-worktrees|gitbutler-workspace|jj-workspaces
+vcs.execution=main-worktree|git-worktrees|jj-workspaces
 vcs.parallel_allowed=true|false
 vcs.branch=<branch-name>
 vcs.workspace_path=<absolute-path>
@@ -72,8 +72,9 @@ vcs.workspace_path=<absolute-path>
 Use stacked branch modes for multiple meaty dependent slices that should be
 reviewed separately. Use `parallel-worktrees` only for independent slices that
 will run at the same time in separate physical worktrees. Do not plan parallel
-write execution inside one GitButler workspace; GitButler stacks and parallel
-lanes are sequential curation tools for agents.
+writes in one checkout. A stack of branches is sequential work. Each branch
+starts from the branch below it, and `gh pr create --base <parent-branch>`
+opens its PR.
 
 Report task IDs, phase grouping, dependencies, and whether `gor` can parallelize
 the work.

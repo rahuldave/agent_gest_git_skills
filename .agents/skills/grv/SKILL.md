@@ -25,12 +25,11 @@ git diff
 git diff --staged
 ```
 
-If the checkout is GitButler-managed, also inspect branch ownership:
+If the branch is part of a stack, diff it against the branch below it:
 
 ```bash
-but status
-but diff
-but branch list --all
+git branch --list
+git diff <parent-branch>...HEAD
 ```
 
 If reviewing a commit, diff that commit directly.
@@ -57,7 +56,7 @@ review lenses:
 
 - correctness and regression risk
 - test adequacy and missing edge cases
-- Git/GitButler workflow safety
+- Git workflow safety
 - docs, setup, and command-contract drift
 - security, privacy, or data safety when relevant
 - browser/UI behavior when relevant
@@ -86,10 +85,11 @@ observations.
 Missing focused tests for changed callable code or APIs are review findings, not
 just nice-to-have follow-ups.
 
-For workflow changes, review VCS safety as behavior: flag any instruction that
-allows raw `git commit`/`git switch`/`git checkout` in GitButler mode, any plan
-that launches parallel write agents in one GitButler workspace, or any stacked
-branch flow that lacks bottom-up integration/review guidance.
+For workflow changes, review VCS safety as behavior. Flag each of these:
+
+- an instruction that launches parallel write agents in one checkout
+- a plan that blocks plain git, or needs a marker for it
+- a stacked branch flow without guidance for bottom-up integration and review
 
 For `cx` workflow changes, review the lines as incremental build/pipeline
 declarations. Flag use of `cx` for tests, lint, format, typecheck, ordinary
@@ -98,11 +98,12 @@ all real file inputs are declared with `--in`, all durable outputs are declared
 with `--out`, Just recipe dependencies still order producers before consumers,
 and `.cx` runtime state is ignored without hiding future config.
 
-For reusable Git/GitButler/JJ workflow changes, also verify adapter boundaries:
-plain Git branches, GitButler-managed branches/stacks, physical git worktrees,
-and JJ bookmarks/workspaces must not be collapsed into one generic model. In
-this Git/GitButler skill family, preserve `but` write commands in GitButler
-mode and preserve physical git worktrees as the parallel write primitive.
+For reusable Git or JJ workflow changes, also verify adapter boundaries.
+Plain Git branches, stacks of Git branches, physical git worktrees, and JJ
+bookmarks and workspaces must stay separate models. In this Git skill family,
+keep physical git worktrees as the way to run parallel writes. Keep stacks on
+plain git, with `gh pr create --base <parent-branch>` and
+`git rebase --update-refs`.
 
 ## Tag And Dependency Findings
 

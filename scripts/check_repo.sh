@@ -16,7 +16,6 @@ required_files=(
   ".codex/hooks.json"
   "docs/README.md"
   "docs/TUTORIAL.md"
-  "notes/live_gitbutler_tutorial_transcript_2026-05-07.md"
   "docs/gest_codex_workflow.md"
   "docs/integration_delivery_workflow.md"
   "docs/tag_dependency_workflow.md"
@@ -26,8 +25,6 @@ required_files=(
   "docs/just_command_contract.md"
   "docs/agent_task_draft_workflow.md"
   "docs/live_agent_result_recursive_lab.md"
-  "scripts/run_gitbutler_workflow_lab.sh"
-  "scripts/run_gitbutler_github_integration_lab.sh"
   "scripts/run_tag_dependency_agent_dry_run.sh"
   "scripts/run_tag_dependency_typescript_lab.sh"
   "scripts/run_language_profile_labs.sh"
@@ -112,19 +109,14 @@ python=(uv run --no-project --quiet python)
 "${python[@]}" -m json.tool "$repo_root/skill-package.json" >/dev/null
 
 required_text=(
-  "but setup"
-  "but branch new"
-  "but branch new --anchor"
-  "but commit"
-  "but push"
-  "Only step 3 uses GitButler"
+  "git rebase --update-refs"
+  "gh pr create --base"
+  "stacked PRs with plain git"
   "ordinary git branch PR"
   "ordinary git multi-commit PR"
-  "GitButler stacked PRs"
   "physical git worktrees"
   "Tags And ast-grep Dependency Check"
   "Pull Request Command Map"
-  "but pr new tutorial/stack-child --default --json"
   "gh repo delete --yes"
   "Merge The Tutorial PRs"
   "PR acceptance checkpoint"
@@ -148,10 +140,6 @@ required_text=(
   "ast-grep dependency expansion"
   "run_tag_dependency_typescript_lab.sh"
   "git worktree add"
-  "GitButler mode-strict"
-  "GEST_VCS_EXECUTION=git-worktrees"
-  "run_gitbutler_workflow_lab.sh"
-  "run_gitbutler_github_integration_lab.sh"
   "run_language_profile_labs.sh"
   "language-profile-labs"
   "live local end-to-end"
@@ -224,17 +212,58 @@ required_text=(
 
 for needle in "${required_text[@]}"; do
   if ! grep -R "$needle" "$repo_root/AGENTS.template.md" "$repo_root/README.md" "$repo_root/docs" "$repo_root/.agents/skills" "$repo_root/scripts" >/dev/null; then
-    echo "missing required GitButler workflow text: $needle" >&2
+    echo "missing required workflow text: $needle" >&2
     exit 1
   fi
 done
 
-for stale_tutorial_text in "Latest Live Run" "422 Unprocessable Entity" "live_gitbutler_tutorial_transcript"; do
+for stale_tutorial_text in "Latest Live Run" "422 Unprocessable Entity"; do
   if grep -q "$stale_tutorial_text" "$repo_root/docs/TUTORIAL.md"; then
     echo "stale run/debugging text remains in docs/TUTORIAL.md: $stale_tutorial_text" >&2
     exit 1
   fi
 done
+
+# The package dropped one version-control tool, and its hooks blocked plain git. No file may name that tool or its
+# commands again. Only the specs, which describe the removal, and the historical notes may. The patterns are split,
+# so that this script does not name the tool either.
+tool='[g]it[-_ ]?[b]utler'
+# git grep -E on macOS has no \< or \>, so the word edges are spelled out.
+edge='(^|[^[:alnum:]_-])'
+tool_command="\`[b]ut[ \`]|${edge}[b]ut (setup|status|branch|commit|push|pr|stage|diff|absorb|rub|oplog|undo|mark|amend|apply|unapply|pull|update|teardown|--version)([^[:alnum:]_-]|\$)|\"[b]ut\"|-v [b]ut([^[:alnum:]_-]|\$)"
+# The patterns must find each sample line, or the scan below could never fail.
+samples="$(mktemp -d)"
+printf '%s\n' 'Git''Butler' 'git''-butler' 'Git ''Butler' 'git''_butler' > "$samples/tool.txt"
+printf '%s\n' 'run bu''t status now' 'command -v bu''t >/dev/null' '`bu''t commit`' '"name": "bu''t"' 'bu''t push origin' > "$samples/command.txt"
+check_samples() {
+  local flags="$1" pattern="$2" file="$3" line
+  while IFS= read -r line; do
+    printf '%s\n' "$line" > "$samples/one.txt"
+    git -C "$samples" grep --no-index -q $flags -e "$pattern" -- one.txt || {
+      echo "the scan pattern misses the sample line: $line" >&2; rm -rf -- "$samples"; exit 1; }
+  done < "$file"
+}
+check_samples -iE "$tool" "$samples/tool.txt"
+check_samples -E "$tool_command" "$samples/command.txt"
+printf '%s\n' 'but commits are fine' 'a butter knife' 'about pushes' > "$samples/one.txt"
+if git -C "$samples" grep --no-index -q -E -e "$tool_command" -- one.txt; then
+  echo "the scan pattern matches plain English" >&2; rm -rf -- "$samples"; exit 1
+fi
+rm -rf -- "$samples"
+# scan FLAGS PATTERN: the lines that match, in the files that git tracks or would add, outside those two folders.
+# git grep exits 1 when no line matches.
+scan() {
+  git -C "$repo_root" grep --untracked -nI "$1" -e "$2" -- ':!docs/specs/' ':!notes/' || [ $? -eq 1 ] || exit 1
+}
+tool_hits="$(scan -iE "$tool")"
+command_hits="$(scan -E "$tool_command")"
+tool_hits="$tool_hits${command_hits:+
+$command_hits}"
+if [ -n "$tool_hits" ]; then
+  printf '%s\n' "$tool_hits" >&2
+  echo "a file outside docs/specs/ and notes/ names the dropped version-control tool or one of its commands" >&2
+  exit 1
+fi
 
 # Installed copies have no docs/ tree, so shipped guidance must not point into it.
 shipped_text=("$repo_root/AGENTS.template.md" "$repo_root/AGENTS.starter.md" "$repo_root/AGENTS.instructions.md")

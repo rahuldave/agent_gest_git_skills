@@ -54,11 +54,11 @@ git status --short --branch
 git log --oneline --decorate --graph --max-count=20
 ```
 
-If GitButler is managing the checkout, also inspect:
+If the PR is part of a stack, also check that its base is the branch below it:
 
 ```bash
-but status
-but branch list --all
+gh pr view <pr> --json baseRefName,headRefName
+git diff <parent-branch>...<head-branch>
 ```
 
 ## Gather Gest Context
@@ -107,8 +107,8 @@ workflow safety:
 - missing task completion notes
 - unsafe merge method for the branch model
 - silent unpushed branches or dirty local worktrees
-- GitButler violations such as raw git writes in GitButler mode or shared
-  GitButler workspace parallelism
+- a stacked PR whose base is not the branch below it, or parallel write
+  agents in one checkout
 
 For non-trivial PRs, use adversarial review lenses. Default to independent
 read-only review sub-agents when sub-agents are available, authorized, and the
@@ -118,7 +118,7 @@ explicitly yourself:
 
 - code behavior and regression risk
 - test adequacy, including whether new tests would fail on the old code
-- Git/GitButler branch, stack, worktree, push, and merge safety
+- Git branch, stack, worktree, push, and merge safety
 - PR body and sanitized Gest context accuracy
 - docs, setup, command-contract, release, and deployment drift
 - security, privacy, data, browser/UI, or language/runtime risk when relevant
@@ -127,11 +127,11 @@ Writable sub-agents still require separate physical git worktrees. Gest
 mutations, approvals, merges, and post-merge bookkeeping should remain
 centralized unless deliberately assigned.
 
-For reusable workflow PRs, preserve adapter boundaries: plain Git branches,
-GitButler-managed branches/stacks, physical git worktrees, and JJ
-bookmarks/workspaces must remain distinct. In this Git/GitButler skill family,
-do not weaken `but` write-command guidance or treat GitButler parallel lanes as
-agent isolation.
+For reusable workflow PRs, preserve adapter boundaries. Plain Git branches,
+stacks of Git branches, physical git worktrees, and JJ bookmarks and workspaces
+must stay distinct. In this Git skill family, do not treat the branches of a
+stack in one checkout as agent isolation. Physical git worktrees isolate
+parallel agents.
 
 For `cx` workflow PRs, verify that `cx` is framed as incremental build/pipeline
 infrastructure, not testing. Review `cx` lines for complete `--in`/`--out`
@@ -242,18 +242,17 @@ gh pr merge <pr> --rebase --match-head-commit <reviewed-head-sha>
 
 After merging:
 
-1. Verify the merged branch actually contained the intended changes. For
-GitButler work especially, inspect the branch/merge diff instead of trusting
-workspace assignments or an empty commit:
+1. Verify the merged branch actually contained the intended changes. For a
+stacked PR especially, inspect the branch or merge diff instead of trusting the
+PR title or an empty commit:
 
 ```bash
 gh pr diff <pr> --patch
 git show --stat <merge-or-head-sha>
 ```
 
-Empty GitButler commits or `WIP Assignments` commits with no file changes are
-red flags: reconcile them before merge or create a follow-up PR from a clean
-checkout.
+An empty commit with no file changes is a red flag. Reconcile it before the
+merge, or create a follow-up PR from a clean checkout.
 
 2. Restore a consistent local state without moving the primary checkout off
 its recorded branch. Before cleanup, record `<primary-path>` and
@@ -281,11 +280,13 @@ use the fetched remote-tracking ref as integration evidence and defer moving
 the local `<base>` branch until an appropriate checkout is available. Do not
 `git switch <base>` in the primary checkout merely to perform cleanup.
 
-For a GitButler workstream, do not run raw branch-mutating Git while GitButler
-owns its checkout. When no further stack work remains, run `but teardown` in
-that owned checkout, verify normal Git mode and its branch, then perform the
-same target fetch/fast-forward procedure above from an appropriate checkout.
-Do not assume teardown should put the primary on `<base>`.
+For a stack, merge the PRs bottom-up. After a lower PR merges, retarget the
+next PR to the new base with `gh pr edit <next-pr> --base <base>`. Then fetch,
+and run `git rebase --update-refs --onto origin/<base> <old-lower-tip>` on the
+top branch. `<old-lower-tip>` is the commit of the merged branch before the
+merge. With `--onto`, Git replays only the commits above the merged branch, so
+a squash merge does not apply the merged commits twice. Push each moved branch
+with `git push --force-with-lease`. Git 2.38 and later have `--update-refs`.
 
 Only delete a temporary PR/topic branch after its role, integration and
 worktree/stack dependencies are verified. For a normal merge, independently
@@ -314,14 +315,11 @@ to clean up worktrees, run `just worktrees-prune --dry-run`, show the result,
 then run `just worktrees-prune`.
 
 At handoff, verify `git -C <primary-path> symbolic-ref --short HEAD` equals the
-recorded `<primary-branch>`. If GitButler teardown changed it, switch back only
-when that checkout is clean and the branch is not checked out elsewhere; stop
-and report a blocker rather than disturbing another checkout. Do not leave the
-user on `gitbutler/workspace` unless active GitButler work is intentionally
-continuing. `gitbutler/target` and `gitbutler/workspace` are implementation
-refs, not normal work branches to keep after teardown. If teardown fails,
-verify the intended PR diff is merged before recovery and record the exact
-state in the Gest note.
+recorded `<primary-branch>`. If the cleanup changed it, switch back only when
+that checkout is clean and the branch is not checked out elsewhere. Otherwise
+stop and report a blocker, and do not disturb another checkout. If the cleanup
+fails, verify that the intended PR diff is merged before recovery, and record
+the exact state in the Gest note.
 
 3. Add a Gest note to the parent and relevant leaf:
 

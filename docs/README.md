@@ -28,18 +28,16 @@ Read the other documents only when you need reference material:
 - `gsu_language_profile_labs.md`: live local labs that run setup from start to end with the
   setup and profile templates for Python, TypeScript, Go and Rust. The profiles are command
   contracts, and they are not skills for how to reason in a language.
-- `../notes/live_gitbutler_tutorial_transcript_2026-05-07.md`: an older transcript of a live run on
-  GitHub of the four Git and GitButler examples of the tutorial.
 
 The beginner tutorial is the source of truth for the review shapes that the package supports:
 
 1. ordinary git branch PR
 2. ordinary git multi-commit PR
-3. GitButler stacked PRs for dependent slices
+3. stacked PRs with plain git for dependent slices
 4. physical git worktrees for independent slices
 
 The tutorial also classifies tags and checks dependencies with ast-grep, with the same result each
-time. Only the third review shape uses GitButler as the main tool.
+time. Every review shape uses plain git and `gh`.
 
 For the agentic packet flow, read `protocol_flows.md` and then the live transcript. They explain the
 protocol that the static labs of `just protocol-flow-labs` check. They also explain the validator of

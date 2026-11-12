@@ -452,42 +452,20 @@ class TaskerHookTests(unittest.TestCase):
         git("config", "user.name", "hook-test", cwd=self.repo)
         git("config", "user.email", "hook-test@example.invalid", cwd=self.repo)
         git("commit", "-q", "--allow-empty", "-m", "init", cwd=self.repo)
-        # A fake but, so the GitButler checks do not depend on the machine.
-        self.bin = self.base / "bin"
-        self.bin.mkdir()
-        (self.bin / "but").write_text("#!/bin/sh\nexit 0\n")
-        (self.bin / "but").chmod(0o755)
 
     def variant(self, name: str) -> None:
         (self.repo / ".agents").mkdir(exist_ok=True)
         (self.repo / ".agents/stack.json").write_text(json.dumps(
             {"version": 2, "choices": {"tasker": True}, "variants": {"tasker": name}}, indent=2) + "\n")
 
-    def hook(self, path: str, payload: dict | None = None, cwd: Path | None = None, but: bool = True) -> str:
+    def hook(self, path: str, payload: dict | None = None, cwd: Path | None = None) -> str:
         env = os.environ.copy()
-        env.pop("GEST_VCS_EXECUTION", None)
         env["CLAUDE_PROJECT_DIR"] = str(cwd or self.repo)
-        env["PATH"] = (f"{self.bin}{os.pathsep}" if but else "") + "/usr/bin:/bin:" + os.path.dirname(
-            shutil.which("uv") or "/usr/bin")
+        env["PATH"] = "/usr/bin:/bin:" + os.path.dirname(shutil.which("uv") or "/usr/bin")
         done = subprocess.run(["bash", str(ROOT / path)], input=json.dumps(payload or {}), text=True,
                               capture_output=True, cwd=cwd or self.repo, env=env)
         self.assertEqual(done.returncode, 0, done.stderr)
         return done.stdout
-
-    def test_gitbutler_context_speaks_only_in_an_active_workspace(self) -> None:
-        hook = ".claude/hooks/gitbutler-vcs-context.sh"
-        self.assertEqual(self.hook(hook), "")
-        git("switch", "-qc", "gitbutler/workspace", cwd=self.repo)
-        self.assertEqual(self.hook(hook, but=False), "")
-        self.assertIn("GitButler VCS Context", self.hook(hook))
-        self.variant("gitwt")
-        self.assertEqual(self.hook(hook), "")
-
-    def test_codex_session_start_names_gitbutler_only_in_an_active_workspace(self) -> None:
-        hook = ".codex/hooks/session-start.sh"
-        self.assertNotIn("GitButler", self.hook(hook))
-        git("switch", "-qc", "gitbutler/workspace", cwd=self.repo)
-        self.assertIn("GitButler owns this workspace", self.hook(hook))
 
     def test_session_start_names_the_variant(self) -> None:
         for hook in (".claude/hooks/session-start.sh", ".codex/hooks/session-start.sh"):
@@ -532,14 +510,15 @@ class TaskerHookTests(unittest.TestCase):
         for hook, payload in cases.items():
             self.assertEqual(self.hook(hook, payload, cwd=folder), "")
 
-    def test_the_gitbutler_block_wins_over_the_gitwt_warning(self) -> None:
+    def test_the_gitwt_warning_never_blocks(self) -> None:
         self.variant("gitwt")
-        git("switch", "-qc", "gitbutler/workspace", cwd=self.repo)
         for hook, payload in ((".claude/hooks/raw-git-write-guard.sh",
                                {"command": "git commit -m x && git push --force origin main"}),
                               (".codex/hooks/raw-git-write-guard.sh",
                                {"tool_input": {"cmd": "git commit -m x && git push --force origin main"}})):
-            self.assertIn('"permissionDecision":"deny"', self.hook(hook, payload))
+            out = self.hook(hook, payload)
+            self.assertIn("gitwt", out)
+            self.assertNotIn("permissionDecision", out)
 
     def test_the_warning_follows_git_c_and_needs_a_repository(self) -> None:
         self.variant("gitwt")

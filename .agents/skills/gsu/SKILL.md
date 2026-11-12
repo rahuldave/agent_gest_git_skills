@@ -104,7 +104,7 @@ Identify which of these concepts apply to the project:
 For a normal target repository, `gsu` runs after the package-specific installer
 has already handled package extras. Do not use `skill-package-maker` for this
 handoff. That skill is for authoring skill packages, not for setting up a repo
-that just installed the Git/GitButler Gest skills.
+that just installed the Git Gest skills.
 
 Before ordinary setup work, verify that the expected package handoff is present:
 
@@ -158,7 +158,7 @@ executable without blocking the skill copy and mention optional executables
 that unlock extra flows.
 
 Required workflow executables are `git`, `gest`, `just`, and `uv`; optional
-executables include `rsync`, `gh`, `but`, `ast-grep`, `direnv`, and `cx`.
+executables include `rsync`, `gh`, `ast-grep`, `direnv`, and `cx`.
 Runtime commands should re-check tools they actually need.
 
 ## Snippet Templates
