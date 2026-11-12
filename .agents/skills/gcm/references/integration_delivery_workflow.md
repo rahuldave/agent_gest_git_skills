@@ -66,11 +66,23 @@ merge the next PR:
 
 Do not delete a lower branch while a PR above it still depends on it.
 
-In GitButler, read the target configuration and the PR state of the installed
-CLI. Then set the remote integration target that you chose, before you create a
-stack. Do not assume that the remote default of GitButler is the correct
-target. Use the `but` commands for writes while GitButler owns the workspace.
-All GitButler stacks share one checkout. So two writers in parallel need
+Build the stack with plain git. Git 2.38 and later have each command:
+
+1. Start each branch from the branch directly below it, for example
+   `git switch -c <child> <parent-branch>`.
+2. Open the PR of each branch with `gh pr create --base <parent-branch>`. The
+   bottom PR uses the chosen integration branch as its base.
+3. After a change to a lower branch, check out the top branch of the stack, and
+   run `git rebase --update-refs --onto <lower-branch> <old-lower-tip>`.
+   `<old-lower-tip>` is the lower branch before the change. Save it with
+   `git rev-parse <lower-branch>` before you change the branch.
+   `<lower-branch>@{1}` is that commit only after one change. Git then moves
+   each branch of the stack together, and it replays only the commits above
+   the lower branch. It does not move a branch that another worktree has
+   checked out, so restack where no worktree holds a branch of the stack.
+4. Push the moved branches with `git push --force-with-lease`.
+
+One checkout holds one branch at a time. So two writers in parallel need
 separate physical worktrees, and you merge their work later on purpose.
 
 ## Independent adversarial review
@@ -239,8 +251,8 @@ separately. Report each of these states separately:
 
 ### Retire an owned physical worktree
 
-A physical worktree that you create for a worker is a separate checkout. It is
-not a GitButler branch lane. Before you dispatch the worker, record these facts
+A physical worktree that you create for a worker is a separate checkout, with
+its own branch. Before you dispatch the worker, record these facts
 about the worktree:
 
 - its absolute path;
@@ -293,10 +305,9 @@ To remove the worktree, do these steps in order:
    about the equivalence of the patches and about the disposal of the branch.
    Do not force the deletion automatically when `git branch -d` refuses it.
 6. Verify that `git -C <primary-path> symbolic-ref --short HEAD` still names
-   the recorded primary branch. If a GitButler teardown changed it, restore
-   that branch only in the clean primary checkout. First check that no other
-   checkout holds the branch. If you cannot, keep the state and report what
-   blocks you.
+   the recorded primary branch. If a step changed it, restore that branch only
+   in the clean primary checkout. First check that no other checkout holds the
+   branch. If you cannot, keep the state and report what blocks you.
 
 Keep these things intact:
 

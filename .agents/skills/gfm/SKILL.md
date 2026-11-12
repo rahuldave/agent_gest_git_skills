@@ -46,10 +46,9 @@ used as a substitute for `gte`. For `cx` rules, read the `cx` skill of
 jnterfaces, `.agents/skills/cx/SKILL.md`, when it is installed. If the cx
 skill is not installed, `cx lint` and `cx --help` are the reference.
 
-When a repository is GitButler-managed, use `but status` or `but diff` to
-identify branch-owned changes before running mechanical checks. Read-only git
-diff commands are acceptable, but do not use raw git write commands in
-GitButler mode.
+Use `git status` and `git diff` to find the changes of the branch before you
+run the mechanical checks. In a stack of branches, compare each branch with the
+branch below it, for example `git diff <parent-branch>...HEAD`.
 
 ## Tag And Dependency Checks
 

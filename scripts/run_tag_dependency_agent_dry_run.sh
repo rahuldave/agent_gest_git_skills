@@ -6,7 +6,7 @@ if ! command -v ast-grep >/dev/null 2>&1; then
   exit 1
 fi
 
-work_root="${TMPDIR:-/tmp}/agent-gest-gitbutler-tag-dependency-agent"
+work_root="${TMPDIR:-/tmp}/agent-gest-tag-dependency-agent"
 fixture="$work_root/src"
 rm -rf "$work_root"
 mkdir -p "$fixture"

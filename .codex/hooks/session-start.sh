@@ -4,12 +4,8 @@ set -euo pipefail
 project_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # The tasker variant that just install recorded in .agents/stack.json: git (the default) or gitwt.
 tasker_mode="$(sed -n 's/.*"tasker"[[:space:]]*:[[:space:]]*"\([a-z]*\)".*/\1/p' "$project_root/.agents/stack.json" 2>/dev/null | head -1 || true)"
-branch="$(git -C "$project_root" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
 
 CONTEXT="Apply the g* Gest workflow, including tag classification and ast-grep dependency-impact checks."
-if [ "$tasker_mode" != gitwt ] && command -v but >/dev/null 2>&1 && [ "$branch" = gitbutler/workspace ]; then
-  CONTEXT="$CONTEXT GitButler owns this workspace: use but for VCS writes, and physical git worktrees for concurrent write agents."
-fi
 if [ "$tasker_mode" = gitwt ]; then
   CONTEXT="$CONTEXT Tasker variant gitwt: do each write task in its own worktree; just worktree-new NAME makes one. Keep the main checkout on its base branch."
 else

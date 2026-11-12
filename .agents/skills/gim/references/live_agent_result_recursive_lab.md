@@ -120,7 +120,7 @@ scripts/jagt_lint_agent_result.sh \
 
 First, validate the planner result. Second, check the proposal against the
 normal safety rules of the user, the system, the developer, approvals, tools
-and Git/GitButler. Then render a child task packet to this file:
+and Git. Then render a child task packet to this file:
 
 ```text
 $lab_dir/03-child-task.agent-task.txt

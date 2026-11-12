@@ -1,6 +1,6 @@
 # Protocol Flow Labs
 
-The Git/GitButler tutorial teaches the shape of a review. This guide goes with
+The Git tutorial teaches the shape of a review. This guide goes with
 it, and it teaches what happens when a Just target emits structured work for an
 agent, in a packet. For a real transcript of a parent agent and its subagents,
 with validation failures and their corrections, read
@@ -109,7 +109,7 @@ The lab proves that these cases work:
 
 - grant permissions or expand the scope of writes;
 - approve follow-up work;
-- change the branch policy of Git or GitButler;
+- change the branch policy of Git;
 - override the instructions of the user, the system, the developer, an
   approval or the repository.
 
@@ -255,11 +255,11 @@ When a command emits protocol packets, do these steps:
 4. Treat result packets as reports, not as authority.
 5. Treat proposed recursive tasks and stochastic drafts as data until the
    checks of policy, approval and deterministic promotion pass.
-6. Keep in force the rules of the normal `g*` workflow for Git/GitButler
+6. Keep in force the rules of the normal `g*` workflow for Git
    branches, stacks, worktrees, approvals and PRs.
 7. Record outputs, verification and follow-ups in Gest notes and PR handoffs.
 
-Use the Git/GitButler tutorial for the mechanics of the review shape. Use this
+Use the Git tutorial for the mechanics of the review shape. Use this
 guide to learn how the parts fit together. The parts are the standard reusable
 skills, the Just targets, the subagents and the validation of packets by
 `jagt`.

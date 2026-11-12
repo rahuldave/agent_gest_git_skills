@@ -67,12 +67,11 @@ git log --oneline -10
 git remote -v
 ```
 
-If the repository is in GitButler-managed mode, inspect with GitButler as well:
+If the branch is part of a stack, also compare it with the branch below it:
 
 ```bash
-but status
-but diff
-but branch list --all
+git branch --list
+git diff <parent-branch>...HEAD
 ```
 
 Draft a conventional commit:
@@ -95,31 +94,41 @@ user has asked you to manage commits or the workflow clearly says the verified
 development slice should be committed, proceed. Stage explicit files rather
 than using `git add .`.
 
-## GitButler Commit Path
+## Stacked PRs With Plain Git
 
-When `vcs.tool=git-butler` or the checkout is on the GitButler workspace branch,
-do not use raw `git commit`, `git switch`, `git checkout`, or branch-mutating
-git commands. Use current `but` CLI writes:
+Commit with plain git, such as `git add <file>` and `git commit`. No hook
+blocks plain git, and no command needs a marker. In the `gitwt` variant, a
+commit in the main checkout gets a warning, so commit in the worktree of the
+task.
+
+A stack is a chain of dependent branches, each with its own PR. Build it with
+plain git:
 
 ```bash
-but status
-but branch list --all
-but stage <file-or-hunk-id> <branch-name>
-but commit -o -m "<message>" <branch-name>
-but push <branch-name>
+git switch -c <child-branch> <parent-branch>
+git commit -m "<message>"
+git push -u origin <child-branch>
+gh pr create --base <parent-branch> --head <child-branch>
 ```
 
-If there is exactly one applied GitButler branch and all uncommitted changes
-belong there, `but commit -m "<message>" <branch-name>` is acceptable. When
-multiple branches or staged areas exist, use explicit branch targets and
-`--only` (`-o`) after staging to avoid sweeping unrelated unassigned changes
-into the wrong branch.
+1. Start each branch from the branch below it.
+2. Open the PR of each branch with `gh pr create --base <parent-branch>`, from
+   the bottom branch up.
+3. Commit review feedback to the branch where it belongs, and not to the top of
+   the stack by default.
+4. After a change to a lower branch, switch to the top branch and run
+   `git rebase --update-refs --onto <lower-branch> <old-lower-tip>`, with the
+   branch that changed. `<old-lower-tip>` is that branch before the change.
+   Save it with `git rev-parse <lower-branch>` before you change the branch.
+   `<lower-branch>@{1}` is that commit only after one change. Git replays only
+   the commits above it, and moves every branch of the stack above it together.
+   It does not move a branch that another worktree has checked out. Git 2.38
+   and later have `--update-refs`.
+5. Push each moved branch with `git push --force-with-lease origin <branch>`.
 
-For stacked branches, commit review feedback to the branch where it belongs,
-not automatically to the top of the stack. Merge/review the stack bottom-up.
-GitHub merge commits are acceptable for GitButler-managed stacks when that keeps
-stack retargeting smooth; simple non-stack branches should still prefer rebase
-plus fast-forward or squash.
+Merge and review the stack bottom-up. GitHub merge commits are acceptable for a
+stack when they keep the retargeting of the PRs above smooth. A simple branch
+outside a stack should still prefer a rebase with a fast-forward, or a squash.
 
 Before returning final after substantial work, inspect `git status --short
 --branch`. If it shows Codex-owned changes and a commit-required trigger
@@ -153,12 +162,13 @@ pushed branch.
 After a PR is merged, check the repository's project instructions and command
 contract for deployment or release steps. If the repo defines a deploy command
 for this kind of change, run it or record the concrete blocker before handoff.
-For GitButler-managed workstreams, the merge checkpoint is not complete until
-the local repository is back in a consistent post-merge state: fetch/prune,
-switch to the merged base branch, verify `<base> == origin/<base>`, delete
-verified merged temporary topic branches with no worktree or stack dependents, and run `but teardown` when no active GitButler stack work remains.
-Do not leave the user on `gitbutler/workspace` at handoff unless continuing
-GitButler work is explicit.
+For a stack, the merge checkpoint is not complete until the local repository is
+back in a consistent state after the merge:
+
+1. Run `git fetch --prune`.
+2. Switch to the merged base branch, and verify `<base> == origin/<base>`.
+3. Delete each merged temporary topic branch that has no worktree and no branch
+   of the stack above it.
 
 ## Tag And Dependency Context
 

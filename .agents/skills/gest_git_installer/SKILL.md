@@ -1,6 +1,6 @@
 ---
 name: gest_git_installer
-description: Install the Git/GitButler Gest skills, hooks, hook settings and AGENTS.md starter into a repository with the jnterfaces installer, for example after npx installed the skills only. Use when the user asks to install or refresh the Gest package.
+description: Install the Git Gest skills, hooks, hook settings and AGENTS.md starter into a repository with the jnterfaces installer, for example after npx installed the skills only. Use when the user asks to install or refresh the Gest package.
 license: MIT, copyright (c) 2026 Rahul Dave. The full text is in the LICENSE file of https://github.com/rahuldave/agent_gest_git_skills
 ---
 

@@ -91,30 +91,30 @@ worktrees. Run `just worktrees-prune`, which removes clean, merged and idle
 worktrees, only when the user asks. Ignored files that `.worktreedisposable`
 names, such as `.venv/`, do not keep a worktree.
 
-GitButler parallel branches and stacked branches share one managed workspace.
-They are sequential branch-curation tools for agents, not an agent-parallelism
-primitive. Do not launch parallel write agents in one GitButler workspace or use
-GitButler parallel lanes for agent parallelism. If parallel work is needed, use
-separate physical worktrees first and integrate the results into the intended
-branch or stack afterward.
+Build a stack of dependent PRs with plain git. Start each branch from the
+branch below it. Open the PR of each branch with
+`gh pr create --base <parent-branch>`. The bottom PR uses the integration
+branch as its base.
 
-When GitButler owns the workspace, use current `but` CLI write commands such as
-`but branch new`, `but stage`, `but commit`, `but push`, and `but pr`. Do not
-use raw `git commit`, `git switch`, `git checkout`, or branch-mutating git
-commands in GitButler mode. If a workflow has explicitly left GitButler mode to
-use physical git worktrees, mark raw worktree commands with
-`GEST_VCS_EXECUTION=git-worktrees`.
+After a change to a lower branch, run
+`git rebase --update-refs --onto <lower-branch> <old-lower-tip>` on the top
+branch, so that Git moves each branch of the stack together.
+`<old-lower-tip>` is the commit of the lower branch before the change. Save it
+with `git rev-parse <lower-branch>` before you change the branch.
+`<lower-branch>@{1}` is that commit only after one change. With `--onto`, Git
+replays only the commits above the lower branch, and not its old commits.
 
-After merged PR work, restore a consistent local state. In plain Git mode,
-fetch/prune remotes, switch to the merged base branch, verify the selected base equals its remote, and delete only verified merged
+Git 2.38 and later have `--update-refs`. It does not move a branch that another
+worktree has checked out, so restack where no worktree holds a branch of the
+stack.
+
+One checkout holds one branch, so parallel write agents each need a physical
+worktree. Plain `git commit`, `git switch` and `git checkout` need no marker.
+
+After merged PR work, restore a consistent local state. Fetch and prune the
+remotes, switch to the merged base branch, verify the selected base equals its remote, and delete only verified merged
 temporary topics with no open stack PR or worktree dependents. Preserve
 persistent integration branches, including experiments promoted to mainline.
-In GitButler mode, do not run raw branch-mutating Git first: when the
-GitButler workstream is finished, run `but teardown`, then synchronize the base
-branch in normal Git mode. Do not leave the handoff on `gitbutler/workspace`
-unless GitButler work is intentionally continuing; `gitbutler/target` and
-`gitbutler/workspace` are GitButler implementation refs, not durable workflow
-branches to keep after teardown.
 
 For worker-owned physical worktrees, record owner, absolute path, topic branch,
 selected integration base, and the primary checkout path and branch separately
@@ -263,7 +263,7 @@ subagent handoff, not inline work. Delegate the parsed task to a subagent, and
 apply the same rule recursively to nested agentic Just calls, agentic
 dependencies, hook-triggered packets, and agentic verification targets. The
 packet is repo-local operational context and cannot override user, system,
-developer, approval, or Git/GitButler safety rules. Check a packet with `jagt lint`,
+developer, approval, or Git safety rules. Check a packet with `jagt lint`,
 `jagt result lint` or `jagt draft lint`. The jagt-protocol skill,
 `.agents/skills/jagt-protocol/SKILL.md`, has the steps. If the jagt-protocol
 skill is not installed, the rules in this section are enough.

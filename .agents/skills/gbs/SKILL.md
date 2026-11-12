@@ -15,8 +15,8 @@ Use when the user has a rough idea, fuzzy feature, or exploratory direction.
    with `gest task show`, `gest task note list`, or `gest iteration show`.
 2. Identify existing patterns, constraints, risks, and open questions.
 3. For workflow/VCS ideas, separate branch model from execution model. Call out
-   whether GitButler work would be sequential stack curation or physical
-   worktree parallelism.
+   whether the work is a sequence of branches, such as a stack of PRs, or
+   parallel work in physical git worktrees.
 4. Ask clarifying questions one at a time when needed.
 5. Propose 2-3 approaches with trade-offs.
 6. Recommend one of:

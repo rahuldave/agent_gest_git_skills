@@ -1,4 +1,4 @@
-# Git and GitButler tutorial
+# Git tutorial
 
 This tutorial creates four temporary GitHub repositories with fixed names, and it runs four
 agent workflows in them. After each turn of the agent, it tells you what to check. The
@@ -9,11 +9,11 @@ You learn these review shapes and checks:
 
 1. ordinary git branch PR
 2. ordinary git multi-commit PR
-3. GitButler stacked PRs for dependent slices
+3. stacked PRs with plain git for dependent slices
 4. physical git worktrees for independent parallel slices
 5. tag classification and ast-grep dependency checks before code edits
 
-Only step 3 uses GitButler as the main tool.
+Every step uses plain git and `gh`.
 
 ## Pull request command map
 
@@ -21,13 +21,14 @@ The tutorial creates its PRs with these commands:
 
 - Step 1: `gh pr create --base main --head tutorial/plain`
 - Step 2: `gh pr create --base main --head tutorial/multi`
-- Step 3: `but pr new tutorial/stack-child --default --json`
+- Step 3: `gh pr create --base main --head tutorial/stack-base`, then
+  `gh pr create --base tutorial/stack-base --head tutorial/stack-child`
 - Step 4: `gh pr create --base main --head tutorial/worktree-a` and
   `gh pr create --base main --head tutorial/worktree-b`
 
-For stacked PRs, select the top branch of the stack with `but pr new`. GitButler walks the
-stack from the bottom to the top, and it creates the lower PR first. So one command creates
-both the base PR and the child PR, with the correct targets.
+A stack is a chain of branches, where each branch starts from the branch below it. Open the PRs
+of a stack from the bottom branch up. Give each PR the branch below it as its base, with
+`gh pr create --base <parent-branch>`. Then each PR shows only the change of its own branch.
 
 ## What the tutorial does
 
@@ -49,7 +50,7 @@ Before you start, make sure of these things:
 
 - `gh auth status -h github.com` succeeds.
 - Your GitHub auth has the `repo` and `delete_repo` scopes.
-- `git`, `gh`, `gest`, `just` and `but` are installed.
+- `git` 2.38 or later, `gh`, `gest` and `just` are installed.
 - You agree that the agent creates and deletes the four temporary repositories above.
 
 ## Step 0: Setup and cleanup contract
@@ -62,7 +63,7 @@ tutorial. It also tells you where it wrote the logs.
 Ask the agent:
 
 ```text
-Run the Git/GitButler tutorial setup.
+Run the Git tutorial setup.
 
 Use my GitHub account from `gh api user -q .login`.
 Use exactly these temporary private repo names:
@@ -95,7 +96,7 @@ The agent reports your GitHub owner and the exact directory of the logs.
 
 What this step teaches:
 
-Use ordinary git for one simple review branch. You do not need GitButler.
+Use ordinary git for one simple review branch.
 
 Repository:
 
@@ -113,7 +114,7 @@ Clone or initialize it under `/tmp/agent-gest-git-tutorial/plain`.
 Create `main` with README.md containing `plain tutorial base`.
 Push `main`.
 
-Create branch `tutorial/plain` with ordinary git, not GitButler.
+Create branch `tutorial/plain` with ordinary git.
 Add `plain.txt` containing `plain branch change`.
 Commit with message `test: add plain branch change`.
 Push the branch.
@@ -156,18 +157,11 @@ Commands that the agent should use:
 - `git push`
 - `gh pr create`
 
-Commands that the agent should not use:
-
-- `but setup`
-- `but branch new`
-- `but commit`
-
 ## Step 2: Ordinary git multi-commit PR
 
 What this step teaches:
 
-Use ordinary git when one review branch needs more than one commit. You still do not need
-GitButler.
+Use ordinary git when one review branch needs more than one commit.
 
 Repository:
 
@@ -185,7 +179,7 @@ Clone or initialize it under `/tmp/agent-gest-git-tutorial/multi`.
 Create `main` with README.md containing `multi tutorial base`.
 Push `main`.
 
-Create branch `tutorial/multi` with ordinary git, not GitButler.
+Create branch `tutorial/multi` with ordinary git.
 Add `session.txt` containing `session edit one`.
 Commit with message `test: add first session edit`.
 Append `session edit two` to `session.txt`.
@@ -225,18 +219,13 @@ title: test: multi commit git branch flow
 commits: two commits on the PR branch
 ```
 
-Commands that the agent should not use:
-
-- `but setup`
-- `but branch new`
-- `but commit`
-
-## Step 3: GitButler stacked PRs
+## Step 3: Stacked PRs with plain git
 
 What this step teaches:
 
-Use GitButler when you have several large slices that depend on each other, and each slice
-needs its own review. Step 3 is the only step that uses GitButler as the main tool.
+Use a stack when you have several large slices that depend on each other, and each slice needs
+its own review. Each branch of the stack starts from the branch below it, and each PR targets
+the branch below it.
 
 Repository:
 
@@ -247,40 +236,53 @@ agent-gest-git-tutorial-stack
 Ask the agent:
 
 ````text
-Run tutorial step 3: GitButler stacked PRs.
+Run tutorial step 3: stacked PRs with plain git.
 
 Create private GitHub repo `agent-gest-git-tutorial-stack`.
 Clone or initialize it under `/tmp/agent-gest-git-tutorial/stack`.
 Create `main` with README.md containing `stack tutorial base`.
 Push `main`.
 
-Run `but setup`.
-Create GitButler branch `tutorial/stack-base`.
+Create branch `tutorial/stack-base` from `main`.
 Add `stack.txt` containing `stack base`.
-Commit to `tutorial/stack-base` with message `test: stack base flow`.
+Commit with message `test: stack base flow`.
 
-Create GitButler branch `tutorial/stack-child` anchored on
-`tutorial/stack-base`.
+Create branch `tutorial/stack-child` from `tutorial/stack-base`.
 Append `stack child` to `stack.txt`.
-Commit to `tutorial/stack-child` with message `test: stack child flow`.
+Commit with message `test: stack child flow`.
 
-Push both branches.
-Open two PRs:
-- `tutorial/stack-base` into `main`, title `test: stack base flow`
-- `tutorial/stack-child` into `tutorial/stack-base`, title `test: stack child flow`
-
-Create the stacked PRs with one `but pr new` command on the top branch:
+Change the lower branch once, to show how the stack moves together:
+switch to `tutorial/stack-base`, add `base-note.txt` containing `base note`,
+and commit with message `test: add base note`. Then switch to
+`tutorial/stack-child` and run:
 
 ```bash
-but pr new tutorial/stack-child --default --json
+git rebase --update-refs --onto tutorial/stack-base 'tutorial/stack-base@{1}'
 ```
 
-Do not create the base PR in a separate earlier command. `but pr new` walks the
-stack from bottom to top for the selected branch, so the top-branch command
-creates both PRs in the right order.
+`tutorial/stack-base@{1}` is the lower branch before the new commit.
+
+Push both branches.
+Open the two PRs from the bottom branch up:
+
+```bash
+owner="$(gh api user -q .login)"
+gh pr create \
+  --repo "$owner/agent-gest-git-tutorial-stack" \
+  --base main \
+  --head tutorial/stack-base \
+  --title 'test: stack base flow' \
+  --body 'Tutorial stack base flow.'
+gh pr create \
+  --repo "$owner/agent-gest-git-tutorial-stack" \
+  --base tutorial/stack-base \
+  --head tutorial/stack-child \
+  --title 'test: stack child flow' \
+  --body 'Tutorial stack child flow.'
+```
 
 Write all commands and key outputs to
-`/tmp/agent-gest-git-tutorial/logs/03-gitbutler-stack.log`.
+`/tmp/agent-gest-git-tutorial/logs/03-stacked-prs.log`.
 ````
 
 After the agent finishes, check:
@@ -307,22 +309,25 @@ headRefName: tutorial/stack-child
 
 Commands that the agent should use:
 
-- `but setup`
-- `but branch new tutorial/stack-base`
-- `but branch new --anchor tutorial/stack-base tutorial/stack-child`
-- `but commit`
-- `but push`
-- `but pr new tutorial/stack-child --default --json`
+- `git switch -c tutorial/stack-base main`
+- `git switch -c tutorial/stack-child tutorial/stack-base`
+- `git commit`
+- `git rebase --update-refs --onto tutorial/stack-base 'tutorial/stack-base@{1}'`, after a
+  change to the lower branch
+- `git push`
+- `gh pr create --base main` for the bottom PR, and
+  `gh pr create --base tutorial/stack-base` for the child PR
 
-The step does not use physical git worktrees.
+The `--update-refs` option needs git 2.38 or later. With it, a rebase of the top branch also
+moves each branch below it that the rebase passes. The step does not use physical git worktrees.
 
 ## Step 4: Physical git worktrees
 
 What this step teaches:
 
 Use physical git worktrees for independent slices that run in parallel. A physical worktree is
-a separate folder with its own checkout of a branch. Do not use the parallel lanes of GitButler
-as the way to run agents in parallel.
+a separate folder with its own checkout of a branch. Give each agent that writes its own
+worktree, so that two agents never write in one folder.
 
 Repository:
 
@@ -343,9 +348,6 @@ Push `main`.
 Create two physical git worktrees:
 - `/tmp/agent-gest-git-tutorial/worktree-a` on branch `tutorial/worktree-a`
 - `/tmp/agent-gest-git-tutorial/worktree-b` on branch `tutorial/worktree-b`
-
-Prefix the raw worktree creation commands with
-`GEST_VCS_EXECUTION=git-worktrees`.
 
 In worktree A, add `worktree-a.txt` containing `worktree a isolated change`,
 commit with message `test: add worktree a change`, push the branch, and open a
@@ -403,14 +405,13 @@ headRefName: tutorial/worktree-b
 
 Commands that the agent should use:
 
-- `GEST_VCS_EXECUTION=git-worktrees git worktree add ...`
+- `git worktree add ...`
 - ordinary `git commit` inside each physical worktree
 - `gh pr create`
 
-What the agent should not use:
+What the agent should not do:
 
-- GitButler parallel lanes
-- two agents that write in one GitButler workspace
+- run two agents that write in one folder
 
 ## Step 5: Tags and ast-grep dependency check
 
@@ -679,14 +680,11 @@ repository not found
 The scripts in this repo are regression checks. They are not the beginner tutorial:
 
 ```bash
-just workflow-lab
 just tag-dependency-live-lab
 just language-profile-labs
-just integration-live
 ```
 
-The labs put a load on GitButler itself on purpose. Read this tutorial first. Use the labs
-when you want to verify the repository of reusable skills.
+Read this tutorial first. Use the labs when you want to verify the repository of reusable skills.
 
 For this tutorial, `main` is the selected integration target. In an existing project, use the
 declared target in every step. The declared target can be a persistent experiment branch.

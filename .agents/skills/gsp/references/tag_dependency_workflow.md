@@ -106,13 +106,12 @@ Use `ast-grep` when a change to code alters a semantic contract. Examples of a
 contract are a function, a constant, a component, a selector, a route, a field
 of a schema, a style token and an exported API.
 
-Start with the changed symbols. In a workspace that GitButler manages, inspect
-the changes with these commands:
+Start with the changed symbols. Inspect the changes with these commands:
 
 ```bash
-but status
-but diff
-but branch list --all
+git status --short --branch
+git diff
+git branch --list
 ```
 
 In a normal git checkout or a physical git worktree, use these commands:

@@ -133,10 +133,6 @@
         "check": "gh --version"
       },
       {
-        "name": "but",
-        "check": "but --version"
-      },
-      {
         "name": "ast-grep",
         "check": "ast-grep --version"
       },
