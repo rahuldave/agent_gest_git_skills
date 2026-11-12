@@ -1,0 +1,1598 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.5"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Spec: Commit gates for any repository – agent_gest_git_skills</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="../site_libs/smalldocs.css"><meta name="smalldocs:offset" content="../"><script src="../site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="../site_libs/fuse/fuse.min.js"></script><script src="../site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="../index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="../index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="../TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="../g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git and GitButler tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Specs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="commit-gates.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Spec: Commit gates for any repository</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li><li><a href="#terms" id="toc-terms" class="nav-link" data-scroll-target="#terms">Terms</a></li><li><a href="#the-threat-model" id="toc-the-threat-model" class="nav-link" data-scroll-target="#the-threat-model">The threat model</a></li><li><a href="#proposed-solution" id="toc-proposed-solution" class="nav-link" data-scroll-target="#proposed-solution">Proposed Solution</a><ul><li><a href="#who-calls-what" id="toc-who-calls-what" class="nav-link" data-scroll-target="#who-calls-what">Who calls what</a></li><li><a href="#the-tools" id="toc-the-tools" class="nav-link" data-scroll-target="#the-tools">The tools</a></li><li><a href="#the-steps" id="toc-the-steps" class="nav-link" data-scroll-target="#the-steps">The steps</a></li><li><a href="#the-docs-site-and-the-api-pages" id="toc-the-docs-site-and-the-api-pages" class="nav-link" data-scroll-target="#the-docs-site-and-the-api-pages">The docs site and the API pages</a></li><li><a href="#skills-and-targets" id="toc-skills-and-targets" class="nav-link" data-scroll-target="#skills-and-targets">Skills and targets</a></li><li><a href="#the-skills" id="toc-the-skills" class="nav-link" data-scroll-target="#the-skills">The skills</a></li><li><a href="#agentic-targets" id="toc-agentic-targets" class="nav-link" data-scroll-target="#agentic-targets">Agentic targets</a></li><li><a href="#setup-questions" id="toc-setup-questions" class="nav-link" data-scroll-target="#setup-questions">Setup questions</a></li><li><a href="#records" id="toc-records" class="nav-link" data-scroll-target="#records">Records</a></li><li><a href="#the-run-log" id="toc-the-run-log" class="nav-link" data-scroll-target="#the-run-log">The run log</a></li><li><a href="#sessions-and-the-environment" id="toc-sessions-and-the-environment" class="nav-link" data-scroll-target="#sessions-and-the-environment">Sessions and the environment</a></li><li><a href="#the-worktree-tree" id="toc-the-worktree-tree" class="nav-link" data-scroll-target="#the-worktree-tree">The worktree tree</a></li><li><a href="#the-pass" id="toc-the-pass" class="nav-link" data-scroll-target="#the-pass">The pass</a></li><li><a href="#gates" id="toc-gates" class="nav-link" data-scroll-target="#gates">Gates</a></li><li><a href="#stacked-prs-with-plain-git" id="toc-stacked-prs-with-plain-git" class="nav-link" data-scroll-target="#stacked-prs-with-plain-git">Stacked PRs with plain git</a></li><li><a href="#docs-publishing" id="toc-docs-publishing" class="nav-link" data-scroll-target="#docs-publishing">Docs publishing</a></li><li><a href="#the-files-that-the-installer-writes" id="toc-the-files-that-the-installer-writes" class="nav-link" data-scroll-target="#the-files-that-the-installer-writes">The files that the installer writes</a></li><li><a href="#where-each-part-lives" id="toc-where-each-part-lives" class="nav-link" data-scroll-target="#where-each-part-lives">Where each part lives</a></li><li><a href="#delivery" id="toc-delivery" class="nav-link" data-scroll-target="#delivery">Delivery</a></li></ul></li><li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a><ul><li><a href="#in-scope" id="toc-in-scope" class="nav-link" data-scroll-target="#in-scope">In Scope</a></li><li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of Scope</a></li></ul></li><li><a href="#acceptance-criteria" id="toc-acceptance-criteria" class="nav-link" data-scroll-target="#acceptance-criteria">Acceptance Criteria</a></li><li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions">Open Questions</a></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/specs/commit-gates.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav><div class="quarto-title"><h1 class="title">Spec: Commit gates for any repository</h1></div><div class="quarto-title-meta"></div></header><section id="problem-statement" class="level2">
+<h2 class="anchored" data-anchor-id="problem-statement">Problem Statement</h2>
+<p>The rules for a commit live in the global <code>CLAUDE.md</code> file and in <code>AGENTS.md</code>
+files. They say that a commit needs lint, tests, integration tests, types and
+docs checks, and an adversarial review. They also say that the docs of a public
+repository go to a website. Nothing checks these rules. An agent can commit
+without a review. No record shows what ran.</p>
+<p>The parts of a solution exist, but they are not joined:</p>
+<ul>
+<li><strong>The <code>just</code> command contract</strong> of jnterfaces names the recipes <code>fmt</code>,
+<code>lint</code>, <code>typecheck</code>, <code>test</code>, <code>integration</code> and <code>verify</code>. It says not to add a
+recipe that does nothing, so the set of recipes changes from repository to
+repository.</li>
+<li><strong>The <code>grv</code> skill</strong> tells an agent to do an adversarial review. No check
+makes sure that the review happened.</li>
+<li><strong>The Claude hooks</strong> of agent_gest_git_skills add the commit docs when an
+agent commits. The Codex hooks have no commit hook.</li>
+<li><strong>GitButler</strong> is in the hooks, skills and docs of agent_gest_git_skills,
+mostly for stacked PRs. The spec drops it.</li>
+<li><strong>The Python profile</strong> installs the pre-commit framework, which owns
+<code>.git/hooks/pre-commit</code> and changes files at commit time.</li>
+<li><strong>jagt</strong> renders and checks task packets for agents. No recipe uses it for a
+review.</li>
+</ul>
+</section>
+<section id="terms" class="level2">
+<h2 class="anchored" data-anchor-id="terms">Terms</h2>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gate</td>
+<td>A check that stops a commit when it fails.</td>
+</tr>
+<tr>
+<td>Lab</td>
+<td>A test that runs a real scenario in a temporary repository and checks the result.</td>
+</tr>
+<tr>
+<td>Role</td>
+<td>A package of skills that the jnterfaces installer adds to a project, for example <code>tasker</code>.</td>
+</tr>
+<tr>
+<td>Tasker</td>
+<td>The role of agent_gest_git_skills. It adds the Gest skills, the hooks and the worktree recipes.</td>
+</tr>
+<tr>
+<td>Profile</td>
+<td>The tools of one language, for example jnprofile-python.</td>
+</tr>
+<tr>
+<td>Owner</td>
+<td>A part of the stack that adds lines or parts to a shared file: jnterfaces, a profile, a tool of a profile, or a role.</td>
+</tr>
+<tr>
+<td>Worktree tree</td>
+<td>The tree hash of all the files in the worktree, staged or not. The section “The worktree tree” says how to compute it.</td>
+</tr>
+<tr>
+<td>Commit tree</td>
+<td>The tree hash of the index at commit time.</td>
+</tr>
+<tr>
+<td>Log folder</td>
+<td>The folder <code>.agents/log/</code> of a worktree. Git ignores it.</td>
+</tr>
+<tr>
+<td>Shared log folder</td>
+<td>The log folder of the main checkout. All worktrees of a repository write their packets and records there.</td>
+</tr>
+<tr>
+<td>Run log</td>
+<td>The file <code>.agents/log/just.jsonl</code> of a worktree, with one JSON line for each event.</td>
+</tr>
+<tr>
+<td>Step</td>
+<td>One recipe that <code>just check</code> runs, for example <code>lint</code>.</td>
+</tr>
+<tr>
+<td>No-op step</td>
+<td>A step with no tool in the repository. It logs a skip and does no work.</td>
+</tr>
+<tr>
+<td>Pass</td>
+<td>A line in the run log that says every step passed for one worktree tree.</td>
+</tr>
+<tr>
+<td>Agentic target</td>
+<td>A recipe that writes a jagt task packet for an agent. It does no work itself, other than logged steps that give the agent its inputs, such as <code>test-parent</code>.</td>
+</tr>
+<tr>
+<td>Fresh agent</td>
+<td>An agent that a harness starts for one task, for example a subagent.</td>
+</tr>
+<tr>
+<td>Record</td>
+<td>The saved result of an agentic target, with its input tree and its output tree.</td>
+</tr>
+<tr>
+<td>Harness</td>
+<td>A program that runs an agent, for example Claude Code or Codex.</td>
+</tr>
+<tr>
+<td>Plugin</td>
+<td>A small Python script for one harness. It knows where that harness keeps its sessions and transcripts.</td>
+</tr>
+<tr>
+<td>Adapter</td>
+<td>The parts that join one harness to the gates: its hooks in agent_gest_git_skills, and its plugin in the repository of <code>jlog</code>.</td>
+</tr>
+<tr>
+<td>Agent hook</td>
+<td>A hook of a harness that runs before or after a tool call.</td>
+</tr>
+<tr>
+<td>smalldocs</td>
+<td>The program that builds the docs websites of the stack.</td>
+</tr>
+<tr>
+<td>Docments</td>
+<td>The comments beside the arguments of a Python function. smalldocs reads them for the API pages.</td>
+</tr>
+<tr>
+<td>API pages</td>
+<td>The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.5 makes them for Python only.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="the-threat-model" class="level2">
+<h2 class="anchored" data-anchor-id="the-threat-model">The threat model</h2>
+<p>The gates stop honest mistakes, for example an agent that forgets the review,
+or a commit with an unstaged fix. They do not stop an agent that tries to
+cheat. An agent with a shell can edit the log, remove the git hook or write a
+commit with <code>git commit-tree</code>. The spec makes these acts hard to do by
+accident.</p>
+</section>
+<section id="proposed-solution" class="level2">
+<h2 class="anchored" data-anchor-id="proposed-solution">Proposed Solution</h2>
+<p>The sections below describe each part of the solution, from the tools to the
+files that the installer writes.</p>
+<section id="who-calls-what" class="level3">
+<h3 class="anchored" data-anchor-id="who-calls-what">Who calls what</h3>
+<p>The diagram shows each part and the parts that it calls. The gate reads the
+log and the records, and it runs no step itself.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode code-with-copy"><code class="sourceCode "> person / agent
+     │  just check                         just review | test-review | docs …
+     ▼                                          ▼
+ ┌──── jnterfaces ─────────────────────┐  ┌─ agent_gest_git_skills ───────┐
+ │ root Justfile + index: step names,  │  │ target recipes, base tasks    │
+ │ no-op steps, set shell → jlog       │  │ from the g* skills            │
+ └──────┬──────────────────────────────┘  └──────┬────────────────────────┘
+        │ each step line                         ▼
+        ▼                                 ┌─ jagt render ────────────────┐
+ ┌─ jlog (shell wrapper) ─┐               │ packet = base + language     │
+ │ runs line, writes      │               │        + repo text + nonce   │
+ │ .agents/log/just.jsonl │               │ packets/&lt;nonce&gt;.json         │
+ │ jlog pass at the end   │               └──────┬───────────────────────┘
+ └──────┬─────────────────┘                      ▼ (jagt-protocol rules)
+        ▼                                 fresh agent → AGENT_RESULT
+ ┌─ profile modules ───────────────┐             │
+ │ python.just, typescript.just,   │             ▼ SubagentStop hook
+ │ rust.just → ruff, ty, pytest,   │      writes the record; the jlog
+ │ biome, tsc, smalldocs, cargo …  │      plugin gives the model
+ └─────────────────────────────────┘             │
+                                                 ▼
+ git commit ──► pre-commit hook ──► gate (agent_gest_git_skills)
+                                      reads: the pass + the chain of records
+                                      checks: commit tree = worktree tree
+                                      never runs a step itself</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Each profile provides one module, for example <code>python.just</code>, <code>typescript.just</code>
+or <code>rust.just</code>, and one language layer of the packet text.</p>
+</section>
+<section id="the-tools" class="level3">
+<h3 class="anchored" data-anchor-id="the-tools">The tools</h3>
+<p>A machine needs these programs. The installer checks each one before it writes
+anything. When one is missing, it stops and prints the install line.</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Program</th>
+<th>Use</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git</code></td>
+<td>Everything</td>
+<td>The system package manager.</td>
+</tr>
+<tr>
+<td><code>just</code></td>
+<td>All recipes</td>
+<td><code>cargo install just</code> or the system package manager.</td>
+</tr>
+<tr>
+<td><code>uv</code></td>
+<td>Python, the installer, smalldocs, nossaifd, the plugins</td>
+<td>https://docs.astral.sh/uv/</td>
+</tr>
+<tr>
+<td><code>jlog</code></td>
+<td>The run log, as the shell of each recipe</td>
+<td><code>git clone https://github.com/rahuldave/jlog</code>, then <code>just install</code> in the clone.</td>
+</tr>
+<tr>
+<td><code>jagt</code></td>
+<td>Agentic targets</td>
+<td><code>cargo install --git https://github.com/rahuldave/jagt</code></td>
+</tr>
+<tr>
+<td><code>gest</code></td>
+<td>The task tracker, from the fork of rahuldave</td>
+<td><code>git clone https://github.com/rahuldave/gest</code>, then <code>cargo install --path gest --locked</code>. On 2026-11-12, <code>cargo install --git</code> of the fork failed at the checkout with “the repository is not empty”.</td>
+</tr>
+<tr>
+<td><code>gh</code></td>
+<td>Publishing, GitHub issues</td>
+<td>https://cli.github.com/</td>
+</tr>
+<tr>
+<td><code>jq</code></td>
+<td>The agent hooks</td>
+<td>The system package manager.</td>
+</tr>
+<tr>
+<td><code>rg</code></td>
+<td>Search, for agents and in the docs</td>
+<td><code>cargo install ripgrep</code> or the system package manager.</td>
+</tr>
+<tr>
+<td><code>ast-grep</code></td>
+<td>The pass that finds code that depends on a change</td>
+<td><code>cargo install ast-grep</code></td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>The TypeScript profile</td>
+<td>Through <code>uv</code>, as the profile does now.</td>
+</tr>
+<tr>
+<td><code>cargo-llvm-cov</code></td>
+<td><code>coverage-check</code> in the Rust profile, with the rustup component <code>llvm-tools-preview</code></td>
+<td><code>cargo install cargo-llvm-cov</code>, and <code>rustup component add llvm-tools-preview</code></td>
+</tr>
+<tr>
+<td><code>cargo</code></td>
+<td>The Rust profile, and the builds of <code>just</code>, <code>jlog</code>, <code>jagt</code> and <code>gest</code></td>
+<td>https://rustup.rs/</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>The other new tools come through the profiles.</strong> <code>diff-cover</code> and
+<code>interrogate</code> run with <code>uv run --with</code>, in any language. eslint and
+eslint-plugin-jsdoc come through npm in the TypeScript profile.</li>
+<li><strong><code>jlog</code> is required.</strong> Every recipe that does not start with a shebang line
+runs through <code>jlog</code>. Without it, such a recipe fails with “could not find the
+shell <code>jlog</code>”. So <code>jlog</code> must be on <code>PATH</code> before the first <code>just install</code>.
+The installer recipes start with a shebang line, so they run without <code>jlog</code>.</li>
+<li><strong>The stack guide of jnterfaces</strong> lists these programs in its section “What a
+machine needs”.</li>
+</ul>
+</section>
+<section id="the-steps" class="level3">
+<h3 class="anchored" data-anchor-id="the-steps">The steps</h3>
+<p>Every repository has the same steps, for any language:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">just check     fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li>
+<p><strong>jnterfaces names the steps.</strong> It holds the list and the meaning of each
+step, and the installer writes a no-op step for each name:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">typecheck:
+  jlog skip typecheck &quot;no type checker in this repository&quot;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</li>
+<li>
+<p><strong>The profiles fill in the steps.</strong> jnprofile-python, jnprofile-typescript
+and jnprofile-rust replace the no-op steps with real commands. Most of the
+commands of a language come from the profile. A repository can replace any
+step.</p>
+</li>
+<li>
+<p><strong>A skip counts only for a step that no profile provides.</strong> If an installed
+profile provides a step, a skip of that step is a failure. So a broken index
+of recipes cannot pass by skipping everything.</p>
+</li>
+<li>
+<p><strong>agent_gest_git_skills tests that the steps exist.</strong> The gate reads
+<code>just --summary</code>, which runs no backticks. If a step or a required target is
+missing, the gate stops the commit and says “run <code>just install</code>”. It holds no
+command of a language.</p>
+</li>
+<li>
+<p><strong>Steps only check.</strong> A step never changes a tracked file, or a file that
+git does not ignore. <code>fmt-check</code> checks the format, and <code>fmt</code> stays outside
+<code>just check</code>. Caches and reports, such as <code>target/</code>, <code>.coverage</code> and
+<code>lcov.info</code>, go to ignored paths. Each profile adds those paths to
+<code>.gitignore</code> through the shared-file writer.</p>
+</li>
+<li>
+<p><strong><code>coverage-check</code></strong> fails when a changed line of code does not run in the
+tests.</p>
+<ul>
+<li><strong>The report.</strong> <code>test</code> and <code>integration</code> write their coverage as LCOV or
+Cobertura files in ignored paths. Python uses <code>pytest-cov</code>, TypeScript uses
+<code>c8</code> and Rust uses <code>cargo llvm-cov</code>.</li>
+<li><strong>The check.</strong> The step runs <code>diff-cover</code> on the reports of both against
+the parent commit, with <code>--fail-under 100</code>. A line that only <code>integration</code>
+runs counts when <code>integration</code> is in <code>just check</code>. When the setup answer
+puts <code>integration</code> only in <code>just verify</code>, such a line needs a pragma or an
+exclude, or the person moves <code>integration</code> back into <code>just check</code>.</li>
+<li><strong>No old report.</strong> <code>coverage-check</code> depends on <code>test</code>, and on
+<code>integration</code> when it is in the list. <code>just</code> runs each recipe once in one
+call, so in <code>just check</code> the tests run once. Alone, <code>just coverage-check</code>
+runs them again, so it never reads a report of another tree.</li>
+<li><strong>Lines left out.</strong> In Python and TypeScript, a line can be left out with
+the pragma of its tool, <code># pragma: no cover</code> or <code>/* c8 ignore next */</code>.
+Stable Rust has no pragma for a line, so the Rust profile reads an exclude
+list of files, <code>.agents/coverage-exclude.txt</code>, instead. The <code>test-review</code>
+target must accept each new pragma and each new entry in the list.</li>
+<li><strong>Generated code.</strong> The paths in <code>.agents/generated.txt</code> count for neither
+<code>coverage-check</code> nor <code>docstring-check</code>. Each profile passes them to its
+tools as excludes.</li>
+<li><strong>The lists come from the parent.</strong> The steps read <code>generated.txt</code> and
+<code>coverage-exclude.txt</code> with <code>git show HEAD:&lt;path&gt;</code>, so a commit cannot
+exempt its own code. With no parent, both lists are empty. <code>test-review</code>
+judges each new entry.</li>
+<li><strong>No tests.</strong> When code changed and there is no report, the step fails and
+says “write tests”. When no profile provides <code>test</code>, the step is a skip.</li>
+<li><strong>The first commit.</strong> With no parent, <code>diff-cover</code> cannot run. The step
+runs the report tool of the profile over all code with a limit of 100%,
+for example <code>coverage report --fail-under=100</code>, <code>c8 check-coverage --lines 100</code> or <code>cargo llvm-cov --fail-under-lines 100</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong><code>docstring-check</code></strong> fails when a class, function or method has no doc,
+and in Python and Rust also a module. It covers private items too. Only the
+public items go on the API pages.</p>
+<ul>
+<li><strong>Python:</strong> <code>interrogate</code> with <code>--fail-under 100</code>. The docments of public
+functions are checked once, by <code>smalldocs api check</code> in <code>docs-check</code>.</li>
+<li><strong>TypeScript:</strong> eslint with only the rule <code>jsdoc/require-jsdoc</code> of
+eslint-plugin-jsdoc, set for all classes, methods, functions and arrow
+functions, exported or not. Biome has no rule for a missing JSDoc
+comment, so the profile adds eslint for this one step.</li>
+<li><strong>Rust:</strong> <code>cargo clippy</code> with <code>-D missing_docs</code> and
+<code>-D clippy::missing_docs_in_private_items</code>.</li>
+<li><strong>Its output</strong> lists each item with no doc, with its file and line. The
+author agent writes the docs from this list. No target writes them.</li>
+</ul>
+</li>
+<li>
+<p><strong><code>diff-check</code></strong> runs <code>git diff --cached --check HEAD</code>, so it checks the
+changes of the commit for whitespace errors.</p>
+</li>
+<li>
+<p><strong>A lint finds steps that the run log cannot see.</strong> It finds these:</p>
+<ul>
+<li>A shebang line or the <code>[script]</code> attribute. Such a recipe does not run
+through <code>jlog</code>. The test and typecheck recipes of both profiles have
+shebang lines now, so the profiles change.</li>
+<li>A line with a <code>-</code> prefix, which ignores a failure.</li>
+<li><code>[no-cd]</code> or <code>working-directory</code>, which change the folder in which <code>jlog</code>
+looks for the log folder.</li>
+</ul>
+</li>
+<li>
+<p><strong><code>prose-check</code></strong> runs the nossaifd <code>check.py</code> on the changed Markdown. For
+the API pages, it runs <code>smalldocs api module NAME</code> for each changed module
+into a temporary file, and checks that file. It writes nothing into the
+repository. When <code>check.py</code> is missing, the step fails and prints the install
+line.</p>
+</li>
+<li>
+<p><strong>The <code>integration</code> answer</strong> of the setup questions decides whether
+<code>integration</code> is in the list. The list is in <code>.agents/stack.json</code>. <code>jlog pass</code>
+and the gate read the list from there.</p>
+</li>
+<li>
+<p><strong>The contract changes.</strong> The rule “Do not add recipes that do nothing”
+becomes “A step with no tool is a no-op step that logs the skip.”</p>
+</li>
+</ul>
+</section>
+<section id="the-docs-site-and-the-api-pages" class="level3">
+<h3 class="anchored" data-anchor-id="the-docs-site-and-the-api-pages">The docs site and the API pages</h3>
+<p>Today no profile gives a new project a docs site. The recipes <code>docs-check</code> and
+<code>docs-publish</code> exist only in the Justfiles of jnterfaces, the profile
+repositories and agent_gest_git_skills, for their own websites.</p>
+<ul>
+<li><strong>A <code>docs</code> tool in jnterfaces, for any language.</strong> It writes the smalldocs
+config and <code>docs/index.md</code>. It fills <code>docs-check</code> with <code>smalldocs check docs</code>.
+It adds <code>docs-publish</code> and a CI workflow that runs it. The name
+<code>docs-publish</code> matches the recipes that exist now.</li>
+<li><strong>An <code>api</code> tool in jnprofile-python.</strong> It adds the <code>api</code> settings to the
+smalldocs config. The key <code>packages</code> names the packages of the project. The
+tool adds <code>smalldocs api check</code> to <code>docs-check</code>. That command exits with 1
+when it finds a gap, as the code of smalldocs 0.5.5 shows. The step runs it
+with <code>uv run --with smalldocs==0.5.5</code>, so the package and its dependencies
+can be imported. The profile turns the tool on by default when the project
+has the <code>docs</code> tool.</li>
+<li><strong>No API pages for TypeScript or Rust yet.</strong> smalldocs 0.5.5 reads the API
+with the Python <code>ast</code> module and reads the docments with fastcore. Work is
+under way in smalldocs to read the API of Rust with rustdoc and of TypeScript
+with JSDoc. Until a release has it, a TypeScript or Rust project gets the
+<code>docs</code> tool only. After that release, jnprofile-typescript adds an <code>api</code> tool
+like the one of Python. That tool pins the new release, and it says which
+source files <code>@api</code> names. jnprofile-rust adds its <code>api</code> tool after the
+release that reads rustdoc.</li>
+</ul>
+</section>
+<section id="skills-and-targets" class="level3">
+<h3 class="anchored" data-anchor-id="skills-and-targets">Skills and targets</h3>
+<p>The skills ask for the work, and the steps and targets check it.</p>
+<ul>
+<li><strong>The skills ask the author agent to write tests and docs.</strong> <code>gim</code>, <code>gte</code>
+and <code>gdo</code> say that each change needs tests and a doc for each item. The
+author agent has the context of the change, so it writes them. No <code>jagt</code>
+target writes tests or docstrings.</li>
+<li><strong>The steps check that they exist.</strong> <code>test</code>, <code>coverage-check</code> and
+<code>docstring-check</code> are deterministic and logged.</li>
+<li><strong>The agentic targets check that they are good.</strong> <code>test-review</code> checks the
+tests, and the docs lens of <code>review</code> checks the docstrings.</li>
+<li><strong>A part of a skill becomes a target only when the gate needs its
+evidence.</strong> The other parts of the skills stay as they are.</li>
+<li><strong>The doc pages are the exception.</strong> <code>just docs</code> writes the pages that a
+change affects, such as the README and the guides. A fresh agent can do that
+work, because it needs the whole change and not the context of one function.</li>
+</ul>
+</section>
+<section id="the-skills" class="level3">
+<h3 class="anchored" data-anchor-id="the-skills">The skills</h3>
+<p>The g* skills keep the craft, and lose the commands of each language. Each
+check that a skill runs goes through a recipe, so the run log has it.</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Skill</th>
+<th>The change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gim</code></td>
+<td>It writes the code, the tests and the docs. It ends with <code>just check</code> and the required targets, and it fixes what their findings say. It runs no checks of its own.</td>
+</tr>
+<tr>
+<td><code>gte</code></td>
+<td>It says how to write a good test. It runs tests only through <code>just test</code>, <code>just integration</code> and <code>just coverage-check</code>. It holds the base tasks of <code>test-review</code> and <code>visual-check</code>.</td>
+</tr>
+<tr>
+<td><code>gfm</code></td>
+<td>It runs <code>just fmt</code>, then the check steps. It names no tool such as ruff or biome, because the profiles own the tools.</td>
+</tr>
+<tr>
+<td><code>gdo</code></td>
+<td>It asks the author for a doc on every item, and it reads the output of <code>docstring-check</code>. It holds the base tasks of <code>docs</code> and <code>visualize</code>.</td>
+</tr>
+<tr>
+<td><code>grv</code></td>
+<td>It holds the base task of <code>review</code>, with the lenses and the docs lens. To run <code>grv</code> by hand is to run <code>just review</code>.</td>
+</tr>
+<tr>
+<td><code>gcm</code></td>
+<td>It commits after the pass and the records. It explains a stop of the gate, asks the person before <code>record-skip</code>, and uses stacked PRs with plain git.</td>
+</tr>
+<tr>
+<td><code>gpa</code>, <code>gor</code></td>
+<td>They use stacks with plain git, the shared log folder, and records from worktrees.</td>
+</tr>
+<tr>
+<td><code>gsu</code></td>
+<td>It runs <code>just install</code>, with the setup questions and the check of the tools.</td>
+</tr>
+<tr>
+<td><code>gtw</code>, <code>gbs</code>, <code>gsp</code>, <code>gpl</code>, <code>gis</code>, <code>gpr</code></td>
+<td>No change. Their work gives no evidence that the gate needs.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>When a repository has no <code>just check</code>, each skill tells the agent to run <code>gsu</code>
+first.</p>
+</section>
+<section id="agentic-targets" class="level3">
+<h3 class="anchored" data-anchor-id="agentic-targets">Agentic targets</h3>
+<p>An agentic target adds a skill to the work at the moment that the work needs
+it. The skill has typed inputs and a fixed form of result, a little like a
+module of DSPy without a signature. The arguments of a <code>just</code> recipe are the
+inputs. A later spec can add signatures, with a type for each argument and
+each field of the result.</p>
+<p>The targets work with any harness. They depend only on these parts:</p>
+<ul>
+<li><strong><code>jagt render</code></strong> writes an <code>AGENT_TASK v1</code> packet. It is plain text, so any
+harness can read it.</li>
+<li><strong>The rules of the <code>jagt-protocol</code> skill.</strong> The agent that reads a packet
+gives the task to a fresh agent, and does not do it itself. The fresh agent
+returns an <code>AGENT_RESULT v1</code> packet as its last message. The skill is
+optional in jnterfaces now. It becomes required when the gates are
+installed.</li>
+<li><strong>An adapter for each harness</strong> says how the result becomes a record. The
+section “Records” lists the adapters.</li>
+</ul>
+<p>Each packet has these parts:</p>
+<ul>
+<li><strong>The base task</strong> from the skill. For example, <code>grv</code> gives the review lenses.
+A lens is one point of view of the review, for example correctness, tests or
+safety. The file is <code>references/targets/&lt;target&gt;.md</code> in the skill.</li>
+<li><strong>The language layer</strong> from <code>.agents/targets/&lt;language&gt;/&lt;target&gt;.md</code>, for
+each language in <code>.agents/stack.json</code>. Each profile ships its files, as it
+ships its <code>just</code> modules now. For example, the Python file for <code>docs</code> can say
+“write docments for each argument”. A new language needs a new file, and no
+change to any skill.</li>
+<li><strong>The repository text</strong> from <code>.agents/targets/&lt;target&gt;.md</code>, if the file
+exists. For example, <code>.agents/targets/review.md</code> can say “check each SQL
+migration for a rollback”.</li>
+<li><strong>The inputs:</strong> the diff, the input tree and the arguments of the recipe.</li>
+<li><strong>The required outputs:</strong> the fields that the result must have, for example
+<code>findings</code> and <code>status</code>.</li>
+<li><strong>A nonce:</strong> a random value. <code>jagt render</code> saves the nonce, the target, the
+input tree, the path of the worktree and the hash of the packet in
+<code>packets/&lt;nonce&gt;.json</code> in the shared log folder. The result must hold the same
+nonce.</li>
+</ul>
+<p>The first agentic targets:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Target</th>
+<th>What the fresh agent does</th>
+<th>Its result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>just review</code></td>
+<td>An adversarial review of the changes, on the strongest model. The docs lens checks that each new or changed doc says what the item is for, that it matches the code, and that it is not a stub.</td>
+<td>Findings, each one fixed with a test or with a reason not to fix it.</td>
+</tr>
+<tr>
+<td><code>just test-review</code></td>
+<td>Checks that each new behavior has a test, that each new test checks a result, and that each new pragma or exclude has a reason. A new test that passed on the parent commit is a finding, unless the change is a refactor.</td>
+<td>Findings, each one fixed with a test or with a reason not to fix it.</td>
+</tr>
+<tr>
+<td><code>just docs [area]</code></td>
+<td>Finds the docs that the change affects, and writes or changes them. The repository text says which docs the repository has, for example user docs, developer docs, API docs or a change log.</td>
+<td>The changed docs, and the docs it checked and left alone.</td>
+</tr>
+<tr>
+<td><code>just prose [path]</code></td>
+<td>Applies the nossaifd guide to the changed pages and docstrings, beyond <code>check.py</code>: the plain-writing pass and the pass that removes the habits of model writing.</td>
+<td>The changed pages, and the lint output after the change.</td>
+</tr>
+<tr>
+<td><code>just visual-check [url-or-flow]</code></td>
+<td>Runs the app, goes through the flow in a browser and takes screenshots.</td>
+<td>The screenshots, shown to the person, and a pass or fail for each step of the flow.</td>
+</tr>
+<tr>
+<td><code>just visualize [topic]</code></td>
+<td>Draws a diagram of a part of the code, for a doc or for the person.</td>
+<td>The diagram file and the doc that shows it.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Before it writes its packet, the <code>test-review</code> recipe runs a logged line,
+<code>test-parent</code>:</p>
+<ul>
+<li>It makes a worktree of the parent commit in a temporary folder outside the
+repository, with <code>git worktree add --detach</code>.</li>
+<li>It copies each added or changed test file in, runs the <code>test-paths</code> recipe
+of the profile on them, and removes the worktree.</li>
+<li>It writes the result, with the output of the tests, to
+<code>test-parent/&lt;run&gt;.json</code> in the log folder. It exits with 0 when tests fail,
+because a new test that fails on the parent is the expected case. It exits
+with 1 only when it cannot run, for example when the worktree cannot be made.</li>
+<li>The packet holds the result. So the run is logged, and the agent only judges
+it.</li>
+<li>On the first commit, <code>test-parent</code> is a skip.</li>
+</ul>
+<p>The base task of <code>test-review</code> is in <code>gte</code>, and the base task of <code>review</code> is in
+<code>grv</code>.</p>
+<p>jnterfaces already has a recipe <code>prose checker</code>. It becomes <code>prose-check</code>, so
+that <code>prose</code> is free for the agentic target.</p>
+<p>Other targets to consider later:</p>
+<ul>
+<li><strong><code>just security-review</code>:</strong> looks for secrets, injection and unsafe input.</li>
+<li><strong><code>just impact [symbol]</code>:</strong> finds the code that depends on a changed symbol,
+with <code>ast-grep</code>.</li>
+<li><strong><code>just pr-text</code>:</strong> writes the PR description from the commits and records.</li>
+<li><strong><code>just ci-triage [run]</code>:</strong> reads a failed CI run and finds the cause.</li>
+</ul>
+</section>
+<section id="setup-questions" class="level3">
+<h3 class="anchored" data-anchor-id="setup-questions">Setup questions</h3>
+<p>Some choices of a repository belong to the person, not to the stack. Today the
+installer asks yes-or-no questions at a terminal, and only about new roles.
+With no terminal and no saved choices, it stops. The spec makes these changes:</p>
+<ul>
+<li><strong>At a terminal,</strong> the installer asks the open questions itself. A question
+can have more than two answers.</li>
+<li><strong>With no terminal, under an agent,</strong> the installer writes a packet with the
+open questions, and stops. The packet is a <code>just setup-questions</code> packet.
+The agent that ran the installer asks the person, with the question tool of
+its harness. It does not give this packet to a fresh agent, because a fresh
+agent cannot ask the person. Then it runs <code>just install --answer &lt;key&gt;=&lt;value&gt;</code>
+for each answer.</li>
+<li><strong>In CI,</strong> when <code>CI</code> is set, the installer takes the defaults and asks
+nothing.</li>
+<li><strong>A question with an answer</strong> in <code>.agents/stack.json</code> is not asked again. A
+later version of the stack can add questions, and then only the new ones are
+asked.</li>
+</ul>
+<p>The first questions:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Key</th>
+<th>Question</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>issues</code></td>
+<td>Which Gest tasks become GitHub issues: every top-level task, only development tasks, or none?</td>
+<td>Every top-level task</td>
+</tr>
+<tr>
+<td><code>docs-publish</code></td>
+<td>Publish the docs site of a public repository after a merge to <code>main</code>?</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>integration</code></td>
+<td>Run the integration tests in <code>just check</code>, or only in <code>just verify</code> before a PR?</td>
+<td>In <code>just check</code></td>
+</tr>
+<tr>
+<td><code>tasker</code></td>
+<td>One branch in the main checkout, or a worktree for each task? The answer sets the variant of the tasker role, <code>git</code> or <code>gitwt</code>.</td>
+<td><code>git</code></td>
+</tr>
+<tr>
+<td><code>review-model</code></td>
+<td>Which model does the adversarial review?</td>
+<td>The strongest model of the harness</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The required targets are not a question. <code>.agents/targets/required.txt</code> is the
+only place for them.</p>
+</section>
+<section id="records" class="level3">
+<h3 class="anchored" data-anchor-id="records">Records</h3>
+<ul>
+<li>
+<p><strong>A record has two trees.</strong> The input tree is the worktree tree when the
+packet was made. The output tree is the worktree tree when the fresh agent
+stopped, after its changes. A target that changes no file has the same tree
+twice.</p>
+</li>
+<li>
+<p><strong>The chain.</strong> <code>docs</code> and <code>prose</code> change files, so the gate accepts a chain:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">docs         T0 -&gt; T1
+prose        T1 -&gt; T2
+test-review  T2 -&gt; T2
+review       T2 -&gt; T2
+check        T2</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Each record must start at the output tree of the record before it. The last
+tree must be the commit tree. A <code>docs</code> record comes before a <code>prose</code> record,
+because <code>prose</code> checks the text that <code>docs</code> wrote. <code>test-review</code> and <code>review</code>
+come after the last record that changes files. When a review leads to fixes, the fixes make a
+new tree, and the review runs again on it. <code>test-review</code> and <code>review</code> change
+no files, so they can run in either order on the same tree.</p>
+</li>
+<li>
+<p><strong>What a record must hold.</strong> A record counts only if its status is
+<code>success</code>, and each finding is fixed with a test or has a reason not to fix it.</p>
+</li>
+<li>
+<p><strong>The records are in the shared log folder,</strong> in <code>records/</code>. A fresh agent can
+work in another worktree, for example in the parallel work of the <code>gor</code>
+skill. The packet holds the path of its worktree, so the hook computes the
+tree in the right checkout.</p>
+</li>
+<li>
+<p><strong>The gate reads only records.</strong> It does not know which harness made them.</p>
+</li>
+<li>
+<p><strong>Who writes a record</strong> depends on the adapter of the harness:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Harness</th>
+<th>How the result becomes a record</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code</td>
+<td>The <code>SubagentStop</code> hook gets the last message of the fresh agent and the path of its transcript. It finds the nonce in the message. The packet file gives the target, the input tree and the worktree. The plugin reads the model from the transcript.</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>The same as Claude Code. Codex 0.163 has the hooks <code>SubagentStart</code> and <code>SubagentStop</code>, with <code>agent_transcript_path</code> and <code>last_assistant_message</code>. Codex runs the hooks of a project only after the person trusts them.</td>
+</tr>
+<tr>
+<td>An older Codex, or any other harness</td>
+<td>The agent that ran the target runs <code>just record &lt;target&gt; &lt;file&gt;</code>, and the record is marked <code>&quot;source&quot;: &quot;agent&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A harness with a hook that writes records stops <code>just record</code>, so its agents
+cannot write a record by hand.</p>
+</li>
+<li>
+<p><strong>The check of a <code>just record</code></strong> in Codex reads the transcript of the fresh
+agent, a JSONL file:</p>
+<ul>
+<li>Its <code>session_meta</code> line names the parent thread in <code>parent_thread_id</code>. The
+parent must be the thread that ran <code>just record</code>, from <code>CODEX_THREAD_ID</code>.</li>
+<li>One fresh agent can have several turns. The nonce must be in the
+<code>last_agent_message</code> of one of its <code>task_complete</code> lines.</li>
+<li>The model comes from the turn context of the transcript.</li>
+<li>The check reads no SQLite file. A reader of a database in WAL mode writes
+to its <code>-shm</code> file, so a read is not free of writes. A read of
+<code>~/.codex/state_5.sqlite</code> on 2026-11-12 changed the time of
+<code>state_5.sqlite-shm</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>A skip with a reason.</strong> <code>just record-skip &lt;target&gt; &lt;reason&gt;</code> lets one tree
+through without that record. The agent hooks ask the person before it runs.</p>
+</li>
+</ul>
+</section>
+<section id="the-run-log" class="level3">
+<h3 class="anchored" data-anchor-id="the-run-log">The run log</h3>
+<p>just has no log of its own. Its options <code>--timestamp</code>, <code>--verbose</code> and
+<code>--explain</code> print to the terminal, and its changelog shows that its internal
+logging was removed. So each Justfile sets <code>jlog</code> as its shell:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">set shell := [&quot;jlog&quot;, &quot;sh&quot;, &quot;-cu&quot;]</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>jlog</code> takes the real shell as its first argument, here <code>sh -cu</code>. It runs each
+line with that shell and the positional arguments of the recipe. Then it adds
+one JSON line to the run log:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;run&quot;</span>: <span class="st">&quot;48213-1731405600&quot;</span>, <span class="kw">&quot;argv&quot;</span>: [<span class="st">&quot;just&quot;</span>, <span class="st">&quot;check&quot;</span>],
+ <span class="kw">&quot;line&quot;</span>: <span class="st">&quot;uv run ruff check .&quot;</span>, <span class="kw">&quot;exit&quot;</span>: <span class="dv">0</span>,
+ <span class="kw">&quot;start&quot;</span>: <span class="st">&quot;2026-11-12T10:00:00Z&quot;</span>, <span class="kw">&quot;end&quot;</span>: <span class="st">&quot;2026-11-12T10:00:04Z&quot;</span>}</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li>
+<p><strong>Where <code>set shell</code> goes.</strong> The installer writes the profiles as modules of
+just. A module has its own settings, so the installer writes <code>set shell</code> into
+each module file that it makes, and into <code>.agents/install.just</code>. It also
+writes it into the index file that the root Justfile imports. A setting in an
+imported file applies to the recipes of the root Justfile, as a test on
+2026-11-12 showed.</p>
+</li>
+<li>
+<p><strong>A repository that sets <code>shell</code> already.</strong> just stops with “Setting <code>shell</code>
+is redefined” when the root Justfile and an imported file both set it. So the
+installer looks for <code>set shell</code> in the root Justfile. When it finds one, it
+does not add its own. It asks the person to wrap the shell, for example
+<code>[&quot;jlog&quot;, &quot;bash&quot;, &quot;-c&quot;]</code>.</p>
+</li>
+<li>
+<p><strong>The cost.</strong> Tests on 2026-11-12 on this machine measured the extra time for
+each line:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Form of <code>jlog</code></th>
+<th>Extra time for each line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A POSIX shell script</td>
+<td>About 45 ms</td>
+</tr>
+<tr>
+<td>A Python script through <code>uv</code></td>
+<td>About 100 ms</td>
+</tr>
+<tr>
+<td>A small compiled program</td>
+<td>About 1 to 2 ms, by estimate</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So <code>jlog</code> is a small compiled program, in a repository of its own. jagt
+stays a tool for agent packets only.</p>
+</li>
+<li>
+<p><strong>No process for each line, other than the shell.</strong> <code>jlog</code> finds the log
+folder by going up from the current folder to the folder that holds
+<code>.agents/</code>, with no call to <code>git</code>. It computes no tree on each line.</p>
+</li>
+<li>
+<p><strong><code>jlog</code> has no code for a harness.</strong> It reads only the environment and the
+run log. Each harness has a plugin, and <code>jlog</code> calls the plugin once for each session.</p>
+</li>
+<li>
+<p><strong>The run</strong> is the process ID of <code>just</code> and its start time. It joins the
+lines of one call.</p>
+</li>
+<li>
+<p><strong>The argv</strong> is the <code>just</code> command as a list. <code>jlog</code> reads it from
+<code>/proc/&lt;pid&gt;/cmdline</code> on Linux and with <code>sysctl</code> on macOS, which keeps the
+quoting.</p>
+</li>
+<li>
+<p><strong>A skip</strong> comes from a <code>jlog skip &lt;step&gt; &lt;reason&gt;</code> line, not from the output
+of a tool. <code>jlog</code> does not read the output, so tools keep their terminal and
+colors.</p>
+</li>
+<li>
+<p><strong>Backticks</strong> in a Justfile also run through <code>jlog</code>. It tags them as
+<code>&quot;kind&quot;: &quot;backtick&quot;</code>, and the gates ignore them.</p>
+</li>
+<li>
+<p><strong>The log folder has its own <code>.gitignore</code>.</strong> On its first write, <code>jlog</code>
+makes <code>.agents/log/.gitignore</code> with the one line <code>*</code>. A test on 2026-11-12 showed
+that <code>git add -A</code>, <code>git stash -u</code> and <code>git clean -fd</code> then leave the folder
+alone. Without the file, <code>git stash -u</code> deleted the folder. jnterfaces also
+adds <code>.agents/log/</code> to <code>.gitignore</code>, to <code>.worktreedisposable</code> and to its list
+of reserved folders. So a worktree with only a log folder can still be
+pruned.</p>
+</li>
+<li>
+<p><strong>Secrets in lines.</strong> A line of a recipe can hold a secret, for example a
+value from a <code>.env</code> file or from an argument. <code>jlog</code> removes such values
+before it logs <code>line</code> and <code>argv</code>. It finds each variable that is not on the
+safe list and has a value of 8 characters or more. It replaces each such
+value with <code>&lt;redacted&gt;</code>.</p>
+</li>
+<li>
+<p><strong>A request to just.</strong> A <code>--log-file</code> option in just itself would remove the
+need for <code>jlog</code>. Such a change is a request to the authors of just, outside
+this spec.</p>
+</li>
+</ul>
+</section>
+<section id="sessions-and-the-environment" class="level3">
+<h3 class="anchored" data-anchor-id="sessions-and-the-environment">Sessions and the environment</h3>
+<p><code>jlog</code> has commands of its own:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Command</th>
+<th>What it logs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jlog &lt;shell&gt; &lt;flags&gt; &lt;line&gt;</code></td>
+<td>One line of a recipe. <code>just</code> calls this form.</td>
+</tr>
+<tr>
+<td><code>jlog session</code></td>
+<td>The harness, the session ID, the path of the transcript and the model.</td>
+</tr>
+<tr>
+<td><code>jlog env</code></td>
+<td>The environment.</td>
+</tr>
+<tr>
+<td><code>jlog tools</code></td>
+<td>The version of each program in the tools table.</td>
+</tr>
+<tr>
+<td><code>jlog skip &lt;step&gt; &lt;reason&gt;</code></td>
+<td>A no-op step.</td>
+</tr>
+<tr>
+<td><code>jlog pass</code></td>
+<td>The pass of <code>just check</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>Once for each session.</strong> The first line in a new session also runs
+<code>session</code>, <code>env</code> and <code>tools</code>. <code>jlog</code> marks a session as seen with a file
+<code>.agents/log/sessions/&lt;id&gt;</code>, so it reads no log to find out.</li>
+<li><strong><code>jlog tools</code> has a short timeout.</strong> The timeout is a few seconds. It
+starts no download, and its failure never fails the line.</li>
+<li><strong>The gate is a plain script, not a recipe.</strong> So nothing runs on its own
+inside the git hook.</li>
+</ul>
+<p><strong>Which session.</strong> Each harness shows its session in a different way:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Harness</th>
+<th>How <code>jlog</code> finds the session</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Codex</td>
+<td>Codex puts <code>CODEX_THREAD_ID</code> into each shell command that it runs.</td>
+<td><code>codex-rs/protocol/src/shell_environment.rs</code> in openai/codex</td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td><code>CLAUDE_CODE_SESSION_ID</code> is set in the shell commands. In a fresh agent, <code>CLAUDE_CODE_CHILD_SESSION</code> is set too, so <code>jlog</code> can tell the lines of a fresh agent from the lines of its parent. If the variable is missing, the <code>SessionStart</code> hook writes <code>export JLOG_SESSION=...</code> to the file in <code>CLAUDE_ENV_FILE</code>.</td>
+<td>The environment of a session on 2026-11-12, and the Claude Code hooks docs</td>
+</tr>
+<tr>
+<td>A person at a terminal</td>
+<td>The ID of the terminal session, from <code>getsid(0)</code>. All <code>just</code> calls in one terminal then share one session.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>The plugins.</strong> The repository of <code>jlog</code> has a folder <code>plugins/</code>, with one
+folder for each harness:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">plugins/
+  claude/   pyproject.toml  uv.lock  session.py
+  codex/    pyproject.toml  uv.lock  session.py</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li><strong>Each plugin is a uv project of its own.</strong> It has its own <code>pyproject.toml</code>,
+its own <code>uv.lock</code> and its own environment. So it does not depend on the
+Python of the system, or on the lock file of the repository in which <code>jlog</code>
+runs.</li>
+<li><strong><code>jlog</code> runs a plugin</strong> with
+<code>uv run --project &lt;plugins&gt;/&lt;harness&gt; --frozen python &lt;plugins&gt;/&lt;harness&gt;/session.py</code>.
+The option <code>--frozen</code> uses the lock file as it is, and never changes it.</li>
+<li><strong>A test on 2026-11-12</strong> ran a plugin this way from the folder of another
+repository:
+<ul>
+<li>The plugin used its own environment, in its own folder.</li>
+<li>The current folder stayed the folder of the repository.</li>
+<li>The repository did not change.</li>
+<li>After the first run, a call took about 40 ms.</li>
+</ul>
+</li>
+<li><strong>Where the plugins are.</strong> <code>just install</code> in the repository of <code>jlog</code> builds
+<code>jlog</code> and copies the plugins to <code>~/.local/share/jlog/plugins/</code>. The variable
+<code>JLOG_PLUGINS</code> can name another folder.</li>
+<li><strong>The plugins need no packages now.</strong> They use <code>json</code> from the standard
+library of Python. Their own lock files keep later packages away from other
+projects.</li>
+<li><strong>A plugin reads only JSONL transcripts.</strong> It opens no database of a
+harness, because a read of a database in WAL mode writes to the folder of
+the harness.</li>
+<li><strong>A new harness</strong> needs only a new folder in <code>plugins/</code>, and its hooks in
+agent_gest_git_skills. <code>jlog</code> and the gate do not change.</li>
+</ul>
+<p>Each plugin reads the environment and prints one JSON object:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;harness&quot;</span>: <span class="st">&quot;codex&quot;</span>, <span class="kw">&quot;session&quot;</span>: <span class="st">&quot;&lt;thread&gt;&quot;</span>, <span class="kw">&quot;transcript&quot;</span>: <span class="st">&quot;&lt;path of the JSONL file&gt;&quot;</span>,
+ <span class="kw">&quot;model&quot;</span>: <span class="st">&quot;&lt;model&gt;&quot;</span>, <span class="kw">&quot;parent&quot;</span>: <span class="st">&quot;&lt;parent thread&gt;&quot;</span>}</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>The environment.</strong> A recipe runs with <code>sh</code>, not with the shell of the person.
+A test on 2026-11-12 showed what a recipe gets:</p>
+<ul>
+<li><strong>It gets</strong> the exported variables of the shell that ran <code>just</code>, for example
+<code>PATH</code>.</li>
+<li><strong>It does not get</strong> aliases, shell functions, options, or variables that are
+set without <code>export</code>. It does not read <code>.zshrc</code>.</li>
+<li><strong>A git hook</strong> gets the environment of the program that ran <code>git</code>. A GUI
+program or a CI runner does not read <code>.zshrc</code>.</li>
+</ul>
+<p>So these rules apply:</p>
+<ul>
+<li><strong>A recipe never depends on <code>.zshrc</code>.</strong> The settings of a repository go in
+the Justfile, with <code>set export</code>, or in an ignored <code>.env</code> file, with
+<code>set dotenv-load</code>.</li>
+<li><strong>The installer and the gate check that each program is on <code>PATH</code>.</strong> A
+missing program stops them with its install line.</li>
+<li><strong><code>jlog env</code> logs the names of all variables, and the values of a safe list
+only.</strong> The safe list has exact names, not prefixes. The names are <code>PATH</code>,
+<code>SHELL</code>, <code>HOME</code>, <code>TERM</code>, <code>CI</code>, <code>CODEX_THREAD_ID</code>, <code>CLAUDE_CODE_SESSION_ID</code>
+and <code>CLAUDE_CODE_CHILD_SESSION</code>. For any other variable, it logs the name and
+the word <code>redacted</code>. It also logs whether the value changed since the last
+session. It compares keyed hashes. The key stays on the machine, so a reader
+of the log cannot test a guess of the value.</li>
+<li><strong><code>jlog session</code> logs paths and IDs only.</strong> It never copies a transcript,
+because transcripts hold secrets.</li>
+</ul>
+</section>
+<section id="the-worktree-tree" class="level3">
+<h3 class="anchored" data-anchor-id="the-worktree-tree">The worktree tree</h3>
+<p>The gates compare trees. An agent leaves its changes unstaged, so the trees
+come from the worktree, not from the index. <code>jlog</code> computes the worktree tree
+with a temporary index:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode sh"><span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git read-tree HEAD
+<span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git add -A
+<span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git write-tree</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>GIT_INDEX_FILE</code> names the index file that git uses. With a temporary file, the
+real index does not change. Files that git ignores are not in the tree.</p>
+<p>At commit time, the commit tree must equal the worktree tree. So all changes
+must be staged:</p>
+<ul>
+<li><strong>All changes staged.</strong> The commit tree equals the worktree tree, and the
+gates go on.</li>
+<li><strong>Part of the changes staged.</strong> The commit stops. The gate prints the fix.
+Run <code>git stash --keep-index -u</code>, then <code>just check</code>, then commit, then
+<code>git stash pop</code>.</li>
+</ul>
+</section>
+<section id="the-pass" class="level3">
+<h3 class="anchored" data-anchor-id="the-pass">The pass</h3>
+<p>The last line of <code>check</code> is <code>jlog pass</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">check: fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check
+  jlog pass</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>jlog</code> computes the worktree tree at the first line of a run, and again at
+<code>jlog pass</code>. <code>jlog pass</code> writes a pass for the tree only if all of these hold:</p>
+<ul>
+<li>The nearest <code>just</code> above it in the process tree has the argv <code>just check</code>
+exactly, with no option and no <code>NAME=VALUE</code>.</li>
+<li>No variable of this list is set. The list is <code>JUST_NO_DEPS</code>, <code>JUST_SHELL</code>,
+<code>JUST_JUSTFILE</code>, <code>JUST_WORKING_DIRECTORY</code>, <code>JUST_DOTENV_FILENAME</code> and
+<code>JUST_DOTENV_PATH</code>. Other <code>JUST_</code> variables, for example <code>JUST_COLOR</code>, do not
+matter.</li>
+<li>The log of this run has lines with exit 0 for each step in the list of
+<code>.agents/stack.json</code>. For a step that no profile provides, a skip also
+counts.</li>
+<li>The worktree tree at the end equals the worktree tree at the start.</li>
+<li>The worktree has no unstaged change and no untracked file that git does not
+ignore.</li>
+</ul>
+</section>
+<section id="gates" class="level3">
+<h3 class="anchored" data-anchor-id="gates">Gates</h3>
+<ul>
+<li>
+<p><strong>The gate</strong> is a plain script in agent_gest_git_skills. The git pre-commit
+hook runs it, because only that hook sees the real commit. <code>git commit -a</code>
+and <code>git commit &lt;paths&gt;</code> each make the index after an agent hook runs. The
+gate does these checks:</p>
+<ol>
+<li>It checks that the steps and the required targets exist.</li>
+<li>It checks that the commit tree equals the worktree tree.</li>
+<li>It looks for a pass for the tree. It never runs the steps itself. A commit
+gives the hook a <code>GIT_INDEX_FILE</code>, and tests that run git can write into
+it and break the commit. If there is no pass, the gate stops and says
+“run <code>just check</code>”.</li>
+<li>For a commit by an agent, it looks for a chain of records that ends at the
+tree. It knows an agent by the variables of the harnesses, for example
+<code>CODEX_THREAD_ID</code> or <code>CLAUDE_CODE_SESSION_ID</code>.</li>
+<li>It stops the commit and says which target or step to run.</li>
+</ol>
+</li>
+<li>
+<p><strong>The pre-merge-commit hook</strong> runs the same gate for <code>git merge</code>.</p>
+</li>
+<li>
+<p><strong>The pre-commit framework.</strong> The Python profile installs the pre-commit
+framework, which owns <code>.git/hooks/pre-commit</code>:</p>
+<ul>
+<li>The gate becomes a <code>local</code> hook in <code>.pre-commit-config.yaml</code>, for the
+stages <code>pre-commit</code> and <code>pre-merge-commit</code>. The config sets
+<code>default_install_hook_types</code> to both stages, so that <code>pre-commit install</code>
+installs both hooks.</li>
+<li>The config drops the three hooks that change files. They are
+<code>ruff-format</code>, <code>trailing-whitespace</code> and <code>end-of-file-fixer</code>. <code>fmt-check</code> and <code>diff-check</code>
+cover them.</li>
+<li>The framework stashes the unstaged changes before its hooks run. So in a
+Python repository, the gate sees partial staging as a tree that does not
+match, not as unstaged changes. The message is the same.</li>
+<li>The <code>lint</code> tool runs <code>pre-commit uninstall</code> when it is removed. The spec
+changes this. When <code>lint</code> is removed, the installer writes the plain hook
+in place of the framework hook, so the gate stays.</li>
+<li>A repository without the framework gets a plain <code>.git/hooks/pre-commit</code> and
+<code>.git/hooks/pre-merge-commit</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>The required targets</strong> are in <code>.agents/targets/required.txt</code>. Each line
+names a target and the paths that make it required:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">review       **
+test-review  @code
+docs         docs/**  README.md  **/*.md  @api
+prose        docs/**  README.md  **/*.md  @api</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li><strong>The default.</strong> When the file is missing, the gate uses these lines.</li>
+<li><strong>The syntax</strong> is that of git pathspecs with <code>:(glob)</code>. So <code>*</code> does not
+match <code>/</code>, and <code>**</code> does. A deleted path counts as a changed path.</li>
+<li><strong><code>@api</code></strong> names the source files of the packages in <code>packages</code>. For a
+package <code>pkg.sub</code>, it is <code>src/pkg/sub/**</code> or <code>pkg/sub/**</code>, whichever
+exists, plus the <code>check</code> globs of the <code>api</code> settings. The <code>api</code> tool of
+each profile defines <code>@api</code> for its language. Only Python has one now.</li>
+<li><strong><code>@code</code></strong> names the source files of each language in <code>.agents/stack.json</code>.
+Each profile gives its globs, for example <code>**/*.py</code>, <code>**/*.ts</code> or
+<code>**/*.rs</code>. With no profile, <code>@code</code> is empty.</li>
+<li><strong>Which file counts.</strong> The gate reads <code>required.txt</code>, <code>.agents/stack.json</code>
+and <code>.agents/generated.txt</code> from the parent of the commit, so a commit
+cannot change the lists for itself. On the first commit of a repository,
+the gate uses the default <code>required.txt</code> and the <code>.agents/stack.json</code> of
+the commit, and <code>generated.txt</code> is empty.</li>
+<li><strong>Which changes count.</strong> The gate compares the commit tree with the parent
+of the commit.</li>
+<li><strong>Rules:</strong>
+<ul>
+<li>Every commit needs a <code>review</code> record.</li>
+<li>A commit that changes code needs a <code>test-review</code> record.</li>
+<li>A commit with a docs file needs a <code>docs</code> record and a <code>prose</code> record.</li>
+<li>A commit that changes a module of the API pages needs the same two
+records. Its docstrings become text on the website.</li>
+<li>A change to other code needs neither record.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>The agent hooks</strong> of each harness do not check records. They parse the
+hook input with <code>jq</code>, not <code>sed</code>, so a quoted message does not hide a flag. In
+Codex, a <code>PreToolUse</code> hook that exits with 2 stops the command. The hooks stop
+these commands as a best effort:</p>
+<ul>
+<li><code>--no-verify</code>, and <code>-n</code> with <code>commit</code>.</li>
+<li><code>core.hooksPath</code>, <code>git commit-tree</code> and <code>git update-ref</code>.</li>
+<li><code>just record</code>, in a harness with a hook that writes records.</li>
+<li>A write to a log folder, <code>.git/hooks</code>, <code>required.txt</code> or the settings of
+the hooks.</li>
+</ul>
+</li>
+<li>
+<p><strong>Other commands that make commits:</strong></p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Command</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git commit</code></td>
+<td>The pre-commit hook.</td>
+</tr>
+<tr>
+<td><code>git merge</code></td>
+<td>The pre-merge-commit hook.</td>
+</tr>
+<tr>
+<td><code>git rebase</code>, <code>git cherry-pick</code>, <code>git revert</code></td>
+<td>Allowed. A lab checks which trees they make.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</li>
+<li>
+<p><strong>The cost.</strong> The agent runs <code>just check</code> before it commits, and the gate
+only reads the pass. Integration tests stay in <code>just check</code> by default, so a
+slow suite makes each commit slow. The setup question <code>integration</code> can move
+them to <code>just verify</code>, which runs before a PR.</p>
+</li>
+</ul>
+</section>
+<section id="stacked-prs-with-plain-git" class="level3">
+<h3 class="anchored" data-anchor-id="stacked-prs-with-plain-git">Stacked PRs with plain git</h3>
+<p>The spec drops GitButler, so a stack of dependent PRs uses plain git:</p>
+<ul>
+<li>Each branch starts from the branch below it.</li>
+<li><code>gh pr create --base &lt;parent branch&gt;</code> opens the PR of each branch.</li>
+<li><code>git rebase --update-refs</code> moves the branches of a stack together after a
+change to a lower branch. Git 2.38 and later have it.</li>
+<li>A recipe of the tasker role opens the PRs of a stack in order, from the bottom
+branch up.</li>
+</ul>
+</section>
+<section id="docs-publishing" class="level3">
+<h3 class="anchored" data-anchor-id="docs-publishing">Docs publishing</h3>
+<ul>
+<li><strong>The trigger</strong> is the CI workflow of the <code>docs</code> tool, on a push to <code>main</code>.
+It runs <code>just docs-publish</code>.</li>
+<li><strong>The workflow</strong> has <code>permissions: contents: write</code> and sets
+<code>GH_TOKEN: ${{ github.token }}</code>, so <code>gh</code> and the push to <code>gh-pages</code> work.
+The GitHub Pages source needs one setting by a person, once.</li>
+<li><strong>The visibility check.</strong> <code>just docs-publish</code> asks
+<code>gh repo view --json visibility</code>. It publishes with smalldocs only on
+<code>PUBLIC</code>. On <code>PRIVATE</code> and on <code>INTERNAL</code>, it logs a skip.</li>
+<li><strong>Errors.</strong> On a machine of a person, an error of <code>gh</code> logs a skip, so a
+failure never publishes. In CI, where <code>CI=true</code>, an error of <code>gh</code> fails the
+job, so a missing token shows as a failure.</li>
+</ul>
+</section>
+<section id="the-files-that-the-installer-writes" class="level3">
+<h3 class="anchored" data-anchor-id="the-files-that-the-installer-writes">The files that the installer writes</h3>
+<p>The installer of jnterfaces already composes shared files. Each owner declares
+its <code>lines</code> and its <code>parts</code>. The installer keeps one block for each owner, and
+an uninstall removes only that block. <code>scripts/formats.json</code> says how to read
+and write each shared file. The spec uses this writer for each file that it
+adds to:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>File</th>
+<th>Owner</th>
+<th>Piece</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.gitignore</code></td>
+<td>jnterfaces</td>
+<td>The line <code>.agents/log/</code>.</td>
+</tr>
+<tr>
+<td><code>.worktreedisposable</code></td>
+<td>jnterfaces</td>
+<td>The line <code>.agents/log/</code>.</td>
+</tr>
+<tr>
+<td><code>.gitignore</code></td>
+<td>Each profile</td>
+<td>The paths of its caches and coverage reports.</td>
+</tr>
+<tr>
+<td><code>.agents/generated.txt</code>, <code>.agents/coverage-exclude.txt</code></td>
+<td>jnterfaces writes them empty</td>
+<td>The person or the agent adds paths, and <code>test-review</code> judges each one.</td>
+</tr>
+<tr>
+<td><code>.pre-commit-config.yaml</code></td>
+<td>The tasker role</td>
+<td>A <code>local</code> hook that runs the gate. The writer keys the entries of <code>repos</code> by <code>repo</code>, so all <code>local</code> entries share one key. <code>formats.json</code> changes to key a <code>local</code> entry by the <code>id</code> of its hook.</td>
+</tr>
+<tr>
+<td><code>.claude/settings.json</code></td>
+<td>The tasker role</td>
+<td>The hooks <code>SessionStart</code>, <code>SubagentStop</code> and <code>PreToolUse</code>. The hooks of GitButler go: <code>Stop</code> with <code>gitbutler-snapshot.sh</code>, and <code>gitbutler-vcs-context.sh</code>.</td>
+</tr>
+<tr>
+<td><code>.codex/hooks.json</code></td>
+<td>The tasker role</td>
+<td>The hooks <code>SessionStart</code>, <code>SubagentStop</code> and <code>PreToolUse</code>. The GitButler hooks and text go.</td>
+</tr>
+<tr>
+<td>The smalldocs config</td>
+<td>The <code>docs</code> tool and the <code>api</code> tool</td>
+<td>The site settings, and the <code>api</code> settings. <code>formats.json</code> needs a new entry for this file.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The run log, the packets and the records are not pieces. The runs write them,
+in the log folders.</p>
+</section>
+<section id="where-each-part-lives" class="level3">
+<h3 class="anchored" data-anchor-id="where-each-part-lives">Where each part lives</h3>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Part</th>
+<th>Repository</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The step names, the no-op steps, the lint of steps, the <code>docs</code> tool, <code>set shell</code> in the generated files</td>
+<td>jnterfaces, in the <code>just</code> skill and the installer</td>
+</tr>
+<tr>
+<td>The setup questions and <code>just install --answer</code></td>
+<td>jnterfaces</td>
+</tr>
+<tr>
+<td>The packets and the nonce, in <code>jagt render</code></td>
+<td>jagt</td>
+</tr>
+<tr>
+<td>The rules for the nonce in the <code>jagt-protocol</code> skill</td>
+<td>jnterfaces, which ships the skill</td>
+</tr>
+<tr>
+<td>The real steps of Python, and the <code>api</code> tool</td>
+<td>jnprofile-python</td>
+</tr>
+<tr>
+<td>The real steps of TypeScript, with eslint for <code>docstring-check</code></td>
+<td>jnprofile-typescript</td>
+</tr>
+<tr>
+<td>The real steps of Rust, and later its <code>api</code> tool</td>
+<td>jnprofile-rust, a new repository</td>
+</tr>
+<tr>
+<td>The language layer of the packet text, and the <code>@code</code> globs</td>
+<td>each profile</td>
+</tr>
+<tr>
+<td>The names <code>coverage-check</code> and <code>docstring-check</code>, as no-op steps, and the empty <code>.agents/generated.txt</code> and <code>.agents/coverage-exclude.txt</code></td>
+<td>jnterfaces</td>
+</tr>
+<tr>
+<td>The entry <code>rust</code> in the <code>profiles</code> of <code>stack.json</code></td>
+<td>jnterfaces</td>
+</tr>
+<tr>
+<td>The <code>test-paths</code> recipe of each profile</td>
+<td>each profile</td>
+</tr>
+<tr>
+<td>The recipe <code>test-parent</code></td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The <code>api</code> tool of TypeScript, after the smalldocs release that reads JSDoc</td>
+<td>jnprofile-typescript</td>
+</tr>
+<tr>
+<td>The base task of <code>prose</code>, and <code>check.py</code></td>
+<td>nossaifd</td>
+</tr>
+<tr>
+<td><code>jlog</code>, and the plugins, one folder and one uv project for each harness</td>
+<td>jlog</td>
+</tr>
+<tr>
+<td>The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, <code>just record</code></td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The removal of GitButler from the hooks, the skills and the docs</td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>Stacked PRs with plain git, in the <code>gcm</code>, <code>gpa</code> and <code>gor</code> skills</td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The changes to the skills, in the section “The skills”</td>
+<td>agent_gest_git_skills</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="delivery" class="level3">
+<h3 class="anchored" data-anchor-id="delivery">Delivery</h3>
+<p>After the spec is approved:</p>
+<ol>
+<li><code>gsp</code> saves this spec as a Gest artifact in agent_gest_git_skills.</li>
+<li><code>gpl</code> makes one top-level Gest task for each repository in the table above.</li>
+<li><code>gpr</code> makes each top-level task a GitHub issue in its repository. A parent
+issue in agent_gest_git_skills holds the spec and links to the others.</li>
+</ol>
+<p>The work on <code>jlog</code> starts first, in <code>~/Projects/jlog</code>, because every recipe
+needs it.</p>
+</section>
+</section>
+<section id="scope" class="level2">
+<h2 class="anchored" data-anchor-id="scope">Scope</h2>
+<section id="in-scope" class="level3">
+<h3 class="anchored" data-anchor-id="in-scope">In Scope</h3>
+<ul>
+<li>The tools table, and the check of the installer for each program.</li>
+<li><code>jlog</code>: the shell form, the commands <code>session</code>, <code>env</code>, <code>tools</code>, <code>skip</code> and
+<code>pass</code>, the redaction of secrets, and the plugins for Claude Code and Codex.</li>
+<li>The steps, the no-op steps, the lint of steps, the run log and the pass.</li>
+<li><code>set shell</code> in the files that the installer generates.</li>
+<li>The <code>docs</code> tool and the <code>api</code> tool, and an entry for the smalldocs config in
+<code>formats.json</code>.</li>
+<li>The agentic targets <code>review</code>, <code>test-review</code>, <code>docs</code>, <code>prose</code>,
+<code>visual-check</code> and <code>visualize</code>, with the language layer, the repository text
+and the nonce.</li>
+<li>The steps <code>coverage-check</code> and <code>docstring-check</code> in each profile.</li>
+<li>jnprofile-rust, with the real steps and no <code>api</code> tool.</li>
+<li>The setup questions, <code>just install --answer</code>, and the defaults in CI.</li>
+<li>The records, the chain, the shared log folder, the required targets and the
+skip with a reason.</li>
+<li>The gate, the pre-commit and pre-merge-commit hooks, the local hook for the
+pre-commit framework, and the agent hooks of each adapter.</li>
+<li>The removal of GitButler, and stacked PRs with plain git.</li>
+<li>The CI workflow that runs <code>just docs-publish</code>.</li>
+<li>Labs for each gate and for each command in the table of commands.</li>
+</ul>
+</section>
+<section id="out-of-scope" class="level3">
+<h3 class="anchored" data-anchor-id="out-of-scope">Out of Scope</h3>
+<ul>
+<li>New tools for a language, other than those for <code>coverage-check</code> and
+<code>docstring-check</code>, and the tools of jnprofile-rust.</li>
+<li>A model inside the git hook. A git hook cannot start an agent.</li>
+<li>A defense against an agent that tries to cheat.</li>
+<li>API pages for TypeScript, until smalldocs has a release that reads JSDoc.</li>
+<li>API pages for Rust, until smalldocs has a release that reads rustdoc.</li>
+<li>The targets in the list “Other targets to consider later”.</li>
+<li>Signatures for agentic targets.</li>
+<li>Adapters for harnesses other than Claude Code and Codex.</li>
+</ul>
+</section>
+</section>
+<section id="acceptance-criteria" class="level2">
+<h2 class="anchored" data-anchor-id="acceptance-criteria">Acceptance Criteria</h2>
+<p><strong><code>jlog</code> and the log:</strong></p>
+<ul>
+<li>In a new repository with no language, <code>just check</code> passes, and the run log
+shows each step as skipped.</li>
+<li>In a new Python repository and a new TypeScript repository, <code>just check</code> runs
+the real steps, and a failed step stops the commit.</li>
+<li>Each line of each step, in the root Justfile and in the modules, is in the
+run log.</li>
+<li>A repository with <code>set shell := [&quot;bash&quot;, &quot;-c&quot;]</code> keeps working, after the
+person wraps it as <code>[&quot;jlog&quot;, &quot;bash&quot;, &quot;-c&quot;]</code>.</li>
+<li>The lint finds a shebang step, a <code>-</code> line and a <code>[no-cd]</code> step.</li>
+<li><code>.agents/log/</code> stays after <code>git add -A</code>, <code>git stash -u</code> and <code>git clean -fd</code>.</li>
+<li>A worktree with only a log folder can be pruned.</li>
+<li>A backtick line is tagged <code>&quot;kind&quot;: &quot;backtick&quot;</code>.</li>
+<li>A secret from a <code>.env</code> file does not appear in <code>line</code> or <code>argv</code>.</li>
+<li><code>jlog tools</code> logs the versions, and a missing program does not fail a line.</li>
+<li>The cost of each line over the shell itself is measured and reported.</li>
+</ul>
+<p><strong>The pass:</strong></p>
+<ul>
+<li>No pass is written for <code>just --no-deps check</code>, for <code>JUST_NO_DEPS=true just check</code>, for <code>just v=x check</code>, for <code>jlog pass</code> run directly, or with an
+unstaged change.</li>
+<li>A skip of a step that an installed profile provides fails the pass. The lab
+of <code>jlog</code> uses a stub profile for it.</li>
+<li><code>JUST_COLOR=always just check</code> can pass.</li>
+</ul>
+<p><strong>The commit tree:</strong></p>
+<ul>
+<li><code>git commit -a</code> by an agent stops if the records cover only the staged
+files.</li>
+<li>A commit with partial staging stops, and the gate prints the fix with
+<code>git stash --keep-index -u</code>.</li>
+<li>The first commit of a new repository works with the default list.</li>
+<li><code>git merge</code> runs the gate through the pre-merge-commit hook.</li>
+</ul>
+<p><strong>Records:</strong></p>
+<ul>
+<li>An agent commit with no review record for the tree stops.</li>
+<li>The chain docs, prose, test-review, review and check passes, and so does
+the chain with <code>review</code> before <code>test-review</code>. A chain with <code>prose</code> before
+<code>docs</code> stops.</li>
+<li>A record with status <code>failed</code>, or with a finding that is not fixed, does not
+count.</li>
+<li>A review by a fresh agent in another worktree gives a record that the gate
+finds.</li>
+<li><code>just record-skip review &quot;typo&quot;</code> asks the person, then lets one tree through,
+and the run log keeps the reason.</li>
+<li>The text of <code>.agents/targets/review.md</code> appears in the review packet.</li>
+<li><code>jagt render</code> saves <code>packets/&lt;nonce&gt;.json</code> with the target, the input tree,
+the path of the worktree and the hash of the packet. A result with another
+nonce gives no record.</li>
+<li>The record shows the model of the fresh agent, in Claude Code and in Codex.</li>
+<li>The same review gate works in Claude Code and in Codex.</li>
+<li><code>just visual-check</code> and <code>just visualize</code> each write a packet that
+<code>jagt lint</code> accepts.</li>
+</ul>
+<p><strong>Sessions and the environment:</strong></p>
+<ul>
+<li>In Codex, each line in the run log has the thread ID, and <code>jlog session</code>
+gives the path of the transcript.</li>
+<li>In Claude Code, each line has the session ID, and the lines of a fresh agent
+are marked as such.</li>
+<li>At a terminal, all <code>just</code> calls in one terminal share one session.</li>
+<li><code>jlog env</code> shows any secret as <code>redacted</code>.</li>
+<li>No plugin writes in the folders of a harness.</li>
+<li>A recipe that needs a setting from <code>.zshrc</code> fails the lab, with a message
+that names <code>set export</code> or <code>.env</code>.</li>
+</ul>
+<p><strong>Setup:</strong></p>
+<ul>
+<li>The installer stops with the install line when a program in the tools table
+is missing.</li>
+<li><code>just install</code> run by an agent writes a packet with the open questions.</li>
+<li>After <code>just install --answer issues=none</code>, that question is not asked again.</li>
+<li>In CI, the installer takes the defaults and asks nothing.</li>
+<li>No hook, skill or doc of agent_gest_git_skills names GitButler or <code>but</code>.</li>
+<li>A stacked PR with plain git and <code>gh</code> passes the gates.</li>
+</ul>
+<p><strong>Hooks:</strong></p>
+<ul>
+<li>The hook that stops a commit says which target or step to run.</li>
+<li><code>git commit -m &quot;fix&quot; --no-verify</code> by an agent stops.</li>
+<li>An empty <code>required.txt</code> in the commit does not remove the review.</li>
+<li>A test suite that runs git in temporary repositories does not break the
+commit, because the gate does not run the steps.</li>
+<li>In a Python project, the gate runs as a local hook of the pre-commit
+framework, and removing the <code>lint</code> tool keeps the gate.</li>
+</ul>
+<p><strong>Tests and docstrings:</strong></p>
+<ul>
+<li>In each of the three profiles, a changed line that no test runs fails
+<code>coverage-check</code>. In Python and TypeScript, a pragma on that line makes it
+pass. In Rust, an entry for its file in the exclude list makes it pass.</li>
+<li>A line that only <code>integration</code> runs passes <code>coverage-check</code> when
+<code>integration</code> is in <code>just check</code>.</li>
+<li>A commit that adds its own path to <code>generated.txt</code> or
+<code>coverage-exclude.txt</code> still fails <code>coverage-check</code>.</li>
+<li>When code changed and there is no coverage report, <code>coverage-check</code> fails
+and says “write tests”.</li>
+<li>A new test in an existing test file that fails on the parent commit makes
+<code>test-parent</code> exit with 0, and its result file names the test.</li>
+<li>A commit that removes a language from <code>.agents/stack.json</code> still needs a
+<code>test-review</code> record for the code of that language.</li>
+<li>No hook, skill or doc of agent_gest_git_skills names ruff, biome, pytest or
+another tool of a language.</li>
+<li>In a repository with no <code>just check</code>, each skill of the table in “The
+skills” tells the agent to run <code>gsu</code>.</li>
+<li><code>just coverage-check</code> alone runs the tests again, and does not read an old
+report.</li>
+<li>A path in <code>.agents/generated.txt</code> fails neither <code>coverage-check</code> nor
+<code>docstring-check</code>.</li>
+<li>On the first commit, <code>coverage-check</code> runs the report tool of the profile
+over all code with a limit of 100%, and <code>test-parent</code> is a skip.</li>
+<li><code>just check</code> in a fresh clone leaves no file that git does not ignore.</li>
+<li>In each of the three profiles, a private function with no doc fails
+<code>docstring-check</code>, and the output names its file and line.</li>
+<li>A commit that changes code and has no <code>test-review</code> record stops. A commit
+that changes only docs needs no <code>test-review</code> record.</li>
+<li><code>test-review</code> gives a finding for a new test that passes on the parent
+commit, and for a new pragma with no reason.</li>
+<li>The <code>review</code> packet has the docs lens, and a stub doc such as “Returns the
+result.” gives a finding.</li>
+<li>The <code>docs</code> packet of a Python project holds the Python language layer.</li>
+<li>A new Rust project gets <code>just check</code> with real steps, and no <code>api</code> step.</li>
+</ul>
+<p><strong>Docs:</strong></p>
+<ul>
+<li>A new Python project with the <code>docs</code> tool has the <code>api</code> tool, and a public
+function with no docments fails <code>just check</code>.</li>
+<li>Until the smalldocs release that reads JSDoc, a new TypeScript project with
+the <code>docs</code> tool passes <code>just check</code>, with no <code>api</code> step.</li>
+<li><code>prose-check</code> runs <code>check.py</code> on the changed Markdown, and writes nothing
+into the repository. When <code>check.py</code> is missing, the step fails and prints
+the install line.</li>
+<li>In a Python project with the <code>api</code> tool, <code>prose-check</code> also checks the API
+pages of each changed module, through a temporary file.</li>
+<li>In CI, <code>just docs-publish</code> pushes to <code>gh-pages</code> for a public repository.</li>
+<li>It skips a private repository, and it fails in CI when <code>gh</code> has no token.</li>
+</ul>
+</section>
+<section id="open-questions" class="level2">
+<h2 class="anchored" data-anchor-id="open-questions">Open Questions</h2>
+<ul>
+<li><code>CLAUDE_CODE_SESSION_ID</code> is also set in a terminal that Claude Code starts. A
+person who types there counts as an agent. Is that acceptable?</li>
+<li>Can the Codex sandbox write to <code>.git</code> in workspace-write mode? If it cannot,
+<code>git write-tree</code> cannot write tree objects there, and <code>test-parent</code> cannot
+run <code>git worktree add</code>. A lab must find out. A
+remedy is to write the objects to a temporary folder, with
+<code>GIT_ALTERNATE_OBJECT_DIRECTORIES</code>.</li>
+<li>Can the Codex sandbox write to the shared log folder, when a worktree is
+outside the main checkout?</li>
+<li>Does <code>CLAUDE_ENV_FILE</code> reach the shell commands of a fresh agent?</li>
+<li>Should the run log rotate, for example after 10,000 lines?</li>
+<li>Which model counts as the strongest model? The setup question
+<code>review-model</code> lets each repository choose.</li>
+</ul>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ul>
+<li>jnterfaces <code>.agents/skills/just/references/command_contract.md</code></li>
+<li>jnterfaces <code>.agents/skills/jagt-protocol/references/protocol_contract.md</code></li>
+<li>jnterfaces <code>scripts/install_stack.py</code>, <code>scripts/shared_files.py</code> and
+<code>scripts/formats.json</code></li>
+<li>jnprofile-python <code>.agents/just/python/test.just</code>, with a shebang line, and
+<code>profile.json</code>, which installs the pre-commit framework</li>
+<li>agent_gest_git_skills <code>.agents/skills/grv/SKILL.md</code></li>
+<li>agent_gest_git_skills <code>.claude/hooks/pre-commit-context.sh</code> and
+<code>raw-git-write-guard.sh</code></li>
+<li>The Claude Code hooks docs, for <code>SubagentStop</code>, <code>SessionStart</code> and
+<code>CLAUDE_ENV_FILE</code>, at https://code.claude.com/docs/en/hooks</li>
+<li>openai/codex <code>codex-rs/protocol/src/shell_environment.rs</code></li>
+<li>The hook names in the Codex binary 0.163.0-alpha, and the format of its
+rollout files, read on 2026-11-12</li>
+<li>smalldocs 0.5.5, <code>api.py</code></li>
+<li>The three adversarial reviews of 2026-11-12, and their tests with git and
+just 1.50</li>
+<li>The just changelog, entry “Remove logging” (#2305)</li>
+</ul>
+</section>
+<nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="../g_commands_cheatsheet.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Gest g-commands cheat sheet</span></a></div><div class="nav-page nav-page-next"><a href="../integration_delivery_workflow.html" class="pagination-link"><span class="nav-page-text">Integration branches, review, and delivery</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>
