@@ -143,19 +143,47 @@ just check     fmt-check lint typecheck test coverage-check integration docstrin
 ```
 
 - **jnterfaces names the steps.** It holds the list and the meaning of each
-  step, and the installer writes a no-op step for each name:
+  step. The installer writes a no-op step for each name that no installed
+  profile and no installed role file defines:
 
   ```just
   typecheck:
     jlog skip typecheck "no type checker in this repository"
   ```
 
-- **The profiles fill in the steps.** jnprofile-python, jnprofile-typescript
-  and jnprofile-rust replace the no-op steps with real commands. Most of the
-  commands of a language come from the profile. A repository can replace any
-  step.
-- **A skip counts only for a step that no profile provides.** If an installed
-  profile provides a step, a skip of that step is a failure. So a broken index
+- **The profiles and roles fill in the steps.** jnprofile-python,
+  jnprofile-typescript and jnprofile-rust replace the no-op steps with real
+  commands. Most of the commands of a language come from the profile. A role
+  file can fill a step too, as nossaifd fills `prose-check`. A repository can
+  replace a step of a profile, or a no-op step, with a recipe of the same name
+  in its own Justfile.
+- **How the installer knows.** It reads recipe names with `just --dump`. The
+  root Justfile imports the index, so a dump of the root would also hold the
+  old index. So the installer reads the names in this order:
+  1. It keeps a copy of the old index. Then it writes the index in its form
+     with the modules only. That form has the `mod` lines, with no role
+     file, no combined recipe and no no-op step.
+  2. It dumps the root Justfile. Those names are the names of the repository.
+     The recipes of a module have the name of the module in front, so they
+     never meet a step name. If this dump fails, the installer stops with
+     the error of `just`. It never goes on as if the repository had no
+     recipe.
+  3. It dumps each role file alone, and each module alone, as now.
+  4. It writes the whole index. It leaves out each combined recipe and each
+     no-op step whose name the repository defines. It writes a no-op step only
+     for a step name that no role file and no combined recipe has.
+  5. When it stops before the end of step 4, it puts the old index back. So
+     `just check` keeps the steps that it had.
+- **A role step and a repository recipe of one name.** The index imports the
+  role file, so both define the name. Then `just` would stop with "Recipe
+  redefined". The installer stops first, and it names the recipe and the
+  role.
+- **Without this rule,** `just` stops with "Recipe redefined". With
+  `set allow-duplicate-recipes`, the recipe nearer the root wins. So the
+  no-op step of the index would beat the role file that the index imports.
+- **A skip counts only for a step that no profile and no role provides.** If
+  an installed profile or role provides a step, a skip of that step is a
+  failure. So a broken index
   of recipes cannot pass by skipping everything.
 - **agent_gest_git_skills tests that the steps exist.** The gate reads
   `just --summary`, which runs no backticks. If a step or a required target is
@@ -243,14 +271,74 @@ just check     fmt-check lint typecheck test coverage-check integration docstrin
     the folder in which `jlog` looks for the log folder. The setting
     `set working-directory` that the installer writes into a module, to the top
     of the project, is allowed.
-- **`prose-check`** runs the nossaifd `check.py` on the changed pages. A page
-  is a file that `is_page` of nossaifd's `prose_gate.py` accepts, so
-  `prose-check` and the turn gate use one rule. It takes `.md` and `.qmd`
-  files, and it skips files such as `AGENTS.md`, `CHANGELOG.md` and the folder
-  `.agents/`. For the API pages, it runs `smalldocs api module NAME` for each changed module
-  into a temporary file, and checks that file. It writes nothing into the
-  repository. When `check.py` is missing, the step fails and prints the install
-  line.
+- **`prose-check`** checks the changed pages with the checker of nossaifd.
+  - **The pages.** A page is a file that `is_page` of nossaifd's
+    `prose_gate.py` accepts, so `prose-check` and the turn gate use one rule.
+    It takes `.md` and `.qmd` files, and it skips files such as `AGENTS.md`,
+    `CHANGELOG.md` and the folder `.agents/`.
+  - **The changed pages on a machine.** `prose_gate.py check-changed` finds
+    them: the pages that `git diff --no-renames --diff-filter=AMT HEAD`
+    names, and the untracked pages. `T` is a changed type, such as a link
+    that became a file. With no commit yet, it compares with the empty tree,
+    so each page of the index counts.
+  - **The changed pages in CI.** A CI checkout has no change against `HEAD`,
+    so that list is empty. In CI, `check-changed` checks the pages that
+    changed between `BASE` and `HEAD`, and also the pages that changed against
+    `HEAD`. In a clean checkout the second set is empty. On a machine where a
+    tool sets `CI`, the second set still holds the pages of the next commit.
+    The option `--base REF` does the same outside CI, and it wins over `CI`.
+  - **CI is on** when the variable `CI` is set to a value other than empty,
+    `0` and `false`.
+  - **Where `BASE` comes from.** It is always a merge base, so the check never
+    takes in the pages of commits that only the other side has.
+    - On a pull request, `BASE` is the merge base of
+      `origin/$GITHUB_BASE_REF` and `HEAD`.
+    - On a push to the default branch, `BASE` is the commit before the push.
+      It is the key `before` of the file at `$GITHUB_EVENT_PATH`. So a direct
+      push of several commits gets each of them checked, also when a person
+      skipped the gate with `--no-verify`. When `before` is all zeros, the
+      push made the branch, as the first push of a new repository does. Then
+      the step compares with the empty tree, so each page is checked. When
+      `before` is not in the history, or is not an ancestor of `HEAD`, `BASE`
+      is `HEAD^`.
+    - On another push, a merge queue, or another CI system, `BASE` is the
+      merge base of `HEAD` and the default branch. So a branch with several
+      commits gets each of them checked, also after a force-push. When that
+      merge base is `HEAD` itself, as in a build of the default branch,
+      `BASE` is `HEAD^`. The default
+      branch comes from the key `repository.default_branch` of the file at
+      `$GITHUB_EVENT_PATH`, or else from `origin/HEAD`. When neither gives a
+      branch, the step exits with 2.
+    - On the first push, with no parent, the step compares the empty tree with
+      `HEAD`, with a diff of two arguments. A diff with `...` needs a commit
+      on each side, so it cannot take the empty tree.
+    - The event `pull_request_target` checks out the base branch, so the diff
+      would be empty. The step exits with 2 and names the event
+      `pull_request`.
+  - **Full history in CI.** The CI job checks out with `fetch-depth: 0`. The
+    step asks `git rev-parse --is-shallow-repository`. In a shallow clone, it
+    exits with 2 and names `fetch-depth: 0`. So a cut-off history never counts
+    as a first push.
+  - **No changed page.** The step passes. `check` alone exits with 2 when it
+    gets no page, so the step never calls it with an empty list.
+  - **The checker.** `check-changed` checks the pages as
+    `prose_gate.py check PAGE...` does. The step never calls `check.py`
+    directly. `check` applies the map of checkers in
+    `.agents/nossaifd-checkers.json`, so a talk repository can check its
+    slides with another checker. It names the checker in its output. A
+    checker that is missing or that fails is a hard problem. Any exit of
+    `check-changed` other than 0 fails the step.
+  - **One line.** A step has no shebang line. So the logic goes into
+    `prose_gate.py`, and the recipe calls it once.
+  - **The recipe** is in the role file of nossaifd,
+    `.agents/just/roles/nossaifd.just`, with the name `prose-check`. So it
+    fills the step in a project with the `nossaifd` role. Without the role,
+    the step is a no-op step.
+  - **The API pages.** The step runs `smalldocs api module NAME` for each
+    changed module into a temporary file, and checks that file.
+  - **No writes.** The step writes nothing into the repository. When
+    `prose_gate.py` or its checker is missing, the step fails and prints the
+    install line.
 - **The `integration` answer** of the setup questions decides whether
   `integration` is in the list. The list is in `.agents/stack.json`. `jlog pass`
   and the gate read the list from there.
@@ -390,14 +478,48 @@ Before it writes its packet, the `test-review` recipe runs a logged line,
   repository, with `git worktree add --detach`.
 - It copies each added or changed test file in, runs the `test-paths` recipe
   of the profile on them, and removes the worktree.
+- **Test files.** Each profile names its test files with the globs of the key
+  `tests` of `profile.json`. `test-parent` copies only those files, so no
+  new code reaches the parent.
 - A Rust unit test lives in the file of its code. Copying that file copies the
-  new code too, so a pass proves nothing. The Rust profile gives only the files
-  under `tests/` to `test-paths`, and `test-review` judges the unit tests from
+  new code too, so a pass proves nothing. So the key `tests` of the Rust
+  profile names `tests/**` only, and `test-review` judges the unit tests from
   the diff alone.
+- **Two limits of the Rust profile.**
+  - The tests of a workspace member, such as `crates/x/tests/a.rs`, do not
+    match `tests/**`. The glob `**/tests/**` would also take
+    `src/x/tests/mod.rs`, which can bring new code into the parent. So
+    `test-review` judges the tests of a member from the diff.
+  - A build script of a dependency can fail for an outside reason, such as a
+    missing system library. cargo prints the same lines as for a test that
+    does not build, so `test-paths` exits with 1, not 2.
+- **The exit codes of `test-paths`.** Each profile gives the same four:
+  - 0: the tests ran and passed.
+  - 1: a test failed, or a test did not build. A new test of new code often
+    does not build on the parent, and that is a failure of the test.
+  - 5: no test ran, as pytest exits when it collects no test. An example is
+    a file whose tests are all skipped. `test-paths` with no path exits with
+    5 too, and it never runs all the tests.
+  - Any other code: the runner itself failed, for example with a usage error
+    or a crash.
+- **Each profile counts the tests.** It reads the count from the output of
+  the runner, such as the summary line of pytest or the lines "running N
+  tests" of cargo. A count of 0 gives 5, even when the runner exits with 0. A
+  runner that exits with 5 for another reason, such as a fatal error of Node,
+  gets 2. vitest exits with 1 when a test fails, and also when it finds no
+  test file. So the profile reads its output to tell the two apart.
+- **No test file.** When no changed file matches `tests`, as in a change
+  with Rust unit tests only, `test-parent` does not call `test-paths`. It
+  records "no test ran on the parent".
+- **How `test-parent` reads them.** 0 is a pass on the parent. 1 is the
+  expected failure. 5 is "no test ran on the parent", and `test-review`
+  judges those tests from the diff. Any other code is "the runner failed",
+  which is neither a pass nor a failure.
 - It writes the result, with the output of the tests, to
-  `test-parent/<run>.json` in the log folder. It exits with 0 when tests fail,
-  because a new test that fails on the parent is the expected case. It exits
-  with 1 only when it cannot run, for example when the worktree cannot be made.
+  `test-parent/<run>.json` in the log folder. The result names the case. It
+  exits with 0 in each case above. It exits with 1 only when `test-parent`
+  itself fails. Examples are a worktree that git cannot make, a copy that
+  fails, and a log file that it cannot write.
 - The packet holds the result. So the run is logged, and the agent only judges
   it.
 - On the first commit, `test-parent` is a skip.
@@ -405,8 +527,17 @@ Before it writes its packet, the `test-review` recipe runs a logged line,
 The base task of `test-review` is in `gte`, and the base task of `review` is in
 `grv`.
 
-jnterfaces already has a recipe `prose checker`. It becomes `prose-check`, so
-that `prose` is free for the agentic target.
+Two recipes have the name `prose` now, and both change:
+
+- **The role file of nossaifd** has a recipe `prose`. It becomes
+  `prose-check`, and it fills the step in each project with the `nossaifd`
+  role.
+- **jnterfaces itself** has a recipe `prose checker` in its own Justfile. It
+  becomes `prose-check`. In jnterfaces it replaces the step, as the recipe of
+  a repository may. When jnterfaces takes the gates for itself, the recipe
+  must run with no argument, as each step does.
+
+So `prose` is free for the agentic target.
 
 Other targets to consider later:
 
@@ -800,7 +931,8 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   - **`@code`** names the source files of each language in `.agents/stack.json`.
     Each profile gives its globs under the key `code` of `profile.json`, for
     example `**/*.py`, `**/*.ts` or
-    `**/*.rs`. With no profile, `@code` is empty.
+    `**/*.rs`. The installer copies them into the key `code` of
+    `.agents/stack.json`, for each profile. With no profile, `@code` is empty.
   - **Which file counts.** The gate reads `required.txt`, `.agents/stack.json`
     and `.agents/generated.txt` from the parent of the commit, so a commit
     cannot change the lists for itself. On the first commit of a repository,
@@ -902,7 +1034,7 @@ in the log folders.
 | The real steps of Python, and the `api` tool | jnprofile-python |
 | The real steps of TypeScript, with eslint for `docstring-check` | jnprofile-typescript |
 | The real steps of Rust, and later its `api` tool | jnprofile-rust, a new repository |
-| The language layer of the packet text, and the `@code` globs | each profile |
+| The language layer of the packet text, the `@code` globs, and the `tests` globs with the exit codes of `test-paths` | each profile |
 | The names `coverage-check` and `docstring-check`, as no-op steps, and the empty `.agents/generated.txt` and `.agents/coverage-exclude.txt` | jnterfaces |
 | The entry `rust` in the `profiles` of `stack.json` | jnterfaces |
 | The `test-paths` recipe of each profile | each profile |
@@ -912,6 +1044,7 @@ in the log folders.
 | The recipe `test-parent` | agent_gest_git_skills |
 | The `api` tool of TypeScript, after the smalldocs release that reads JSDoc | jnprofile-typescript |
 | The base task of `prose`, `check.py`, `is_page`, and the turn gate with its message when the gates are installed | nossaifd |
+| The `prose-check` recipe, in the role file `.agents/just/roles/nossaifd.just`, with its CI mode and the install line when `prose_gate.py` or a checker is missing | nossaifd |
 | The removal of `nossaifd-prose.yml` when the tasker role is installed, and the rule that keeps a reinstall from writing it again | jnterfaces, in the installer |
 | `jlog`, and the plugins, one folder and one uv project for each harness | jlog |
 | The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, `just record` | agent_gest_git_skills |
@@ -1085,6 +1218,10 @@ needs it.
   `coverage-exclude.txt` still fails `coverage-check`.
 - When code changed and there is no coverage report, `coverage-check` fails
   and says "write tests".
+- For a change with Rust unit tests only, `test-parent` does not call
+  `test-paths`, and it records "no test ran on the parent", not a pass.
+- A runner that crashes on the parent gives "the runner failed" in the result
+  of `test-parent`, not a failure of the test.
 - A new test in an existing test file that fails on the parent commit makes
   `test-parent` exit with 0, and its result file names the test.
 - A commit that removes a language from `.agents/stack.json` still needs a
@@ -1126,10 +1263,24 @@ needs it.
   function with no docments fails `just check`.
 - Until the smalldocs release that reads JSDoc, a new TypeScript project with
   the `docs` tool passes `just check`, with no `api` step.
-- `prose-check` runs `check.py` on the changed pages, the files that `is_page`
-  accepts, and writes nothing
-  into the repository. When `check.py` is missing, the step fails and prints
+- `prose-check` runs `prose_gate.py check-changed` on the changed pages, the files
+  that `is_page` accepts, and writes nothing into the repository. A page that
+  `.agents/nossaifd-checkers.json` maps to another checker gets that checker.
+  When `prose_gate.py` or its checker is missing, the step fails and prints
   the install line.
+- With the `nossaifd` role, the role file fills `prose-check`. `just
+  --summary` parses, and `just prose-check` runs the recipe of the role file,
+  not a no-op step. Without the role, `prose-check` is a no-op step.
+- A change with no page passes `prose-check`, and so does the first commit of
+  a repository with no page.
+- In CI, a pull request that adds a page with a hard problem fails `just
+  check`. So does a push of a branch whose first commit adds that page.
+- With `CI=1` on a machine, a page with a hard problem that is not committed
+  yet still fails `prose-check`.
+- A repository with its own `test` recipe, and no
+  `set allow-duplicate-recipes`, still gets the combined recipes and the
+  no-op steps of the other names. Two runs of `just install` in a row write
+  the same index.
 - In a Python project with the `api` tool, `prose-check` also checks the API
   pages of each changed module, through a temporary file.
 - In CI, `just docs-publish` pushes to `gh-pages` for a public repository.
