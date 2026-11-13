@@ -480,6 +480,14 @@ Before it writes its packet, the `test-review` recipe runs a logged line,
   new code too, so a pass proves nothing. So the key `tests` of the Rust
   profile names `tests/**` only, and `test-review` judges the unit tests from
   the diff alone.
+- **Two limits of the Rust profile.**
+  - The tests of a workspace member, such as `crates/x/tests/a.rs`, do not
+    match `tests/**`. The glob `**/tests/**` would also take
+    `src/x/tests/mod.rs`, which can bring new code into the parent. So
+    `test-review` judges the tests of a member from the diff.
+  - A build script of a dependency can fail for an outside reason, such as a
+    missing system library. cargo prints the same lines as for a test that
+    does not build, so `test-paths` exits with 1, not 2.
 - **The exit codes of `test-paths`.** Each profile gives the same four:
   - 0: the tests ran and passed.
   - 1: a test failed, or a test did not build. A new test of new code often
