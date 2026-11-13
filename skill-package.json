@@ -91,7 +91,8 @@
       ".codex/hooks.json": ".codex/hooks.json"
     },
     "starter": {
-      "AGENTS.md": "AGENTS.starter.md"
+      "AGENTS.md": "AGENTS.starter.md",
+      ".github/workflows/check.yml": ".agents/skills/gsu/assets/templates/github-check.yml"
     }
   },
   "installer_skill": {

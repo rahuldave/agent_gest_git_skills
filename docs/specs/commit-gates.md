@@ -1020,6 +1020,22 @@ role is installed, `just check` in CI runs `prose-check`. So the installer
 removes that file, whichever entry wrote it, and does not write it again while
 the tasker role is installed.
 
+The tasker role writes the CI job, `.github/workflows/check.yml`, as a
+`starter` only. It is a whole file, and it is yours from then on. An older
+installer takes a `seed` out on removal, so the job has no `seed`. The tasker
+role ships it only after jnterfaces writes the `check` recipe:
+
+- **The events.** It runs on each push and each pull request. It does not use
+  `pull_request_target`, which would give the code of the pull request the
+  secrets of the repository.
+- **The history.** The checkout has `fetch-depth: 0`, so `prose-check` can
+  find the changed pages.
+- **The tools.** It installs `just`, `uv`, and `jlog` at a tagged release. The
+  person adds the setup of the tools of a language that the runner lacks.
+- **The run.** It runs `just check` on the committed files, and not
+  `just install`. An install can change tracked files, and then `jlog pass`
+  refuses the run, because it needs a clean worktree.
+
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
 
@@ -1048,6 +1064,7 @@ in the log folders.
 | The removal of `nossaifd-prose.yml` when the tasker role is installed, and the rule that keeps a reinstall from writing it again | jnterfaces, in the installer |
 | `jlog`, and the plugins, one folder and one uv project for each harness | jlog |
 | The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, `just record` | agent_gest_git_skills |
+| The CI job `.github/workflows/check.yml`, a starter of the tasker role that runs `just check` | agent_gest_git_skills |
 | The removal of GitButler from the hooks, the skills and the docs | agent_gest_git_skills |
 | Stacked PRs with plain git, in the `gcm`, `gpa` and `gor` skills | agent_gest_git_skills |
 | The changes to the skills, in the section "The skills" | agent_gest_git_skills |
@@ -1203,6 +1220,10 @@ needs it.
   it, the file stays as now.
 - A reinstall of nossaifd after the tasker role does not bring back
   `nossaifd-prose.yml`.
+- With the tasker role, the project gets `.github/workflows/check.yml`. Its
+  job checks out with `fetch-depth: 0` and runs `just check`. With the
+  `nossaifd` role too, a push of a page with a hard problem fails it. A CI file
+  of the person stays as it is, and the file stays after `just uninstall`.
 - `prose-check` and the turn gate accept the same pages, a `.qmd` file
   included. A change to `CHANGELOG.md` alone needs no `prose` record.
 - The removal of the GitButler `Stop` hook keeps the nossaifd `Stop` hook.

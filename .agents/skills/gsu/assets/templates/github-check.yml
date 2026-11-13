@@ -1,0 +1,37 @@
+# The tasker role wrote this file once, when the project had none. It is yours from then on.
+# It runs just check, the steps of the commit gates, on each push and each pull request.
+# It uses the committed files and does not run just install. An install can change tracked files, and then
+# jlog pass refuses the run, because it needs a clean worktree.
+# prose-check needs the whole history to find the changed pages, so the checkout has fetch-depth: 0.
+# Keep the event pull_request, not pull_request_target. The steps run the code of the pull request, and
+# pull_request_target would give that code the secrets of the repository.
+# Add the setup of the tools of your languages before the step "Check", if the runner does not have them.
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: extractions/setup-just@v3
+      - uses: astral-sh/setup-uv@v6
+      - name: Keep the build of jlog
+        id: jlog
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/jlog
+          key: jlog-v0.1.0-${{ runner.os }}
+      - name: Install jlog
+        if: steps.jlog.outputs.cache-hit != 'true'
+        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.0
+      - name: Check
+        run: just check

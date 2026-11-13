@@ -84,6 +84,12 @@ install-test:
   done
   mv "$target/CLAUDE.md.off" "$target/CLAUDE.md"
   test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
+  # The CI job runs just check with the whole history, and the starter is a valid workflow.
+  ci="$target/.github/workflows/check.yml"
+  cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$ci" || fail "the install wrote no CI starter"
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["check"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert steps[-1]["run"] == "just check"' "$ci" || fail "the CI starter does not run just check with fetch-depth 0"
+  just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx check || fail "the CI starter runs just check, and the project has no check recipe"
+  printf '# mine\n' > "$ci"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"
   # The old hooks blocked plain git on the branch of the old workspace, so the check runs there.
@@ -101,9 +107,15 @@ install-test:
     if [ -e "$target/$gone" ]; then fail "$gone is still there after the removal"; fi
   done
   grep -q '"mine.sh"' "$target/.claude/settings.json" || fail "the removal dropped the hook of the user"
+  [ "$(cat "$target/.github/workflows/check.yml")" = '# mine' ] || fail "a reinstall or the removal changed the CI file of the user"
   test ! -e "$target/.agents/instructions/tasker.md" || fail "the rules are still there after the removal"
   if grep -q 'instructions/tasker.md' "$target/AGENTS.md"; then fail "the removal left the pointer in AGENTS.md"; fi
   if grep -q 'session-start' "$target/.claude/settings.json"; then fail "the removal left a Gest hook"; fi
+  # The removal keeps a CI starter that nobody edited, because the starter is the project's from the start.
+  rm -f "$target/.github/workflows/check.yml"
+  install --defaults --without prose tasker
+  install --without tasker
+  cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$target/.github/workflows/check.yml" || fail "the removal took out the CI starter"
   echo "install-test: install and removal passed"
 
 ci-local: lint install-test stack-rebase-lab
