@@ -104,7 +104,12 @@ files into the project:
 .claude/hooks and .codex/hooks, and their hook commands in .claude/settings.json and .codex/hooks.json
 AGENTS.starter.md -> AGENTS.md, only if AGENTS.md does not already exist
 AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.md that points to it
+.agents/skills/gsu/assets/templates/github-check.yml -> .github/workflows/check.yml, only if that file does not already exist
 ```
+
+The CI job in `.github/workflows/check.yml` checks out the whole history and
+runs `just check` on each push and pull request. It is yours from then on. Add
+the setup of the tools of your languages to it when the runner lacks them.
 
 It reports each workflow executable that is missing, such as `gest`. It checks for
 conflicts before it writes, and it keeps the instructions and the other settings that the
