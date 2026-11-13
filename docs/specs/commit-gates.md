@@ -296,11 +296,16 @@ just check     fmt-check lint typecheck test coverage-check integration docstrin
     - On a push to the default branch, `BASE` is the commit before the push.
       It is the key `before` of the file at `$GITHUB_EVENT_PATH`. So a direct
       push of several commits gets each of them checked, also when a person
-      skipped the gate with `--no-verify`. When `before` is all zeros, is not
-      in the history, or is not an ancestor of `HEAD`, `BASE` is `HEAD^`.
+      skipped the gate with `--no-verify`. When `before` is all zeros, the
+      push made the branch, as the first push of a new repository does. Then
+      the step compares with the empty tree, so each page is checked. When
+      `before` is not in the history, or is not an ancestor of `HEAD`, `BASE`
+      is `HEAD^`.
     - On another push, a merge queue, or another CI system, `BASE` is the
       merge base of `HEAD` and the default branch. So a branch with several
-      commits gets each of them checked, also after a force-push. The default
+      commits gets each of them checked, also after a force-push. When that
+      merge base is `HEAD` itself, as in a build of the default branch,
+      `BASE` is `HEAD^`. The default
       branch comes from the key `repository.default_branch` of the file at
       `$GITHUB_EVENT_PATH`, or else from `origin/HEAD`. When neither gives a
       branch, the step exits with 2.
