@@ -232,8 +232,9 @@ just check     fmt-check lint typecheck test coverage-check integration docstrin
     tools as excludes.
   - **The lists come from the parent.** The steps read `generated.txt` and
     `coverage-exclude.txt` with `git show HEAD:<path>`, so a commit cannot
-    exempt its own code. With no parent, both lists are empty. `test-review`
-    judges each new entry.
+    exempt its own code. With no parent, or when the parent has no such file,
+    `git show` fails and the list is empty. `test-review` judges each new
+    entry.
   - **No tests.** When code changed and there is no report, the step fails and
     says "write tests". When no profile provides `test`, the step is a skip.
   - **The first commit.** With no parent, `diff-cover` cannot run. The step
@@ -937,7 +938,8 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     and `.agents/generated.txt` from the parent of the commit, so a commit
     cannot change the lists for itself. On the first commit of a repository,
     the gate uses the default `required.txt` and the `.agents/stack.json` of
-    the commit, and `generated.txt` is empty.
+    the commit, and `generated.txt` is empty. When the parent has no
+    `.agents/generated.txt`, the list is empty too.
   - **Which changes count.** The gate compares the commit tree with the parent
     of the commit.
   - **Rules:**
@@ -1007,7 +1009,7 @@ adds to:
 | `.gitignore` | jnterfaces | The line `.agents/log/`. |
 | `.worktreedisposable` | jnterfaces | The line `.agents/log/`. |
 | `.gitignore` | Each profile | The paths of its caches and coverage reports. |
-| `.agents/generated.txt`, `.agents/coverage-exclude.txt` | jnterfaces writes them empty | The person or the agent adds paths, and `test-review` judges each one. |
+| `.agents/generated.txt`, `.agents/coverage-exclude.txt` | jnterfaces writes them empty, once, in a project that it started | The person or the agent adds paths, and creates the file when it is missing. `test-review` judges each one. A project with a Justfile of its own gets neither file, and a missing list counts as empty. |
 | `.pre-commit-config.yaml` | The tasker role | A `local` hook that runs the gate. The writer keys the entries of `repos` by `repo`, so all `local` entries share one key. `formats.json` changes to key a `local` entry by the `id` of its hook. |
 | `.claude/settings.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The hooks of GitButler go: `Stop` with `gitbutler-snapshot.sh`, and `gitbutler-vcs-context.sh`. |
 | `.codex/hooks.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The GitButler hooks and text go. |
@@ -1051,7 +1053,7 @@ in the log folders.
 | The real steps of TypeScript, with eslint for `docstring-check` | jnprofile-typescript |
 | The real steps of Rust, and later its `api` tool | jnprofile-rust, a new repository |
 | The language layer of the packet text, the `@code` globs, and the `tests` globs with the exit codes of `test-paths` | each profile |
-| The names `coverage-check` and `docstring-check`, as no-op steps, and the empty `.agents/generated.txt` and `.agents/coverage-exclude.txt` | jnterfaces |
+| The names `coverage-check` and `docstring-check`, as no-op steps, and, in a project that jnterfaces started, the empty `.agents/generated.txt` and `.agents/coverage-exclude.txt` | jnterfaces |
 | The entry `rust` in the `profiles` of `stack.json` | jnterfaces |
 | The `test-paths` recipe of each profile | each profile |
 | The line `export JLOG_RUN` in the root Justfile, and not in a module | jnterfaces |
@@ -1236,7 +1238,11 @@ needs it.
 - A line that only `integration` runs passes `coverage-check` when
   `integration` is in `just check`.
 - A commit that adds its own path to `generated.txt` or
-  `coverage-exclude.txt` still fails `coverage-check`.
+  `coverage-exclude.txt` still fails `coverage-check`. So does a commit that
+  creates one of these files with its own path in it.
+- In a project with no `.agents/generated.txt` or
+  `.agents/coverage-exclude.txt`, `coverage-check`, `docstring-check` and the
+  gate act as with empty lists. A missing file fails none of them.
 - When code changed and there is no coverage report, `coverage-check` fails
   and says "write tests".
 - For a change with Rust unit tests only, `test-parent` does not call
