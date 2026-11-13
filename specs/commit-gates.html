@@ -386,8 +386,9 @@ target must accept each new pragma and each new entry in the list.</li>
 tools as excludes.</li>
 <li><strong>The lists come from the parent.</strong> The steps read <code>generated.txt</code> and
 <code>coverage-exclude.txt</code> with <code>git show HEAD:&lt;path&gt;</code>, so a commit cannot
-exempt its own code. With no parent, both lists are empty. <code>test-review</code>
-judges each new entry.</li>
+exempt its own code. With no parent, or when the parent has no such file,
+<code>git show</code> fails and the list is empty. <code>test-review</code> judges each new
+entry.</li>
 <li><strong>No tests.</strong> When code changed and there is no report, the step fails and
 says “write tests”. When no profile provides <code>test</code>, the step is a skip.</li>
 <li><strong>The first commit.</strong> With no parent, <code>diff-cover</code> cannot run. The step
@@ -1340,7 +1341,8 @@ example <code>**/*.py</code>, <code>**/*.ts</code> or
 and <code>.agents/generated.txt</code> from the parent of the commit, so a commit
 cannot change the lists for itself. On the first commit of a repository,
 the gate uses the default <code>required.txt</code> and the <code>.agents/stack.json</code> of
-the commit, and <code>generated.txt</code> is empty.</li>
+the commit, and <code>generated.txt</code> is empty. When the parent has no
+<code>.agents/generated.txt</code>, the list is empty too.</li>
 <li><strong>Which changes count.</strong> The gate compares the commit tree with the parent
 of the commit.</li>
 <li><strong>Rules:</strong>
@@ -1465,8 +1467,8 @@ adds to:</p>
 </tr>
 <tr>
 <td><code>.agents/generated.txt</code>, <code>.agents/coverage-exclude.txt</code></td>
-<td>jnterfaces writes them empty</td>
-<td>The person or the agent adds paths, and <code>test-review</code> judges each one.</td>
+<td>jnterfaces writes them empty, once, in a project that it started</td>
+<td>The person or the agent adds paths, and creates the file when it is missing. <code>test-review</code> judges each one. A project with a Justfile of its own gets neither file, and a missing list counts as empty.</td>
 </tr>
 <tr>
 <td><code>.pre-commit-config.yaml</code></td>
@@ -1501,6 +1503,22 @@ adds to:</p>
 role is installed, <code>just check</code> in CI runs <code>prose-check</code>. So the installer
 removes that file, whichever entry wrote it, and does not write it again while
 the tasker role is installed.</p>
+<p>The tasker role writes the CI job, <code>.github/workflows/check.yml</code>, as a
+<code>starter</code> only. It is a whole file, and it is yours from then on. An older
+installer takes a <code>seed</code> out on removal, so the job has no <code>seed</code>. The tasker
+role ships it only after jnterfaces writes the <code>check</code> recipe:</p>
+<ul>
+<li><strong>The events.</strong> It runs on each push and each pull request. It does not use
+<code>pull_request_target</code>, which would give the code of the pull request the
+secrets of the repository.</li>
+<li><strong>The history.</strong> The checkout has <code>fetch-depth: 0</code>, so <code>prose-check</code> can
+find the changed pages.</li>
+<li><strong>The tools.</strong> It installs <code>just</code>, <code>uv</code>, and <code>jlog</code> at a tagged release. The
+person adds the setup of the tools of a language that the runner lacks.</li>
+<li><strong>The run.</strong> It runs <code>just check</code> on the committed files, and not
+<code>just install</code>. An install can change tracked files, and then <code>jlog pass</code>
+refuses the run, because it needs a clean worktree.</li>
+</ul>
 <p>The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.</p>
 </section>
@@ -1548,7 +1566,7 @@ in the log folders.</p>
 <td>each profile</td>
 </tr>
 <tr>
-<td>The names <code>coverage-check</code> and <code>docstring-check</code>, as no-op steps, and the empty <code>.agents/generated.txt</code> and <code>.agents/coverage-exclude.txt</code></td>
+<td>The names <code>coverage-check</code> and <code>docstring-check</code>, as no-op steps, and, in a project that jnterfaces started, the empty <code>.agents/generated.txt</code> and <code>.agents/coverage-exclude.txt</code></td>
 <td>jnterfaces</td>
 </tr>
 <tr>
@@ -1597,6 +1615,10 @@ in the log folders.</p>
 </tr>
 <tr>
 <td>The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, <code>just record</code></td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The CI job <code>.github/workflows/check.yml</code>, a starter of the tasker role that runs <code>just check</code></td>
 <td>agent_gest_git_skills</td>
 </tr>
 <tr>
@@ -1771,6 +1793,10 @@ needs a <code>prose</code> record.</li>
 it, the file stays as now.</li>
 <li>A reinstall of nossaifd after the tasker role does not bring back
 <code>nossaifd-prose.yml</code>.</li>
+<li>With the tasker role, the project gets <code>.github/workflows/check.yml</code>. Its
+job checks out with <code>fetch-depth: 0</code> and runs <code>just check</code>. With the
+<code>nossaifd</code> role too, a push of a page with a hard problem fails it. A CI file
+of the person stays as it is, and the file stays after <code>just uninstall</code>.</li>
 <li><code>prose-check</code> and the turn gate accept the same pages, a <code>.qmd</code> file
 included. A change to <code>CHANGELOG.md</code> alone needs no <code>prose</code> record.</li>
 <li>The removal of the GitButler <code>Stop</code> hook keeps the nossaifd <code>Stop</code> hook.</li>
@@ -1783,7 +1809,11 @@ pass. In Rust, an entry for its file in the exclude list makes it pass.</li>
 <li>A line that only <code>integration</code> runs passes <code>coverage-check</code> when
 <code>integration</code> is in <code>just check</code>.</li>
 <li>A commit that adds its own path to <code>generated.txt</code> or
-<code>coverage-exclude.txt</code> still fails <code>coverage-check</code>.</li>
+<code>coverage-exclude.txt</code> still fails <code>coverage-check</code>. So does a commit that
+creates one of these files with its own path in it.</li>
+<li>In a project with no <code>.agents/generated.txt</code> or
+<code>.agents/coverage-exclude.txt</code>, <code>coverage-check</code>, <code>docstring-check</code> and the
+gate act as with empty lists. A missing file fails none of them.</li>
 <li>When code changed and there is no coverage report, <code>coverage-check</code> fails
 and says “write tests”.</li>
 <li>For a change with Rust unit tests only, <code>test-parent</code> does not call
