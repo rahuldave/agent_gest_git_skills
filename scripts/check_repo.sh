@@ -75,6 +75,10 @@ check_mirror() {
 check_mirror "AGENTS.template.md" ".agents/skills/gsu/assets/templates/AGENTS.template.md"
 # The starter and the rules that just install writes as the parts of the role are the two halves of the template.
 uv run --no-project --quiet python "$repo_root/scripts/split_agents_template.py" --check
+# The fresh agent copies the nonce of its packet, and the parent checks it with jagt result lint.
+for file in AGENTS.template.md AGENTS.instructions.md; do
+  grep -q -- '--expect-nonce <nonce>' "$repo_root/$file" || { echo "$file lacks the nonce rule of jagt 0.3.0" >&2; exit 1; }
+done
 check_mirror "docs/gest_codex_workflow.md" ".agents/skills/gtw/references/gest_codex_workflow.md"
 for skill in gor gtw gpl gcm gpa gpr grv gsu gte; do
   check_mirror "docs/integration_delivery_workflow.md" ".agents/skills/$skill/references/integration_delivery_workflow.md"
