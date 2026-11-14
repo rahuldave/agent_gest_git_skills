@@ -975,10 +975,11 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     - A commit that changes a module of the API pages needs the same two
       records. Its docstrings become text on the website.
     - A change to other code needs neither record.
-- **The agent hooks** of each harness do not check records. They parse the
-  hook input with `jq`, not `sed`, so a quoted message does not hide a flag. In
-  Codex, a `PreToolUse` hook that exits with 2 stops the command. The hooks stop
-  these commands as a best effort:
+- **The agent hooks** of each harness do not check records. The gate guard,
+  `.agents/skills/gcm/scripts/gate_guard.py`, parses the hook input as JSON
+  and splits the command into words as a shell does, so a quoted message does
+  not hide a flag. In Claude Code and in Codex, a `PreToolUse` hook that exits
+  with 2 stops the command. The hooks stop these commands as a best effort:
   - `--no-verify`, and `-n` with `commit`.
   - `core.hooksPath`, `git commit-tree` and `git update-ref`.
   - `just record`, in a harness with a hook that writes records.
