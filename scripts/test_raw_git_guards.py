@@ -40,6 +40,8 @@ class InstalledHookTests(unittest.TestCase):
         for folder, settings in ((".claude", "settings.json"), (".codex", "hooks.json")):
             shutil.copytree(ROOT / folder / "hooks", self.repo / folder / "hooks")
             shutil.copy(ROOT / folder / settings, self.repo / folder / settings)
+        # The gate guard runs its script from the gcm skill, so the tests run the guard too.
+        shutil.copytree(ROOT / ".agents/skills/gcm", self.repo / ".agents/skills/gcm")
         (self.repo / "README.md").write_text("scratch\n")
         git("add", "README.md", cwd=self.repo)
         git("commit", "-qm", "init", cwd=self.repo)

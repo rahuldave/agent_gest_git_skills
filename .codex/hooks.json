@@ -18,6 +18,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "sh -c 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); \"$ROOT/.codex/hooks/gate-guard.sh\"'",
+            "statusMessage": "Checking for commands that go around the commit gate"
+          },
+          {
+            "type": "command",
             "command": "sh -c 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); \"$ROOT/.codex/hooks/raw-git-write-guard.sh\"'",
             "statusMessage": "Checking the commit rules of the tasker variant"
           }
