@@ -369,6 +369,7 @@ done
   "${python[@]}" -m unittest scripts/test_worktrees.py -q
   "${python[@]}" -m unittest scripts/test_commit_gate.py -q
   "${python[@]}" -m unittest scripts/test_gate_guard.py -q
+  "${python[@]}" -m unittest scripts/test_agentic_target.py -q
 )
 
 if [ "$mode" = "--diff" ]; then

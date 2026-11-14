@@ -74,7 +74,7 @@ log and the records, and it runs no step itself.
 
 ```
  person / agent
-     │  just check                         just review | test-review | docs …
+     │  just check                         just review | update-docs …     
      ▼                                          ▼
  ┌──── jnterfaces ─────────────────────┐  ┌─ agent_gest_git_skills ───────┐
  │ root Justfile + index: step names,  │  │ target recipes, base tasks    │
@@ -386,7 +386,7 @@ The skills ask for the work, and the steps and targets check it.
   tests, and the docs lens of `review` checks the docstrings.
 - **A part of a skill becomes a target only when the gate needs its
   evidence.** The other parts of the skills stay as they are.
-- **The doc pages are the exception.** `just docs` writes the pages that a
+- **The doc pages are the exception.** `just update-docs` writes the pages that a
   change affects, such as the README and the guides. A fresh agent can do that
   work, because it needs the whole change and not the context of one function.
 
@@ -400,7 +400,7 @@ check that a skill runs goes through a recipe, so the run log has it.
 | `gim` | It writes the code, the tests and the docs. It ends with `just check` and the required targets, and it fixes what their findings say. It runs no checks of its own. |
 | `gte` | It says how to write a good test. It runs tests only through `just test`, `just integration` and `just coverage-check`. It holds the base tasks of `test-review` and `visual-check`. |
 | `gfm` | It runs `just fmt`, then the check steps. It names no tool such as ruff or biome, because the profiles own the tools. |
-| `gdo` | It asks the author for a doc on every item, and it reads the output of `docstring-check`. It holds the base tasks of `docs` and `visualize`. |
+| `gdo` | It asks the author for a doc on every item, and it reads the output of `docstring-check`. It holds the base tasks of `update-docs` and `visualize`. |
 | `grv` | It holds the base task of `review`, with the lenses and the docs lens. To run `grv` by hand is to run `just review`. |
 | `gcm` | It commits after the pass and the records. It explains a stop of the gate, asks the person before `record-skip`, and uses stacked PRs with plain git. |
 | `gpa`, `gor` | They use stacks with plain git, the shared log folder, and records from worktrees. |
@@ -434,16 +434,34 @@ Each packet has these parts:
 
 - **The base task** from the skill. For example, `grv` gives the review lenses.
   A lens is one point of view of the review, for example correctness, tests or
-  safety. The file is `references/targets/<target>.md` in the skill.
+  safety. The file is `references/targets/<target>.md` in the skill. The
+  recipe looks for that file in each installed skill, and one skill must have
+  it. So the `nossaifd` skill gives the base task of `prose`, and a target
+  without its skill prints no packet.
 - **The language layer** from `.agents/targets/<language>/<target>.md`, for
   each language in `.agents/stack.json`. Each profile ships its files, as it
-  ships its `just` modules now. For example, the Python file for `docs` can say
+  ships its `just` modules now. For example, the Python file for `update-docs` can say
   "write docments for each argument". A new language needs a new file, and no
   change to any skill.
 - **The repository text** from `.agents/targets/<target>.md`, if the file
   exists. For example, `.agents/targets/review.md` can say "check each SQL
   migration for a rollback".
 - **The inputs:** the diff, the input tree and the arguments of the recipe.
+  The diff compares the worktree with `HEAD`, and holds the files that git does
+  not track yet. It is the file `diffs/<head>-<tree>.diff` in the shared log
+  folder, so the same tree on another `HEAD` gets a file of its own. Before
+  the recipe computes the tree, it makes `.agents/log/.gitignore` with the
+  line `*` if the file is missing. So the run log of `jlog` and the diff file
+  are not in the tree. The recipe stops if `.agents`, `.agents/log`, its
+  `diffs` folder or this file is a link. It opens each folder through the
+  folder above it, so a link that appears later moves nothing. It writes each
+  diff as a new file, so a link or a hard link at its name keeps the other
+  file. In the main checkout, it also stops if `.git` is a link to a folder
+  elsewhere. So it writes nothing outside the repository. From a linked
+  worktree, the main checkout is the folder that holds the real `.git`, as git
+  names it, even when the `.git` of the main checkout is a link.
+- **The allowed actions:** what the fresh agent may do. A target that changes
+  files names them, such as "change the docs that the change affects".
 - **The required outputs:** the fields that the result must have, for example
   `findings` and `status`.
 - **A nonce:** a random value of 32 lowercase hex digits, whose first digit is
@@ -467,7 +485,7 @@ The first agentic targets:
 |---|---|---|
 | `just review` | An adversarial review of the changes, on the strongest model. The docs lens checks that each new or changed doc says what the item is for, that it matches the code, and that it is not a stub. | Findings, each one fixed with a test or with a reason not to fix it. |
 | `just test-review` | Checks that each new behavior has a test, that each new test checks a result, and that each new pragma or exclude has a reason. A new test that passed on the parent commit is a finding, unless the change is a refactor. | Findings, each one fixed with a test or with a reason not to fix it. |
-| `just docs [area]` | Finds the docs that the change affects, and writes or changes them. The repository text says which docs the repository has, for example user docs, developer docs, API docs or a change log. | The changed docs, and the docs it checked and left alone. |
+| `just update-docs [area]` | Finds the docs that the change affects, and writes or changes them. The repository text says which docs the repository has, for example user docs, developer docs, API docs or a change log. | The changed docs, and the docs it checked and left alone. |
 | `just prose [path]` | Applies the nossaifd guide to the changed pages and docstrings, beyond `check.py`: the plain-writing pass and the pass that removes the habits of model writing. | The changed pages, and the lint output after the change. |
 | `just visual-check [url-or-flow]` | Runs the app, goes through the flow in a browser and takes screenshots. | The screenshots, shown to the person, and a pass or fail for each step of the flow. |
 | `just visualize [topic]` | Draws a diagram of a part of the code, for a doc or for the person. | The diagram file and the doc that shows it. |
@@ -540,6 +558,11 @@ Two recipes have the name `prose` now, and both change:
 
 So `prose` is free for the agentic target.
 
+The target that writes docs is `update-docs`, not `docs`. Many repositories
+have a recipe `docs` that previews the docs site, as the `docs` tool does. A
+role file that also had `docs` would stop each Justfile that imports it,
+because `just` refuses a recipe that two files define.
+
 Other targets to consider later:
 
 - **`just security-review`:** looks for secrets, injection and unsafe input.
@@ -587,10 +610,10 @@ only place for them.
   packet was made. The output tree is the worktree tree when the fresh agent
   stopped, after its changes. A target that changes no file has the same tree
   twice.
-- **The chain.** `docs` and `prose` change files, so the gate accepts a chain:
+- **The chain.** `update-docs` and `prose` change files, so the gate accepts a chain:
 
   ```text
-  docs         T0 -> T1
+  update-docs  T0 -> T1
   prose        T1 -> T2
   test-review  T2 -> T2
   review       T2 -> T2
@@ -598,8 +621,8 @@ only place for them.
   ```
 
   Each record must start at the output tree of the record before it. The last
-  tree must be the commit tree. A `docs` record comes before a `prose` record,
-  because `prose` checks the text that `docs` wrote. `test-review` and `review`
+  tree must be the commit tree. An `update-docs` record comes before a `prose` record,
+  because `prose` checks the text that `update-docs` wrote. `test-review` and `review`
   come after the last record that changes files. When a review leads to fixes, the fixes make a
   new tree, and the review runs again on it. `test-review` and `review` change
   no files, so they can run in either order on the same tree.
@@ -843,17 +866,33 @@ So these rules apply:
 ### The worktree tree
 
 The gates compare trees. An agent leaves its changes unstaged, so the trees
-come from the worktree, not from the index. `jlog` computes the worktree tree
-with a temporary index:
+come from the worktree, not from the index. The gate and the agentic targets
+compute the worktree tree as below, and `jlog` and `jagt` also start from a
+copy of the index:
 
 ```sh
-GIT_INDEX_FILE=<tmp> git read-tree HEAD
-GIT_INDEX_FILE=<tmp> git add -A
-GIT_INDEX_FILE=<tmp> git write-tree
+cp -p .git/index <tmp>/index                  # keeps the time of the index
+GIT_INDEX_FILE=<tmp>/index git add -A
+GIT_INDEX_FILE=<tmp>/index git write-tree
 ```
 
-`GIT_INDEX_FILE` names the index file that git uses. With a temporary file, the
-real index does not change. Files that git ignores are not in the tree.
+- **The index file.** `GIT_INDEX_FILE` names the index file that git uses.
+  With a copy, the real index does not change. The copy keeps the time of the
+  index, so git still checks the content of a file that changed in the same
+  second as the index.
+- **The files of the index.** A file that the index holds is in the tree,
+  also when `.gitignore` names it. Other files that git ignores are not in the
+  tree.
+- **Entries that git does not check.** When an entry of the index is
+  assume-unchanged or skip-worktree, the copy starts from `HEAD` with
+  `git read-tree HEAD` instead.
+- **The object store.** New objects go into a temporary object store.
+  `GIT_ALTERNATE_OBJECT_DIRECTORIES` names the real store, so git reads the
+  old objects from it, and from the stores that the person already named
+  there. Git splits that list at each `:`, so a path with `:`, `"` or `\`
+  goes in double quotes.
+- **No shared index.** The setting `core.splitIndex=false` comes from the
+  environment, so a split index leaves no new shared index file.
 
 At commit time, the commit tree must equal the worktree tree. So all changes
 must be staged:
@@ -929,7 +968,7 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   ```text
   review       **
   test-review  @code
-  docs         @pages  @api
+  update-docs  @pages  @api
   prose        @pages  @api
   ```
 
@@ -971,7 +1010,7 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   - **Rules:**
     - Every commit needs a `review` record.
     - A commit that changes code needs a `test-review` record.
-    - A commit with a docs file needs a `docs` record and a `prose` record.
+    - A commit with a docs file needs an `update-docs` record and a `prose` record.
     - A commit that changes a module of the API pages needs the same two
       records. Its docstrings become text on the website.
     - A change to other code needs neither record.
@@ -1121,7 +1160,7 @@ needs it.
 - `set shell` in the files that the installer generates.
 - The `docs` tool and the `api` tool, and an entry for the smalldocs config in
   `formats.json`.
-- The agentic targets `review`, `test-review`, `docs`, `prose`,
+- The agentic targets `review`, `test-review`, `update-docs`, `prose`,
   `visual-check` and `visualize`, with the language layer, the repository text
   and the nonce.
 - The steps `coverage-check` and `docstring-check` in each profile.
@@ -1188,9 +1227,9 @@ needs it.
 **Records:**
 
 - An agent commit with no review record for the tree stops.
-- The chain docs, prose, test-review, review and check passes, and so does
+- The chain update-docs, prose, test-review, review and check passes, and so does
   the chain with `review` before `test-review`. A chain with `prose` before
-  `docs` stops.
+  `update-docs` stops.
 - A record with status `failed`, or with a finding that is not fixed, does not
   count.
 - A review by a fresh agent in another worktree gives a record that the gate
@@ -1308,7 +1347,7 @@ needs it.
   commit, and for a new pragma with no reason.
 - The `review` packet has the docs lens, and a stub doc such as "Returns the
   result." gives a finding.
-- The `docs` packet of a Python project holds the Python language layer.
+- The `update-docs` packet of a Python project holds the Python language layer.
 - A new Rust project gets `just check` with real steps, and no `api` step.
 
 **Docs:**

@@ -31,7 +31,7 @@ A record is a JSON file in `records/` of the shared log folder, the `.agents/log
 A record counts when its status is `success` and each finding has a `test` or a `reason`. A skip from
 `just record-skip` is a record with `"source": "skip"`, a `reason`, and the same tree twice.
 
-The chain: `docs` comes before `prose`, and each record starts at the output tree of the record before it. The
+The chain: `update-docs` comes before `prose`, and each record starts at the output tree of the record before it. The
 last output tree is the commit tree. Every other target, such as `review` and `test-review`, has the commit tree as
 its input tree and its output tree.
 
@@ -58,12 +58,12 @@ AGENT_VARIABLES = ("CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDECODE")
 DEFAULT_REQUIRED = """\
 review       **
 test-review  @code
-docs         @pages  @api
+update-docs  @pages  @api
 prose        @pages  @api
 """
 
 # The targets that change files, in the order of the chain.
-CHANGERS = ("docs", "prose")
+CHANGERS = ("update-docs", "prose")
 
 PAGES = ("**/*.md", "**/*.qmd")
 
@@ -83,6 +83,15 @@ def git(args: Sequence[str], cwd: Path, env: Optional[Dict[str, str]] = None, ch
     if check and run.returncode != 0:
         raise Stop(f"git {' '.join(args)} failed: {run.stderr.strip()}")
     return run.stdout if run.returncode == 0 else ""
+
+
+def alternate(path: Path) -> str:
+    """`path` as an entry of GIT_ALTERNATE_OBJECT_DIRECTORIES. Git splits the list at each `:`, and reads an entry
+    that starts with `"` as a C string, so a path with `:`, `"` or `\\` goes in quotes."""
+    text = str(path)
+    if ":" in text or '"' in text or "\\" in text:
+        return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return text
 
 
 def plain_env() -> Dict[str, str]:
@@ -107,10 +116,16 @@ def worktree_tree(root: Path) -> str:
         (Path(temp) / "objects").mkdir()
         env.update(GIT_INDEX_FILE=str(index), GIT_OBJECT_DIRECTORY=str(Path(temp) / "objects"),
                    GIT_ALTERNATE_OBJECT_DIRECTORIES=":".join(
-                       filter(None, [str(root / objects), os.environ.get("GIT_ALTERNATE_OBJECT_DIRECTORIES", "")])))
+                       filter(None, [alternate(root / objects), os.environ.get("GIT_ALTERNATE_OBJECT_DIRECTORIES", "")])))
+        # With a split index, each write of the copy, by git add and by git write-tree, would leave a new shared index
+        # in the git folder. A setting in the environment reaches every command on the copy.
+        count = int(env.get("GIT_CONFIG_COUNT", "0") or "0")
+        env.update({"GIT_CONFIG_COUNT": str(count + 1), f"GIT_CONFIG_KEY_{count}": "core.splitIndex",
+                    f"GIT_CONFIG_VALUE_{count}": "false"})
         copied = False
         if (root / real_index).is_file():
-            shutil.copy(root / real_index, index)
+            # copy2 keeps the time of the index, which git needs to see a file that changed in the same second.
+            shutil.copy2(root / real_index, index)
             listing = git(["ls-files", "-v"], root, env, check=False)
             # An assume-unchanged entry (a small letter) or a skip-worktree entry (S) hides changes from git add.
             copied = not any(line[:1].islower() or line[:1] == "S" for line in listing.splitlines())
