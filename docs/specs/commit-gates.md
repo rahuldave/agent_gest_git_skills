@@ -629,6 +629,20 @@ only place for them.
   skill. The packet holds the path of its worktree, so the hook computes the
   tree in the right checkout.
 - **The gate reads only records.** It does not know which harness made them.
+- **The file of a record** is a JSON file in `records/`, with these keys:
+
+  | Key | What it holds |
+  |---|---|
+  | `version` | `1`. |
+  | `target` | The name of the target, for example `review`. |
+  | `status` | The status of the result. Only `success` counts. |
+  | `input_tree`, `output_tree` | The two trees of the record. |
+  | `findings` | A list. Each finding has a `summary`, and a `test` that shows the fix or a `reason` not to fix it. |
+  | `source` | `hook`, `agent` for `just record`, or `skip` for `just record-skip`. |
+  | `reason` | For a skip, the reason. A skip has the same tree twice. |
+  | `model`, `nonce` | The model of the fresh agent, and the nonce of its packet. |
+
+  The gate is `.agents/skills/gcm/scripts/commit_gate.py`.
 - **Who writes a record** depends on the adapter of the harness:
 
   | Harness | How the result becomes a record |
@@ -934,12 +948,24 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     example `**/*.py`, `**/*.ts` or
     `**/*.rs`. The installer copies them into the key `code` of
     `.agents/stack.json`, for each profile. With no profile, `@code` is empty.
-  - **Which file counts.** The gate reads `required.txt`, `.agents/stack.json`
-    and `.agents/generated.txt` from the parent of the commit, so a commit
-    cannot change the lists for itself. On the first commit of a repository,
-    the gate uses the default `required.txt` and the `.agents/stack.json` of
-    the commit, and `generated.txt` is empty. When the parent has no
-    `.agents/generated.txt`, the list is empty too.
+  - **Which file counts.** The gate reads `required.txt` and
+    `.agents/generated.txt` from the parent of the commit, so a commit cannot
+    change the lists for itself. With no parent, or a parent without the file,
+    the gate uses the default `required.txt` and an empty `generated.txt`.
+  - **The steps come from the commit.** `jlog pass` reads the steps of the
+    worktree, so the gate reads them from the `.agents/stack.json` of the
+    commit. A commit can then remove a tool and its step, and its review sees
+    the change.
+  - **`@code` takes both lists.** It has the code globs of the commit and of
+    the parent. So a commit that removes a language still needs `test-review`
+    for its code.
+  - **An amend** replaces the last commit. The gate looks for `--amend` in
+    the command line of git, with `ps`. A message can hold the same word, so
+    the gate then applies the rules of both HEAD and its parent, and the
+    stricter rules win.
+  - **A bad line cannot land.** The gate also reads the `required.txt` of the
+    commit, and stops a line that it cannot read. A bad list in the parent,
+    from before the gate, gives way to the default list.
   - **Which changes count.** The gate compares the commit tree with the parent
     of the commit.
   - **Rules:**
