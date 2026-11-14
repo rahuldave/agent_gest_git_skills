@@ -28,7 +28,7 @@ review:
     true
 test-review:
     true
-docs:
+update-docs:
     true
 prose:
     true
@@ -98,6 +98,54 @@ class GateTests(unittest.TestCase):
         self.passed()
         result = self.commit()
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_repository_path_with_a_colon_or_a_quote_has_its_tree(self) -> None:
+        # Git splits GIT_ALTERNATE_OBJECT_DIRECTORIES at each colon, so the path of the object store goes in quotes.
+        repo = self.base / 'we:ird"name'
+        repo.mkdir()
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.com", GIT_COMMITTER_NAME="t",
+                   GIT_COMMITTER_EMAIL="t@example.com")
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True, env=env)
+        (repo / ".gitignore").write_text("kept.txt\n")
+        (repo / "kept.txt").write_text("kept\n")
+        subprocess.run(["git", "add", ".gitignore"], cwd=repo, check=True, env=env)
+        subprocess.run(["git", "add", "-f", "kept.txt"], cwd=repo, check=True, env=env)
+        subprocess.run(["git", "commit", "-q", "-m", "x"], cwd=repo, check=True, env=env)
+        # An entry that git assumes unchanged makes the gate start from HEAD, which needs the object store.
+        subprocess.run(["git", "update-index", "--assume-unchanged", ".gitignore"], cwd=repo, check=True, env=env)
+        head = subprocess.run(["git", "rev-parse", "HEAD^{tree}"], cwd=repo, check=True, env=env,
+                              capture_output=True, text=True).stdout.strip()
+        self.assertEqual(commit_gate.worktree_tree(repo), head)
+
+    def test_a_change_in_the_second_of_the_index_is_in_the_worktree_tree(self) -> None:
+        # Git trusts the stat data of an entry only when the file is older than the index file. A copy of the index
+        # with a new time would make a same-size change in that second look clean.
+        # The ctime of a file cannot be set, so git must not compare it: a change of the ctime alone shows the change.
+        git("config", "core.trustctime", "false", cwd=self.repo)
+        index, path = self.repo / ".git/index", self.repo / "a.txt"
+        self.write("a.txt", "aaa\n")
+        # A time in the past, so that a copy made now is newer than the entry.
+        stamp = path.stat().st_mtime_ns - 10 * 10**9
+        os.utime(path, ns=(stamp, stamp))
+        git("add", "-A", cwd=self.repo)
+        # The index has the time of the file, so its entry is racy, and only its content tells the change.
+        os.utime(index, ns=(stamp, stamp))
+        before = commit_gate.worktree_tree(self.repo)
+        self.write("a.txt", "bbb\n")
+        os.utime(path, ns=(stamp, stamp))
+        self.assertNotEqual(commit_gate.worktree_tree(self.repo), before)
+
+    def test_a_split_index_leaves_no_new_shared_index(self) -> None:
+        self.write("a.txt", "x\n")
+        git("add", "-A", cwd=self.repo)
+        git("config", "core.splitIndex", "true", cwd=self.repo)
+        git("update-index", "--split-index", cwd=self.repo)
+        before = sorted(p.name for p in (self.repo / ".git").glob("sharedindex.*"))
+        self.write("a.txt", "y\n")
+        self.write("b.txt", "z\n")
+        commit_gate.worktree_tree(self.repo)
+        self.assertEqual(sorted(p.name for p in (self.repo / ".git").glob("sharedindex.*")), before)
 
     def assertStops(self, result, text: str) -> None:
         self.assertNotEqual(result.returncode, 0, "the commit went through")
@@ -211,7 +259,7 @@ class GateTests(unittest.TestCase):
         t2 = self.tree()
         git("add", "-A", cwd=self.repo)
         self.passed()
-        self.record("docs", t0, t1)
+        self.record("update-docs", t0, t1)
         self.record("prose", t1, t2)
         self.record("review")
         self.assertGoes(self.commit(env=self.agent))
@@ -227,9 +275,9 @@ class GateTests(unittest.TestCase):
         git("add", "-A", cwd=self.repo)
         self.passed()
         self.record("prose", t0, t1)
-        self.record("docs", t1, t2)
+        self.record("update-docs", t1, t2)
         self.record("review")
-        self.assertStops(self.commit(env=self.agent), "`just docs`, `just prose`")
+        self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
 
     def test_a_review_before_the_last_change_does_not_count(self) -> None:
         self.first_commit()
@@ -240,7 +288,7 @@ class GateTests(unittest.TestCase):
         t1 = self.tree()
         git("add", "-A", cwd=self.repo)
         self.passed()
-        self.record("docs", t0, t1)
+        self.record("update-docs", t0, t1)
         self.record("prose", t1, t1)
         self.assertStops(self.commit(env=self.agent), "`just review`")
 
@@ -300,14 +348,14 @@ class GateTests(unittest.TestCase):
         self.record("review")
         self.assertGoes(self.commit(env=self.agent))
 
-    def test_a_deleted_page_needs_docs_and_prose(self) -> None:
+    def test_a_deleted_page_needs_update_docs_and_prose(self) -> None:
         self.write("guide.md", "text\n")
         self.first_commit()
         (self.repo / "guide.md").unlink()
         git("add", "-A", cwd=self.repo)
         self.passed()
         self.record("review")
-        self.assertStops(self.commit(env=self.agent), "`just docs`, `just prose`")
+        self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
 
     def test_a_required_list_that_the_commit_loosens_still_counts_as_the_parent_has_it(self) -> None:
         self.first_commit()
