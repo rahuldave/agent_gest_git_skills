@@ -47,7 +47,6 @@ CASES = {0: "passed on the parent", 1: "failed on the parent", 5: "no test ran o
 OUTPUT_LIMIT = 20000
 # The signals that stop the script. The first one removes the worktree first, and the script ignores the ones after it.
 STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP, signal.SIGINT)
-stopping = False
 
 
 def glob_pattern(glob: str) -> re.Pattern:
@@ -186,12 +185,11 @@ def write_result(root: Path, result: dict) -> Path:
 
 
 def stop_on_signal(number: int, _frame) -> None:
-    """Turn the first stop signal into an exit, so that the finally of run_on_parent removes the worktree. A signal
-    after it does nothing, so that a second Ctrl-C cannot stop the cleanup."""
-    global stopping
-    if stopping:
-        return
-    stopping = True
+    """Turn the first stop signal into an exit, so that the finally of run_on_parent removes the worktree. The stop
+    signals after it are ignored, so a second Ctrl-C cannot stop the cleanup. Python keeps an ignored signal ignored
+    through its shutdown, and a handler of its own does not, so a late signal cannot change the exit code."""
+    for each in STOP_SIGNALS:
+        signal.signal(each, signal.SIG_IGN)
     sys.exit(128 + number)
 
 

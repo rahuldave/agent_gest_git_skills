@@ -207,8 +207,15 @@ class TestParentTests(unittest.TestCase):
                                            start_new_session=True, stdout=subprocess.DEVNULL,
                                            stderr=subprocess.DEVNULL)
                 self.wait_for(started, process)
-                for _ in range(4):
-                    os.killpg(process.pid, number)
+                # A signal every millisecond until the script ends, so that some arrive during the cleanup and
+                # some during the shutdown of Python.
+                for _ in range(20000):
+                    if process.poll() is not None:
+                        break
+                    try:
+                        os.killpg(process.pid, number)
+                    except ProcessLookupError:
+                        break
                     time.sleep(0.001)
                 self.assertEqual(process.wait(timeout=20), 128 + number)
                 self.assertEqual(self.worktrees(), 1)
