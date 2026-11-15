@@ -28,6 +28,17 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); \"$ROOT/.codex/hooks/record-result.sh\"'",
+            "statusMessage": "Writing the record of the result for the commit gate"
+          }
+        ]
+      }
     ]
   }
 }

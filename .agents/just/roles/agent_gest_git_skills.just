@@ -57,3 +57,15 @@ visual-check *args:
 [positional-arguments]
 visualize *args:
     @{{jn_target}} visualize "$@"
+
+jn_record := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' --with pyyaml python .agents/skills/gcm/scripts/record_result.py"
+
+# Write the record of the AGENT_RESULT v1 in FILE, for a harness whose fresh agents stop without a record hook
+[positional-arguments]
+record target file:
+    @{{jn_record}} record "$1" "$2"
+
+# Let the worktree tree through without the record of TARGET, for REASON. The agent hooks ask you first
+[positional-arguments]
+record-skip target +reason:
+    @{{jn_record}} skip "$@"
