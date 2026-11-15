@@ -16,6 +16,10 @@ You are the fresh agent. Judge the tests of the change. Do not change a file.
 - **The diff** of the change against the parent commit, in the input file of the packet. It holds the
   files that git does not track yet.
 - **The input tree**, which is the tree of all the files of the worktree when the recipe made the packet.
+- **The result of `test-parent`**, in the second input file. `test-parent` ran the added and changed test files
+  on the parent commit, each file alone. The case of each file is one of "passed on the parent", "failed on the
+  parent", "no test ran on the parent" and "the runner failed". The output of the run is next to it. A packet
+  without this file says so in its notes.
 
 ## The checks
 
@@ -24,7 +28,9 @@ You are the fresh agent. Judge the tests of the change. Do not change a file.
 2. **Each new test checks a result.** A test that only runs the code, or that checks a value that it
    set itself, checks nothing.
 3. **A new test fails without its change.** A new test that passes on the parent commit is a finding,
-   unless the change is a refactor that keeps the behavior.
+   unless the change is a refactor that keeps the behavior. Read the result of `test-parent`. For "failed on the parent",
+   read the line of each test in the output, because a test of that file can still pass. For "no test ran on the
+   parent" and "the runner failed", judge the tests from the diff.
 4. **Each new pragma or exclude has a reason.** A pragma is a comment that turns off a check, such as
    `# pragma: no cover` or `# noqa`. An exclude is a path in `.agents/coverage-exclude.txt` or
    `.agents/generated.txt`. The reason is next to it.

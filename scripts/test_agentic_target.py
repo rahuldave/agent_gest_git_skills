@@ -16,6 +16,9 @@ import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / ".agents/skills/gcm/scripts/agentic_target.py"
+_spec = importlib.util.spec_from_file_location("agentic_target", SCRIPT)
+agentic_target = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(agentic_target)
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -534,6 +537,19 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("no installed skill has references/targets/test-review.md", result.stderr)
         self.assertNotIn("AGENT_TASK", result.stdout)
+
+    def test_the_packet_of_test_review_holds_the_result_of_test_parent(self) -> None:
+        self.write(".agents/skills/gte/references/targets/test-review.md", "TEST TASK\n")
+        self.commit()
+        self.write("tests/test_a.py", "def test_a(): pass\n")
+        result = self.render("test-review")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no result of test-parent for the tree", result.stderr)
+        tree = agentic_target.worktree_diff(self.repo)[1]
+        self.write(f".agents/log/test-parent/{tree}.json", '{"runs": []}\n')
+        result = self.render("test-review")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"test-parent/{tree}.json", result.stdout)
 
     def test_two_skills_with_one_base_task_print_no_packet(self) -> None:
         self.write(".agents/skills/other/references/targets/review.md", "OTHER\n")

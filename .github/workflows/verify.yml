@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 83113c360d094dfd7348a801658387122fcd8295
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet fe5448d502c55bd2a127e0ffdbbbab0a2e439a32
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Keep the build of jlog
         id: jlog
