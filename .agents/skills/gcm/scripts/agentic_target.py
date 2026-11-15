@@ -179,8 +179,8 @@ def prompt(root: Path, target: str) -> Tuple[str, List[str]]:
     return "\n\n".join(parts) + "\n", [str(path.relative_to(root)) for path in layers]
 
 
-def prepare_log(root: Path) -> Tuple[Path, int]:
-    """The shared log folder, with a `.gitignore` that ignores all of it, and an open descriptor of its `diffs` folder.
+def prepare_log(root: Path, sub: str = "diffs") -> Tuple[Path, int]:
+    """The shared log folder, with a `.gitignore` that ignores all of it, and an open descriptor of its folder SUB.
     The script writes the `.gitignore` before it computes the tree, so neither the run log of jlog nor the diff file
     is in the tree of the first packet of a repository. jagt ignores the folder only after it computed its tree. The
     script opens each folder through the descriptor of its parent and follows no link, so it writes nothing outside
@@ -194,7 +194,7 @@ def prepare_log(root: Path) -> Tuple[Path, int]:
     except OSError as exc:
         raise Stop(f"cannot open the main checkout {folder}: {exc.strerror}")
     try:
-        for part in (".agents", "log", "diffs"):
+        for part in (".agents", "log", sub):
             folder = folder / part
             try:
                 os.mkdir(part, 0o755, dir_fd=fd)

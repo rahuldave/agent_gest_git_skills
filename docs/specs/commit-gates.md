@@ -674,10 +674,23 @@ only place for them.
   | Codex | The same as Claude Code. Codex 0.163 has the hooks `SubagentStart` and `SubagentStop`, with `agent_transcript_path` and `last_assistant_message`. Codex runs the hooks of a project only after the person trusts them. |
   | An older Codex, or any other harness | The agent that ran the target runs `just record <target> <file>`, and the record is marked `"source": "agent"`. |
 
-  A harness with a hook that writes records stops `just record`, so its agents
-  cannot write a record by hand.
+  In Claude Code, `just record` stops, because the hook writes the records.
+  The script cannot tell whether a Codex has the hook, so in Codex
+  `just record` checks the result instead. An agent can clear the variables
+  of its harness, so they cannot say that no harness runs.
+- **A repository with the record hook.** There, `just record` without
+  `CODEX_THREAD_ID` stops. The hook can be in `.claude/settings.json`, `.claude/settings.local.json`,
+  `.codex/hooks.json` or `.codex/config.toml`. The script reads them in the
+  checkout where it runs and in the main checkout, and the guard protects
+  both. It also reads the settings of the person in `~/.claude` and
+  `~/.codex`.
 - **The check of a `just record`** in Codex reads the transcript of the fresh
-  agent, a JSONL file:
+  agent, a JSONL file in the `sessions` folder of `CODEX_HOME`, by default
+  `~/.codex/sessions`. The record takes the result from the transcript, not
+  from the file of the agent:
+  - A forked agent is not a fresh agent. Its transcript holds the turns of
+    its parent, so the check refuses a transcript with `forked_from_id` or
+    with more than one `session_meta` line.
   - Its `session_meta` line names the parent thread in `parent_thread_id`. The
     parent must be the thread that ran `just record`, from `CODEX_THREAD_ID`.
   - One fresh agent can have several turns. The nonce must be in the
@@ -689,6 +702,100 @@ only place for them.
     `state_5.sqlite-shm`.
 - **A skip with a reason.** `just record-skip <target> <reason>` lets one tree
   through without that record. The agent hooks ask the person before it runs.
+  Codex has no question for a hook, so there the hook stops the command, and
+  the agent asks the person to run it.
+- **One result, one record.** The record of a packet is
+  `records/<nonce>.json`, and a second result of the same packet gives no
+  record. The findings must be a list in `outputs.findings`, or the result
+  gives no record.
+- **The guard of the records.** The gate guard stops these calls:
+  - `record_result.py hook`, which only the harness runs.
+  - `just record` in Claude Code. The guard finds the recipe after the
+    options of just, and it reads the options from `just --help`.
+  - A record command that sets or unsets `CLAUDECODE`,
+    `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID` or `CODEX_HOME`, or that
+    runs with `env`, `exec`, `unset` or `export -n`. Those programs can
+    clear the variables without their names.
+  - A write to the `sessions` folder of Codex.
+  - A write to `.git/config`, where a `core.hooksPath` would move the hooks.
+  - `git commit`, `git merge` and `git pull` while git has a
+    `core.hooksPath` from any source, such as an include, `config.worktree`,
+    the config of the person or a variable. An empty value counts too.
+    Then git would not run the gate. The guard asks git in the repository
+    that `-C`, `--git-dir` or `GIT_DIR` names, with the `-c` settings and
+    the variables of the command. The variables include the exports and
+    `declare -x`, also in a nested `bash -c`, `eval` or `$(...)`.
+    A variable that is not exported may not reach git, so the guard also
+    asks git without the assignments of the line. A function gets the
+    assignments of the whole line.
+  - The same commands when the guard cannot know the answer. A folder, a
+    `-c` setting or a config variable can hold a value that the guard
+    cannot know. So can a variable that `read`, `printf -v` or `for`
+    sets. Git can also fail to read the repository or its config. The
+    message names the file of the setting when git names one.
+  - A `git commit`, `merge` or `pull` with a word that the shell changes,
+    such as `$(...)`, a `$`, `{a,b}` or a pattern such as `*`. A word in
+    the value of an option such as `-m` is fine. Otherwise the shell
+    could turn the word into `--no-verify`.
+  - A git line whose program is such a word, such as `$(command -v git)`
+    or `${X:-git}`. Another such program gets the checks of git on its
+    words, and the checks of a program that runs git, so `$X commit -n`
+    and `$UV run git commit -n` stop. A program with a plain last part,
+    such as `$VENV/bin/python`, counts as that program.
+    The guard also checks each git word, and each `sh -c`, here-doc or
+    here-string of a shell, after a program that runs it, such as `find -exec`, `uv run`
+    or `arch`, and the
+    command of `git submodule foreach`. It follows the aliases of the
+    shell that the line defines, and splits a variable such as `$X` that
+    holds spaces.
+  - A git line that is nested too deeply for the guard to follow.
+  - A `git commit`, `merge` or `pull` under `xargs`, which adds words
+    from its input.
+  - Any git line when the guard itself fails. A line without git runs.
+- **The limits of the records.** The guard is a best effort, so an agent
+  that tries hard can still write a record that no fresh agent gave:
+  - A record hook in a setting that the script does not read, such as the
+    managed settings or a plugin of Codex, does not stop `just record`.
+  - The guard sees the shell and the file tools only. A program such as
+    `python -c` can write a file in `records/`.
+  - The guard asks git before the command runs. A command that first
+    writes a config file, such as `~/.gitconfig`, and then commits can set
+    a `core.hooksPath` that the guard does not see.
+  - The guard does not follow `pushd`, or the `-C` option of GNU `env`.
+  - The guard reads the here-doc of a program that the shell names, as in
+    `"$PY" - <<EOF`, as shell text. A quoted string in it that names
+    `git commit -n` stops the line. Name the program plainly, as in
+    `python3 - <<EOF`. The guard also reads a here-doc as shell text when
+    a shell name is a word of its command, as in `tool --lang sh <<EOF`,
+    and when its line ends with `|`.
+  - After a program that runs another, such as `uv run`, a word that the
+    shell changes counts as a possible shell, as in `uv run pytest "$T"
+    <<EOF`. The here-doc is then read as shell text.
+  - The guard does not follow a here-doc piped into a compound command,
+    into `source`, or into a process substitution such as `>(bash)`.
+  - The guard does not read the output of a program as shell text. So
+    `echo 'git commit -n' | bash` runs, and so does a here-string piped
+    into a shell, as in `cat <<< 'git commit -n' | bash`.
+  - The guard reads each here-string as shell text when its program reads
+    as shell. It decodes each `$'...'` string. A NUL ends the value, and
+    an escape that bash does not know stays as it is.
+  - Some git commands put commits on a branch without a pre-commit hook.
+    Examples are a pull from a clone without hooks, `git am`, `git
+    cherry-pick` and `git reset` to a commit. The guard lets them run.
+    The gate checks each commit that `git commit` makes.
+  - In a repository with no record hook, `just record` takes the result
+    from the file of the agent.
+  - In Codex, a command that sets `CODEX_HOME` in a way the guard does not
+    see, for example in a nested shell, can point the check at transcripts
+    that the agent wrote.
+  - A parent can tell a fresh agent to repeat a result that the parent wrote.
+  - When the parent changes the worktree while a fresh agent runs, its
+    changes are in the output tree of that record.
+- **The scripts.** `.agents/skills/gcm/scripts/record_result.py` writes the
+  records. The hook `record-result.sh` runs it on `SubagentStop`. The recipes
+  `record` and `record-skip` run it with `uv`, with pyyaml for the result
+  block. The hook never stops the fresh agent. A result that gives no record
+  only prints the reason.
 
 ### The run log
 
@@ -1021,7 +1128,8 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   with 2 stops the command. The hooks stop these commands as a best effort:
   - `--no-verify`, and `-n` with `commit`.
   - `core.hooksPath`, `git commit-tree` and `git update-ref`.
-  - `just record`, in a harness with a hook that writes records.
+  - `just record-skip`, until the person agrees. In Claude Code the hook asks
+    the person. In Codex it stops the command.
   - A write to a log folder, `.git/hooks`, `required.txt` or the settings of
     the hooks.
 - **Other commands that make commits:**
