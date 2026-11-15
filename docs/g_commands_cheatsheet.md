@@ -94,7 +94,7 @@ binaries as its declared outputs.
 Do not use `cx` for these commands:
 
 - tests, lint, format, typecheck and verification in a browser
-- an ordinary `cargo build`, `go build` or `tsc`, and the builds of a package manager
+- the ordinary build of a compiler, and the builds of a package manager
 - a command that writes no durable file
 
 Such commands stay ordinary targets of the command contract.

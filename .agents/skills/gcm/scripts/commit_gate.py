@@ -508,8 +508,8 @@ def gate(root: Path) -> None:
 
     if worktree_tree(root) != tree:
         raise Stop("only part of the changes is staged, and the gate checks the whole worktree. Stage them all, or "
-                   "put the rest aside: run `git stash --keep-index -u`, then `just check`, then commit, then "
-                   "`git stash pop`")
+                   "put the rest aside: run `git stash --keep-index -u`, then the targets that the new tree needs and "
+                   "`just check`, then commit, then `git stash pop`")
 
     folders = log_folders(root)
     if not has_pass(folders, tree, stack["steps"]):

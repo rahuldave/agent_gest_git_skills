@@ -366,8 +366,9 @@ or `just install tasker=git`. `just tasker-mode` prints the variant.
 | `gitwt` | A worktree for each task; the main checkout stays on `main` | No more steps |
 
 The package adds these recipes in a project that jnterfaces started. The file
-is `.agents/just/roles/agent_gest_git_skills.just`, and the script is
-`.agents/skills/gtw/scripts/worktree.py`.
+is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
+`.agents/skills/gtw/scripts/worktree.py` and
+`.agents/skills/gcm/scripts/stack_prs.py`.
 
 | Recipe | What it does |
 |---|---|
@@ -375,6 +376,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`, and the script is
 | `just worktree-sync` | Sets up a worktree that another tool made, such as Claude Code |
 | `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
 | `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
+| `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream. Takes `--dry-run` first |
 
 Setup follows two files in the main checkout, as other tools do:
 

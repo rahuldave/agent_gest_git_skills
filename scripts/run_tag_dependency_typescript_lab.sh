@@ -1,9 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tutorial_root="${AGENT_GEST_TUTORIAL_ROOT:-/tmp/agent-gest-git-tutorial}"
 lab_root="${1:-$tutorial_root/tag-ast-grep-live}"
 log_file="${2:-$tutorial_root/logs/05-tag-ast-grep.log}"
+
+# A ".." could take the path out of the temp folder, and rm -rf follows it.
+case "/$lab_root/" in
+  */../*|*/./*)
+    echo "refusing a lab root with a . or .. part: $lab_root" >&2
+    exit 1
+    ;;
+esac
+
+allowed_root() {
+  case "$1" in
+    /tmp/agent-gest-*|/private/tmp/agent-gest-*|/var/folders/*/agent-gest-*|/private/var/folders/*/agent-gest-*|/tmp/*/agent-gest-*|/private/tmp/*/agent-gest-*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+if ! allowed_root "$lab_root"; then
+  echo "refusing to recreate lab root outside an agent-gest temp path: $lab_root" >&2
+  exit 1
+fi
+
+# A folder of the path can be a link, and rm -rf follows it. So check the real
+# path too: the real path of the deepest folder that exists, then the rest.
+if [ -L "$lab_root" ]; then
+  echo "refusing a lab root that is a link: $lab_root" >&2
+  exit 1
+fi
+existing="$(dirname "$lab_root")"
+rest="$(basename "$lab_root")"
+while [ ! -d "$existing" ]; do
+  rest="$(basename "$existing")/$rest"
+  existing="$(dirname "$existing")"
+done
+real_root="$(cd -P "$existing" && pwd -P)/$rest"
+if ! allowed_root "$real_root"; then
+  echo "refusing a lab root whose real path is outside an agent-gest temp path: $lab_root is $real_root" >&2
+  exit 1
+fi
+
+# The typescript profile of jnterfaces sets up the TypeScript tools of the lab.
+jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
+if [ ! -f "$jnterfaces_dir/scripts/install_stack.py" ]; then
+  echo "The lab needs a jnterfaces clone at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
+  exit 1
+fi
 
 require_tool() {
   local tool="$1"
@@ -20,18 +68,11 @@ run() {
 
 require_tool git
 require_tool gest
+require_tool just
+require_tool uv
 require_tool npm
 require_tool node
 require_tool ast-grep
-
-case "$lab_root" in
-  /tmp/agent-gest-*|/private/tmp/agent-gest-*|/var/folders/*/agent-gest-*)
-    ;;
-  *)
-    echo "refusing to recreate lab root outside an agent-gest temp path: $lab_root" >&2
-    exit 1
-    ;;
-esac
 
 rm -rf "$lab_root"
 mkdir -p "$lab_root/src" "$(dirname "$log_file")"
@@ -71,34 +112,13 @@ run gest task create "Polish reader hover affordance" \
   --tag reader-ui \
   --quiet
 
-cat >package.json <<'JSON'
-{
-  "name": "tag-ast-grep-live-lab",
-  "version": "0.1.0",
-  "private": true,
-  "type": "commonjs",
-  "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
-  }
-}
-JSON
-
-cat >tsconfig.json <<'JSON'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "types": ["node"],
-    "esModuleInterop": true
-  },
-  "include": ["src/**/*.ts"]
-}
-JSON
+# The installer writes package.json, tsconfig.json and the Justfile of the
+# typescript profile, with its typecheck tool. The lab installs no role, so
+# no commit gate stops the commit of the fixture.
+run uv run "$jnterfaces_dir/scripts/install_stack.py" \
+  --target "$lab_root" \
+  --profile typescript \
+  typecheck
 
 cat >src/colors.ts <<'TYPESCRIPT'
 export type ColorToken = "blue" | "green" | "red";
@@ -144,8 +164,7 @@ export function readerHoverClass(isActive: boolean): string {
 }
 TYPESCRIPT
 
-run npm install
-run npm exec -- tsc --noEmit
+run just typecheck
 
 printf '\n$ gest task list --all --json > gest-tasks.json\n'
 gest task list --all --json >gest-tasks.json
@@ -220,7 +239,7 @@ agent must either include the pill color surface in the implementation or create
 a tagged child task before completing the work.
 TEXT
 
-run git add package.json package-lock.json tsconfig.json src gest-tasks.json gest-artifacts.json gest-iterations.json tag-impact.txt ast-grep-results.jsonl
+run git add -A
 run git commit -m "test: create tag and ast-grep dependency fixture"
 
 echo "live TypeScript tag/ast-grep lab passed"

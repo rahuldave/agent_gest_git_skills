@@ -67,15 +67,10 @@ The lab copies `python-uv.just` from the `just` skill of jnterfaces as its
 `test`, `cov` and `diff-check`. `verify` runs `fmt --check`, `lint`, `test` and
 `diff-check`.
 
-`just test` runs `uv run pytest`. This command does not put the project folder
-on the import path, so `from hello import greet` fails without help. The lab
-adds this setting to its `pyproject.toml`, as the `test` tool of
-jnprofile-python does:
-
-```toml
-[tool.pytest.ini_options]
-pythonpath = ["."]
-```
+`just test` does not put the project folder on the import path, so
+`from hello import greet` fails without help. The lab adds the folder to the
+import path in its `pyproject.toml`, as the `test` tool of jnprofile-python
+does.
 
 ## TypeScript With NPM
 
@@ -105,42 +100,18 @@ just setup
 direnv exec . just verify
 ```
 
-The lab verified this command contract:
-
-```just
-export npm_config_cache := ".local/npm-cache"
-
-setup:
-  npm install
-
-lint path="src package.json tsconfig.json":
-  npm exec -- biome check {{path}}
-
-typecheck:
-  npm exec -- tsc --noEmit
-
-build:
-  npm exec -- tsc
-
-test target="":
-  npm exec -- tsc
-  node --test dist/*.test.js {{target}}
-
-smoke:
-  npm exec -- tsc
-  node dist/index.js
-
-diff-check:
-  git diff --check
-
-verify: lint typecheck build test smoke diff-check
-```
+The lab copies `typescript-npm.just` from the `just` skill of jnterfaces as its
+`Justfile`. Its recipes are `setup`, `fmt`, `lint`, `typecheck`, `build`,
+`test` and `diff-check`. `verify` runs `lint`, `typecheck`, `test` and
+`diff-check`. The template holds the tool that each recipe runs.
 
 Lessons:
 
 - Include `@types/node` for TypeScript that runs on Node.
 - By default, lint the source and the configuration, and not the generated
   `dist/`.
+- In a real project, `just install --profile typescript` gives these recipes
+  from jnprofile-typescript.
 
 ## Go
 
@@ -169,35 +140,14 @@ direnv allow .
 direnv exec . just verify
 ```
 
-The lab verified this command contract:
-
-```just
-fmt:
-  gofmt -w .
-
-lint:
-  GOCACHE="$PWD/.local/go-build" GOMODCACHE="$PWD/.local/go-mod" go vet ./...
-
-typecheck:
-  GOCACHE="$PWD/.local/go-build" GOMODCACHE="$PWD/.local/go-mod" go test ./... -run '^$'
-
-build:
-  GOCACHE="$PWD/.local/go-build" GOMODCACHE="$PWD/.local/go-mod" go build ./...
-
-test target="./...":
-  GOCACHE="$PWD/.local/go-build" GOMODCACHE="$PWD/.local/go-mod" go test {{target}}
-
-smoke:
-  GOCACHE="$PWD/.local/go-build" GOMODCACHE="$PWD/.local/go-mod" go run .
-
-diff-check:
-  git diff --check
-
-verify: fmt lint typecheck build test smoke diff-check
-```
+The lab copies `go.just` from the `just` skill of jnterfaces as its `Justfile`.
+Its recipes are `fmt`, `lint`, `typecheck`, `build`, `test`, `docs`, `smoke`
+and `diff-check`. `verify` depends on all of them except `docs`. The template
+holds the tool that each recipe runs.
 
 Lesson: `GOCACHE` must be an absolute path. In a recipe of `just`,
-`$PWD/.local/go-build` gives that path.
+`$PWD/.local/go-build` gives that path. No profile covers Go, so the recipes
+of the template are the only recipes.
 
 ## Rust With Cargo
 
@@ -226,32 +176,11 @@ direnv allow .
 direnv exec . just verify
 ```
 
-The lab verified this command contract:
-
-```just
-fmt:
-  cargo fmt --all
-
-lint:
-  cargo clippy --all-targets --all-features -- -D warnings
-
-typecheck:
-  cargo check --all-targets --all-features
-
-build:
-  cargo build --all-targets --all-features
-
-test target="":
-  cargo test --all-features {{target}}
-
-smoke:
-  cargo run --quiet
-
-diff-check:
-  git diff --check
-
-verify: fmt lint typecheck build test smoke diff-check
-```
+The lab copies `rust-cargo.just` from the `just` skill of jnterfaces as its
+`Justfile`. Its recipes are `fmt`, `lint`, `typecheck`, `build`, `test`,
+`docs`, `smoke` and `diff-check`. `verify` depends on all of them except
+`docs`. The template holds the tool that each recipe runs. In a real project,
+`just install --profile rust` gives these recipes from jnprofile-rust.
 
 Lesson: the toolchain is outside the repository, but the repository can pin it
 with `rust-toolchain.toml`. The build artifacts stay local, in `target/`.

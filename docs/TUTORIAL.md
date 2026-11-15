@@ -436,7 +436,8 @@ Local fixture:
 ```
 
 If you run the tutorial from this repository of reusable skills, one command does the whole
-step:
+step. The script needs a clone of jnterfaces next to this repository, or a `JNTERFACES_DIR`
+that names the clone:
 
 ```bash
 scripts/run_tag_dependency_typescript_lab.sh \
@@ -479,7 +480,17 @@ Create a small TypeScript project with:
 - `src/pill.ts`, calling `countOrProbabilityColorScale`
 - `src/readerHover.ts`, not calling `countOrProbabilityColorScale`
 
-Run `npm install` and `npm exec -- tsc --noEmit`.
+Set up the project with the typescript profile of jnterfaces. The profile
+writes package.json, tsconfig.json and the Justfile. Then check the types:
+
+```bash
+uv run "$JNTERFACES_DIR/scripts/install_stack.py" \
+  --target /tmp/agent-gest-git-tutorial/tag-ast-grep-live \
+  --profile typescript \
+  --defaults \
+  tasker
+just typecheck
+```
 
 Before editing anything, classify the requested change "change histogram colors
 for low-count bins" against the Gest vocabulary:
@@ -537,11 +548,12 @@ Commands that the agent should use:
 
 - `gest task list --all --json`, `gest artifact list --all --json` and
   `gest iteration list --all --json`, before it chooses tags
-- `npm install` and `npm exec -- tsc --noEmit`
+- `install_stack.py --profile typescript` of jnterfaces, then `just typecheck`
 - `ast-grep run --lang typescript --pattern 'countOrProbabilityColorScale($$$)'`
 
 What the agent should not do:
 
+- configure a TypeScript tool by hand, or run the tool without `just`
 - invent "existing" tags before it collects the tag vocabulary of Gest
 - use a raw search for a string as the main dependency check, when `ast-grep` supports the
   language

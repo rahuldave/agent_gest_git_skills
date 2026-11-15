@@ -5,87 +5,27 @@ throw it away after. Use it to prove the setup surface before you do real work
 in a target repository. The setup surface is the set of files and `just`
 targets that `gsu` sets up.
 
+The `typescript` profile owns the tools of the language. A profile is the setup
+package of one language, here jnprofile-typescript. The installer of jnterfaces
+installs it. The lab writes no tool config and no recipe of a tool by hand.
+
 ## Create the repo
 
 ```bash
 jnterfaces=/path/to/jnterfaces
 lab=/tmp/gsu-typescript-hello
 rm -rf "$lab"
-mkdir -p "$lab/src"
+mkdir -p "$lab"
 cd "$lab"
 git init -b main
-uv run "$jnterfaces/scripts/install_stack.py" --target "$lab" --defaults tasker
+uv run "$jnterfaces/scripts/install_stack.py" --target "$lab" --profile typescript --defaults tasker
+just install test
 ```
 
-Create `package.json`:
-
-```json
-{
-  "name": "gsu-typescript-hello",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "tsc",
-    "format": "biome format --write .",
-    "lint": "biome check .",
-    "test": "tsc && node --test dist/*.test.js",
-    "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
-    "@types/node": "^25.0.0",
-    "typescript": "^5.9.3"
-  }
-}
-```
-
-Create `tsconfig.json`:
-
-```json
-{
-  "compilerOptions": {
-    "declaration": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
-    "strict": true,
-    "target": "ES2022"
-  },
-  "include": ["src/**/*.ts"]
-}
-```
-
-Create `biome.json`:
-
-```json
-{
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
-    }
-  }
-}
-```
-
-Create `.gitignore`:
-
-```gitignore
-node_modules/
-dist/
-coverage/
-.local/
-.env
-.DS_Store
-```
+The installer makes `package.json`, adds the default tools of the profile, and
+writes the starter `Justfile`. It saves the profile and the tools in
+`.agents/stack.json`. `just install test` adds the `test` tool, which is not a
+default tool.
 
 Create `src/index.ts`:
 
@@ -93,17 +33,13 @@ Create `src/index.ts`:
 export function greet(name = "world"): string {
   return `Hello, ${name}!`;
 }
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log(greet());
-}
 ```
 
 Create `src/index.test.ts`:
 
 ```ts
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "node:test";
 import { greet } from "./index.js";
 
 test("greet defaults to the world", () => {
@@ -115,110 +51,49 @@ test("greet accepts a name", () => {
 });
 ```
 
-## Add the command contract
+The test imports the code with the `.js` name that the build writes.
 
-Create `Justfile`:
+## Read the command contract
 
-```just
-export npm_config_cache := ".local/npm-cache"
+Run `just` alone to list the recipes. The profile gives these recipes:
 
-default:
-  just --list
+- Setup: `just setup` installs the packages of `package.json`.
+- Format: `just fmt` changes the files to the house format.
+- Lint: `just lint` checks the lint rules and the format.
+- Typecheck: `just typecheck` checks the types.
+- Build: `just build` compiles `src` into `dist`.
+- Tests: `just test [target]` builds, then runs the tests.
+- Full verification: `just verify` runs `lint`, `typecheck` and `test`, then
+  `git diff --check`.
+- All the steps: `just check` runs the steps of the commit gate.
 
-setup:
-  npm install
-
-fmt path="src package.json tsconfig.json":
-  npm exec -- biome format --write {{path}}
-
-lint path="src package.json tsconfig.json":
-  npm exec -- biome check {{path}}
-
-typecheck:
-  npm exec -- tsc --noEmit
-
-build:
-  npm exec -- tsc
-
-test target="":
-  npm exec -- tsc
-  node --test dist/*.test.js {{target}}
-
-smoke:
-  npm exec -- tsc
-  node dist/index.js
-
-diff-check:
-  git diff --check
-
-verify: lint typecheck build test smoke diff-check
-
-dev:
-  npm exec -- tsc
-  npm run start
-```
-
-Replace the template placeholders in `AGENTS.md`, so that the file maps setup,
-format, lint, typecheck, build, test, smoke, verify and dev to the `just`
-targets. For this lab, it is enough to add a concrete section at the end:
-
-````md
-## Lab Command Contract
-
-Use the `Justfile` as the stable command interface:
-
-```bash
-just setup
-just fmt [path]
-just lint [path]
-just typecheck
-just build
-just test [target]
-just smoke
-just verify
-just dev
-git diff --check
-```
-
-Mappings:
-
-- Setup: `just setup`, which runs `npm install` with `.local/npm-cache`.
-- Format: `just fmt [path]`, which runs Biome format.
-- Lint: `just lint [path]`, which runs Biome check.
-- Typecheck: `just typecheck`, which runs `tsc --noEmit`.
-- Build: `just build`, which runs `tsc`.
-- Tests: `just test [target]`, which compiles then runs `node --test`.
-- Smoke: `just smoke`, which compiles then runs the hello-world program.
-- Diff hygiene: `just diff-check`, which runs `git diff --check`.
-- Full verification: `just verify`, which depends on `lint`, `typecheck`,
-  `build`, `test`, `smoke`, and `diff-check`.
-````
+Map each concept to its recipe in the command contract of `AGENTS.md`. Add a
+recipe to the `Justfile` only for a concept that no profile has, such as a
+smoke check of the program.
 
 ## Verify
 
 ```bash
 just --list
 just setup
+just fmt
 just lint src/index.ts
-just typecheck
 just test
 just verify
+just check
 ```
 
 Expected result:
 
-- `just setup` installs the dependencies, with `.local/npm-cache` as the npm cache.
+- `just setup` installs the dependencies, with `.local/npm-cache` as the npm
+  cache.
 - `just lint src/index.ts` proves that a target passes a path argument to the
   tool.
-- `just verify` runs lint, typecheck, build, tests, smoke and diff hygiene
-  through the native dependencies of Just.
+- `just verify` and `just check` pass.
 
 ## Lessons for GSU
 
-- If the setup must give the same result on each machine, prefer an npm cache
-  in the project.
-- Include `@types/node` in a TypeScript project that targets Node.
-- Limit the default paths of lint to the source and config files. Then lint
-  does not check the generated output in `dist/` by default.
-- Keep the choice of tools in `AGENTS.md` and the `Justfile`. Then the reusable
-  skills stay free of any one language.
+- If the setup must give the same result on each machine, keep the npm cache
+  in the project. The profile does that.
+- Keep the choice of tools in the profile and `.agents/stack.json`. Then the
+  reusable skills name only recipes, and stay free of any one language.
