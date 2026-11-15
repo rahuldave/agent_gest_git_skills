@@ -21,7 +21,8 @@ The parts of a solution exist, but they are not joined:
 - **GitButler** is in the hooks, skills and docs of agent_gest_git_skills,
   mostly for stacked PRs. The spec drops it.
 - **The Python profile** installs the pre-commit framework, which owns
-  `.git/hooks/pre-commit` and changes files at commit time.
+  `.git/hooks/pre-commit` and changes files at commit time. The spec moves the
+  framework to the tasker role.
 - **jagt** renders and checks task packets for agents. No recipe uses it for a
   review.
 
@@ -1021,23 +1022,42 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
      `CODEX_THREAD_ID` or `CLAUDE_CODE_SESSION_ID`.
   5. It stops the commit and says which target or step to run.
 - **The pre-merge-commit hook** runs the same gate for `git merge`.
-- **The pre-commit framework.** The Python profile installs the pre-commit
-  framework, which owns `.git/hooks/pre-commit`:
-  - The gate becomes a `local` hook in `.pre-commit-config.yaml`, for the
-    stages `pre-commit` and `pre-merge-commit`. The config sets
-    `default_install_hook_types` to both stages, so that `pre-commit install`
-    installs both hooks.
-  - The config drops the three hooks that change files. They are
-    `ruff-format`, `trailing-whitespace` and `end-of-file-fixer`. `fmt-check` and `diff-check`
-    cover them.
-  - The framework stashes the unstaged changes before its hooks run. So in a
-    Python repository, the gate sees partial staging as a tree that does not
-    match, not as unstaged changes. The message is the same.
-  - The `lint` tool runs `pre-commit uninstall` when it is removed. The spec
-    changes this. When `lint` is removed, the installer writes the plain hook
-    in place of the framework hook, so the gate stays.
-  - A repository without the framework gets a plain `.git/hooks/pre-commit` and
-    `.git/hooks/pre-merge-commit`.
+- **The pre-commit framework.** The tasker role installs the framework and
+  owns `.pre-commit-config.yaml`. No profile installs it, so Python,
+  TypeScript and Rust repositories have the same hooks. A project without the
+  tasker role has no gate and no framework.
+  - The config has three `local` hooks:
+    - `commit-gate` runs the gate for the stages `pre-commit` and
+      `pre-merge-commit`.
+    - `commit-gate-trailer` runs the gate again for the stage `commit-msg`,
+      and adds the trailer `Commit-Gate:` to the message.
+    - `just-ci` runs `just ci` for the stage `pre-push`. So a push checks
+      on your machine what CI checks, and a commit without a trailer stops
+      before it reaches GitHub.
+  - The config also has the checks of `pre-commit-hooks` that change no
+    file, such as `check-yaml` and `detect-private-key`, for a commit only.
+  - The config has no hook that changes files, such as `ruff-format`,
+    `trailing-whitespace` or `end-of-file-fixer`. `fmt-check` and
+    `diff-check` cover them.
+  - The role names two programs in `install_extras.programs` of its
+    `skill-package.json`. The first is pre-commit itself, which
+    `uv tool install` puts in the home folder. The second is the hooks.
+    `commit_gate.py --check-hooks` checks the four hooks and the hooks of
+    the config, and
+    `pre-commit install` with a `--hook-type` for each of `pre-commit`,
+    `pre-merge-commit`, `commit-msg` and `pre-push` installs them. jnterfaces installs the programs of a role after its
+    files.
+  - The framework stashes the unstaged changes before its hooks run. So the
+    gate sees partial staging as a tree without a pass, not as unstaged
+    changes.
+  - The removal of the tasker role runs `pre-commit uninstall` for the four
+    hooks, because a hook without its config stops each commit.
+  - The removal of a profile tool, such as `lint`, does not touch the hooks.
+  - **When pre-commit cannot install.** Outside a Git repository, the check
+    of the hooks passes, and the first `just install` after `git init`
+    installs them. With `core.hooksPath` set, as husky sets it, pre-commit
+    refuses to install. The check then passes and prints the command of the
+    gate, so that you can run the gate from the hooks of that folder.
 - **The required targets** are in `.agents/targets/required.txt`. Each line
   names a target and the paths that make it required:
 
@@ -1131,9 +1151,28 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     `.agents/stack.json`. jnterfaces writes the recipe `ci`, and the tasker
     role gives `ci-gate`. Without the role, `ci-gate` only says that there
     is no gate.
-  - **`ci-gate`** runs `commit_gate.py --trailers` on each commit after
-    `JN_CI_BASE`. Each commit needs a trailer that names its own patch ID,
-    or its own tree for a merge.
+  - **`ci-gate`** runs `commit_gate.py --trailers` on each commit of a
+    range. Each commit needs a trailer that names its own patch ID, or its
+    own tree for a merge. The range comes from the first of these that is
+    there:
+    1. `JN_CI_BASE` and `JN_CI_HEAD`, which CI sets.
+    2. `PRE_COMMIT_FROM_REF` and `PRE_COMMIT_TO_REF`, which the pre-push
+       hook sets for a push to a branch that the remote has.
+    3. `PRE_COMMIT_LOCAL_BRANCH` alone, for a push of a new history. Each
+       commit of the branch counts.
+    4. By hand, the upstream of the branch, or else `origin/HEAD`. With
+       neither, `ci-gate` fails and says to set `JN_CI_BASE`.
+  - **Limits of the pre-push hook.**
+    - The framework reads only the first branch of a push. So
+      `git push origin a b` checks the commits of `a`. CI checks each pull
+      request.
+    - A push to a new, empty remote checks each commit of the branch. A
+      repository with commits from before the gate needs
+      `git push --no-verify` for that push.
+  - **Commits that git makes without the hooks.** `git revert --no-edit`
+    runs no `commit-msg` hook, and a squash of `git rebase --autosquash`
+    keeps the old trailer. Each one stops the push until
+    `git commit --amend --no-edit` gives it a new trailer.
   - **CI is a part of `just check`.** A step in the list `ci` must be a step
     of `just check`. The installer leaves out any other name and says so.
     The default list is empty. Put a step in it only when a clean machine
@@ -1187,7 +1226,7 @@ adds to:
 | `.worktreedisposable` | jnterfaces | The line `.agents/log/`. |
 | `.gitignore` | Each profile | The paths of its caches and coverage reports. |
 | `.agents/generated.txt`, `.agents/coverage-exclude.txt` | jnterfaces writes them empty, once, in a project that it started | The person or the agent adds paths, and creates the file when it is missing. `test-review` judges each one. A project with a Justfile of its own gets neither file, and a missing list counts as empty. |
-| `.pre-commit-config.yaml` | The tasker role | A `local` hook that runs the gate. The writer keys the entries of `repos` by `repo`, so all `local` entries share one key. `formats.json` changes to key a `local` entry by the `id` of its hook. |
+| `.pre-commit-config.yaml` | The tasker role | The `local` hooks of the gate and of `just ci`, and the checks of `pre-commit-hooks` that change no file. The writer keys the entries of `repos` by `repo`. So a `local` entry of the project takes the place of the entry of the role, and `commit_gate.py --check-hooks` fails and says to copy the hooks of the role into it. |
 | `.claude/settings.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The hooks of GitButler go: `Stop` with `gitbutler-snapshot.sh`, and `gitbutler-vcs-context.sh`. |
 | `.codex/hooks.json` | The tasker role | The hooks `SessionStart`, `SubagentStop` and `PreToolUse`. The GitButler hooks and text go. |
 | `.claude/settings.json`, `.codex/hooks.json` | The `nossaifd` role | The turn gate of nossaifd, `UserPromptSubmit` and `Stop`, as now. |
@@ -1386,8 +1425,8 @@ needs it.
 - An empty `required.txt` in the commit does not remove the review.
 - A test suite that runs git in temporary repositories does not break the
   commit, because the gate does not run the steps.
-- In a Python project, the gate runs as a local hook of the pre-commit
-  framework, and removing the `lint` tool keeps the gate.
+- In a Python, a TypeScript and a Rust project, the gate runs as a local hook
+  of the pre-commit framework. Removing the `lint` tool keeps the gate.
 
 **The turn gate of nossaifd:**
 
@@ -1522,7 +1561,7 @@ needs it.
 - jnterfaces `scripts/install_stack.py`, `scripts/shared_files.py` and
   `scripts/formats.json`
 - jnprofile-python `.agents/just/python/test.just`, with a shebang line, and
-  `profile.json`, which installs the pre-commit framework
+  `profile.json`, which installed the pre-commit framework before the spec
 - agent_gest_git_skills `.agents/skills/grv/SKILL.md`
 - agent_gest_git_skills `.claude/hooks/pre-commit-context.sh` and
   `raw-git-write-guard.sh`

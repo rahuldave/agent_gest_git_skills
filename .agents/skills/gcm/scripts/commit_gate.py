@@ -39,17 +39,22 @@ The trailer: the commit-msg hook runs the gate once more, and when it passes, it
 `Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. A patch ID is the hash of the change,
 from `git patch-id --verbatim` on a diff with no lines of context, so a rebase with no conflict keeps it. With no
 context, a line that moves within one part of a file keeps the ID too. The trailer is a claim, so that is a fair
-price. `git commit -n` skips the commit-msg hook too,
-so a commit that went around the gate has no trailer. For what looks like an amend, the trailer names the patch IDs
+price. `git commit -n` skips the commit-msg hook too, so a commit that went around the gate has no trailer. For what looks like an amend, the trailer names the patch IDs
 against both possible parents, and the tree too when HEAD is a merge.
 
-`--trailers BASE HEAD` is the check of CI, which `just ci-gate` runs. Each commit in BASE..HEAD must have a
+`--trailers BASE HEAD` is the check of CI, which `just ci-gate` runs. With no BASE and HEAD, it reads them from CI,
+from the pre-push hook, or from the upstream of the branch, as `ci_range` says. Each commit in BASE..HEAD must have a
 trailer that names its own patch ID, or its own tree for a merge. CI runs no step of `just check` again: the
 trailer says that the gate saw a pass of it. The trailer is a claim of the gate, not a proof: an agent could write
 one by hand, and the review of the pull request is the check of that.
 
 Usage: commit_gate.py [--hook pre-commit|pre-merge-commit|commit-msg] [MESSAGE_FILE], or commit_gate.py --trailers
-BASE HEAD. It exits with 0 to let the commit through and with 1 to stop it.
+[BASE HEAD], or commit_gate.py --check-hooks. It exits with 0 to let the commit through and with 1 to stop it.
+
+`commit_gate.py --check-hooks` checks that the pre-commit framework runs the hooks of the tasker role: pre-commit,
+pre-merge-commit and commit-msg, which run the gate, and pre-push, which runs just ci. It exits with 0 when the hook of
+each stage is a hook of pre-commit for .pre-commit-config.yaml whose Python has pre-commit, and the config has the
+hooks of the role, and with 1 when not. The tasker role runs it as the check of its hook install.
 """
 
 from __future__ import annotations
@@ -58,11 +63,12 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 # The variables of a harness that mark a commit by an agent.
 AGENT_VARIABLES = ("CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDECODE")
@@ -484,14 +490,38 @@ def trailer_value(root: Path) -> str:
 
 
 def add_trailer(root: Path, message: Path) -> None:
-    git(["interpret-trailers", "--in-place", "--if-exists", "replace", "--trailer",
+    # With --no-divider, a line --- in the message is text, so the trailer goes at the end, where git log reads it.
+    git(["interpret-trailers", "--in-place", "--no-divider", "--if-exists", "replace", "--trailer",
          f"{TRAILER}: {trailer_value(root)}", str(message)], root, plain_env())
 
 
-def check_trailers(root: Path, base: str, head: str) -> List[str]:
-    """The problems of the commits in BASE..HEAD: each one needs a trailer of the gate that names its change."""
+def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
+    """The commits that `just ci-gate` checks, as BASE and HEAD. A BASE of None means all the commits of HEAD.
+
+    The pre-push hook of the pre-commit framework gives the commits of the push in PRE_COMMIT_FROM_REF and
+    PRE_COMMIT_TO_REF, or only PRE_COMMIT_LOCAL_BRANCH for a push of a new history, which the remote has no commit of.
+    The push comes first, so a JN_CI_BASE in the shell of the person does not change it. CI gives the commits in
+    JN_CI_BASE and JN_CI_HEAD. By hand, the base is the upstream of the branch, or else origin/HEAD."""
+    if env.get("PRE_COMMIT_FROM_REF") and env.get("PRE_COMMIT_TO_REF"):
+        return env["PRE_COMMIT_FROM_REF"], env["PRE_COMMIT_TO_REF"]
+    if env.get("PRE_COMMIT_LOCAL_BRANCH"):
+        return None, env["PRE_COMMIT_LOCAL_BRANCH"]
+    head = env.get("JN_CI_HEAD") or "HEAD"
+    if env.get("JN_CI_BASE"):
+        return env["JN_CI_BASE"], head
+    for name in ("@{upstream}", "origin/HEAD"):
+        if git(["rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"], root, plain_env(), check=False).strip():
+            return name, head
+    raise Stop("the commits to check have no base: the branch has no upstream and there is no origin/HEAD. Give "
+               "the base in JN_CI_BASE, as JN_CI_BASE=main just ci")
+
+
+def check_trailers(root: Path, base: Optional[str], head: str) -> List[str]:
+    """The problems of the commits in BASE..HEAD, or of all the commits of HEAD when BASE is None: each one needs a
+    trailer of the gate that names its change."""
     problems = []
-    for commit in git(["rev-list", "--reverse", f"{base}..{head}"], root).split():
+    span = head if base is None else f"{base}..{head}"
+    for commit in git(["rev-list", "--reverse", span], root).split():
         values = git(["log", "-1", f"--format=%(trailers:key={TRAILER},valueonly,separator=%x00)", commit],
                      root).strip("\n").split("\0")
         words = [value.split() for value in values if value.strip()]
@@ -510,28 +540,176 @@ def check_trailers(root: Path, base: str, head: str) -> List[str]:
     return problems
 
 
+# The command that runs the gate, as the hooks run it.
+GATE_COMMAND = ("uv run --no-project --quiet --no-python-downloads --python '>=3.9' python "
+                ".agents/skills/gcm/scripts/commit_gate.py")
+
+# The config of the framework, and the hooks of it that the tasker role needs: the stage and the entry of each one.
+CONFIG = ".pre-commit-config.yaml"
+CONFIG_HOOKS = {"commit-gate": ("pre-commit", GATE_COMMAND),
+                "commit-gate-trailer": ("commit-msg", f"{GATE_COMMAND} --hook commit-msg"),
+                "just-ci": ("pre-push", "just ci")}
+
+# The stages of the gate, the stages that the tasker role installs, and the text that each hook of the pre-commit
+# framework holds. The pre-push hook runs just ci, not the gate.
+HOOK_STAGES = ("pre-commit", "pre-merge-commit", "commit-msg")
+INSTALLED_STAGES = HOOK_STAGES + ("pre-push",)
+FRAMEWORK_MARK = "# File generated by pre-commit"
+
+
+def framework_hook_problem(root: Path, stage: str) -> Optional[str]:
+    """Why the git hook of the stage does not run the pre-commit framework, or None when it does. The hook runs the
+    Python of its INSTALL_PYTHON line when that file is there, else pre-commit from PATH."""
+    hook = root / git(["rev-parse", "--git-path", f"hooks/{stage}"], root, plain_env()).strip()
+    try:
+        text = hook.read_text(errors="replace")
+    except OSError:
+        return f"{stage}: there is no hook"
+    if FRAMEWORK_MARK not in text or f"--hook-type={stage}" not in text:
+        return f"{stage}: the hook is not a {stage} hook of the pre-commit framework"
+    if f"--config={CONFIG}" not in text:
+        return f"{stage}: the hook runs a config other than {CONFIG}"
+    python = next((line.partition("=")[2].strip() for line in text.splitlines()
+                   if line.startswith("INSTALL_PYTHON=")), "")
+    python = python.strip("'\"")
+    if python and os.access(python, os.X_OK):
+        run = subprocess.run([python, "-c", "import pre_commit"], stdin=subprocess.DEVNULL, capture_output=True)
+        return None if run.returncode == 0 else f"{stage}: {python} of the hook has no pre-commit"
+    return None if shutil.which("pre-commit") else f"{stage}: pre-commit is not on PATH"
+
+
+# The script that reads the config with the loader of pre-commit, in the Python of the framework, and prints the
+# hooks of its local entries. A hook with no stages of its own runs in the default_stages of the config.
+LOAD_CONFIG = """import json, sys
+from pre_commit.clientlib import load_config
+config = load_config(sys.argv[1])
+print(json.dumps([{"id": h["id"], "entry": h.get("entry"), "stages": h.get("stages") or config["default_stages"]}
+                  for r in config["repos"] if r["repo"] == "local" for h in r["hooks"]]))"""
+
+
+def framework_python(root: Path) -> Optional[str]:
+    """The Python that has pre-commit: the INSTALL_PYTHON of the pre-commit hook, else the Python of the pre-commit
+    on PATH, from its first line."""
+    hook = root / git(["rev-parse", "--git-path", "hooks/pre-commit"], root, plain_env()).strip()
+    try:
+        lines = hook.read_text(errors="replace").splitlines()
+    except OSError:
+        lines = []
+    for line in lines:
+        if line.startswith("INSTALL_PYTHON="):
+            python = line.partition("=")[2].strip().strip("'\"")
+            if python and os.access(python, os.X_OK):
+                return python
+    program = shutil.which("pre-commit")
+    if program:
+        try:
+            lines = Path(program).read_text(errors="replace").splitlines()[:2]
+        except OSError:
+            return None
+        first = lines[0] if lines else ""
+        words = first[2:].split() if first.startswith("#!") else []
+        # pip and uv write this launcher when the path of the Python is long or has a space.
+        if len(lines) > 1 and lines[1].startswith("'''exec'"):
+            try:
+                words = shlex.split(lines[1])[1:2]
+            except ValueError:
+                words = []
+        elif words[:1] and Path(words[0]).name == "env":
+            words = [shutil.which(words[1]) or ""] if len(words) > 1 else []
+        python = words[0] if words else ""
+        # A shell wrapper, as of pyenv, asdf or mise, names no Python on its first line.
+        if python and os.access(python, os.X_OK) and has_pre_commit(python):
+            return python
+    return None
+
+
+def has_pre_commit(python: str) -> bool:
+    # In an empty folder, so that no pre_commit folder of the current folder can answer for the module.
+    with tempfile.TemporaryDirectory(prefix="commit-gate-python-") as away:
+        run = subprocess.run([python, "-c", "import pre_commit"], stdin=subprocess.DEVNULL, capture_output=True,
+                             cwd=away)
+    return run.returncode == 0
+
+
+def config_problems(root: Path) -> List[str]:
+    """The hooks of the tasker role that the config lacks, read by the loader of pre-commit. Each one must be in a
+    local entry, with its entry and its stage. The installer keys the entries of `repos` by `repo`, so a `local`
+    entry of the project takes the place of the entry of the role, and its hooks go."""
+    if not (root / CONFIG).is_file():
+        return [f"there is no {CONFIG}"]
+    python = framework_python(root)
+    if python is None:
+        return [f"no Python with pre-commit can read {CONFIG}: the pre-commit hook names none, and the first line "
+                "of the pre-commit on PATH names none"]
+    # Outside the project, so that a json.py or a pre_commit folder of the project cannot take the place of the module.
+    with tempfile.TemporaryDirectory(prefix="commit-gate-config-") as away:
+        run = subprocess.run([python, "-c", LOAD_CONFIG, str((root / CONFIG).resolve())], stdin=subprocess.DEVNULL,
+                             capture_output=True, text=True, cwd=away)
+    try:
+        hooks = json.loads(run.stdout) if run.returncode == 0 else None
+    except ValueError:
+        hooks = None
+    if not isinstance(hooks, list):
+        return [f"pre-commit cannot read {CONFIG}: {(run.stderr.strip().splitlines() or ['no output'])[-1]}"]
+    problems = []
+    for name, (stage, entry) in CONFIG_HOOKS.items():
+        if not any(isinstance(h, dict) and h.get("id") == name and h.get("entry") == entry
+                   and stage in (h.get("stages") or ()) for h in hooks):
+            problems.append(f"{CONFIG} has no local hook {name} that runs {entry} for the stage {stage}. A repo: "
+                            "local entry of the project takes the place of the entry of the tasker role, so copy "
+                            "the hooks of .agents/skills/gcm/assets/pre-commit-config.yaml into it")
+    return problems
+
+
+def check_hooks(root: Path) -> List[str]:
+    """The problems with the hooks of the gate: one line for each stage whose hook does not run pre-commit. With
+    core.hooksPath set, as husky sets it, pre-commit refuses to install, so there is no problem to fix here: the
+    hooks of that folder must run the gate."""
+    hooks_path = git(["config", "--get", "core.hooksPath"], root, plain_env(), check=False).strip()
+    if hooks_path:
+        print(f"commit gate: core.hooksPath is {hooks_path}, so pre-commit installs no hook. Run "
+              f"{GATE_COMMAND} from the pre-commit and pre-merge-commit hooks of that folder, {GATE_COMMAND} --hook "
+              f"commit-msg from its commit-msg hook, and just ci from its pre-push hook.", file=sys.stderr)
+        return []
+    hooks = [problem for stage in INSTALLED_STAGES for problem in [framework_hook_problem(root, stage)] if problem]
+    return config_problems(root) + hooks
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="The commit gate.")
-    parser.add_argument("--hook", choices=("pre-commit", "pre-merge-commit", "commit-msg"), default="pre-commit")
+    parser.add_argument("--hook", choices=HOOK_STAGES, default="pre-commit")
     parser.add_argument("message", nargs="?", help="the message file, for the commit-msg hook")
-    parser.add_argument("--trailers", nargs=2, metavar=("BASE", "HEAD"), help="check the trailers of BASE..HEAD")
+    parser.add_argument("--trailers", nargs="*", metavar="BASE HEAD",
+                        help="check the trailers of BASE..HEAD; with no BASE and HEAD, of the range of ci_range")
+    parser.add_argument("--check-hooks", action="store_true",
+                        help="check that the pre-commit framework runs the four hooks of the tasker role")
     args = parser.parse_args(argv)
-    root = Path(git(["rev-parse", "--show-toplevel"], Path.cwd(), plain_env()).strip())
+    if args.check_hooks and not git(["rev-parse", "--show-toplevel"], Path.cwd(), plain_env(), check=False):
+        # Outside a repository there is no hook to install yet. The first just install after git init installs them.
+        print("commit gate: this folder is not in a Git repository, so it has no hooks yet", file=sys.stderr)
+        return 0
     try:
-        if args.trailers:
-            problems = check_trailers(root, *args.trailers)
+        root = Path(git(["rev-parse", "--show-toplevel"], Path.cwd(), plain_env()).strip())
+        if args.trailers is not None:
+            if len(args.trailers) not in (0, 2):
+                parser.error("--trailers takes BASE and HEAD, or nothing")
+            base, head = args.trailers if args.trailers else ci_range(root, os.environ)
+            problems = check_trailers(root, base, head)
             for problem in problems:
                 print(f"gate trailers: {problem}", file=sys.stderr)
             return 1 if problems else 0
-        gate(root)
-        if args.hook == "commit-msg":
-            if args.message is None:
-                raise Stop("the commit-msg hook needs the message file")
-            add_trailer(root, Path(args.message))
+        problems = check_hooks(root) if args.check_hooks else []
+        if not args.check_hooks:
+            gate(root)
+            if args.hook == "commit-msg":
+                if args.message is None:
+                    raise Stop("the commit-msg hook needs the message file")
+                add_trailer(root, Path(args.message))
     except Stop as stop:
-        print(f"commit gate: {stop}", file=sys.stderr)
-        return 1
-    return 0
+        problems = [str(stop)]
+    for problem in problems:
+        print(f"commit gate: {problem}", file=sys.stderr)
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":

@@ -88,11 +88,32 @@
     "parts": {
       "AGENTS.md": "AGENTS.instructions.md",
       ".claude/settings.json": ".claude/settings.json",
-      ".codex/hooks.json": ".codex/hooks.json"
+      ".codex/hooks.json": ".codex/hooks.json",
+      ".pre-commit-config.yaml": ".agents/skills/gcm/assets/pre-commit-config.yaml"
     },
     "starter": {
       "AGENTS.md": "AGENTS.starter.md",
       ".github/workflows/check.yml": ".agents/skills/gsu/assets/templates/github-check.yml"
+    },
+    "programs": [
+      {
+        "name": "pre-commit",
+        "check": "uv tool list",
+        "expect": "pre-commit v4.",
+        "install": "uv tool install pre-commit==4.7.0",
+        "install_in": "home",
+        "description": "The pre-commit framework, which runs the commit gate in the git hooks. Any 4.x from uv tool install counts. A pre-commit from pipx or pip in the same bin folder stops the install: remove it first."
+      },
+      {
+        "name": "commit-hooks",
+        "check": "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py --check-hooks",
+        "install": "uv tool run pre-commit install --hook-type pre-commit --hook-type pre-merge-commit --hook-type commit-msg --hook-type pre-push",
+        "description": "The git hooks pre-commit, pre-merge-commit and commit-msg, which run the commit gate, and pre-push, which runs just ci. When the check still fails, its message says why, for example a repo: local entry of the project that needs the hooks of the role."
+      }
+    ],
+    "before_remove": {
+      "git_hook": "pre-commit",
+      "command": "uv tool run pre-commit uninstall --hook-type pre-commit --hook-type pre-merge-commit --hook-type commit-msg --hook-type pre-push"
     }
   },
   "installer_skill": {
