@@ -23,17 +23,17 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet a1de35a282dc92bcb386bb0554db8912c1970fa6
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 83113c360d094dfd7348a801658387122fcd8295
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Keep the build of jlog
         id: jlog
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/jlog
-          key: jlog-v0.1.0-${{ runner.os }}
-      - name: Install jlog v0.1.0, which the jnterfaces installer needs
+          key: jlog-v0.1.1-${{ runner.os }}
+      - name: Install jlog v0.1.1, which the jnterfaces installer needs
         if: steps.jlog.outputs.cache-hit != 'true'
-        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.0
+        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.1
       - name: Check contracts, hooks, and source mirrors
         run: just lint
       - name: Restack a plain-git stack after an amend, a new commit and a squash merge

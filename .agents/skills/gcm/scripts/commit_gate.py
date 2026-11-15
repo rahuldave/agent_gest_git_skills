@@ -35,8 +35,21 @@ The chain: `update-docs` comes before `prose`, and each record starts at the out
 last output tree is the commit tree. Every other target, such as `review` and `test-review`, has the commit tree as
 its input tree and its output tree.
 
-Usage: commit_gate.py [--hook pre-commit|pre-merge-commit]. It exits with 0 to let the commit through and with 1
-to stop it.
+The trailer: the commit-msg hook runs the gate once more, and when it passes, it adds a trailer to the message:
+`Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. A patch ID is the hash of the change,
+from `git patch-id --verbatim` on a diff with no lines of context, so a rebase with no conflict keeps it. With no
+context, a line that moves within one part of a file keeps the ID too. The trailer is a claim, so that is a fair
+price. `git commit -n` skips the commit-msg hook too,
+so a commit that went around the gate has no trailer. For what looks like an amend, the trailer names the patch IDs
+against both possible parents, and the tree too when HEAD is a merge.
+
+`--trailers BASE HEAD` is the check of CI, which `just ci-gate` runs. Each commit in BASE..HEAD must have a
+trailer that names its own patch ID, or its own tree for a merge. CI runs no step of `just check` again: the
+trailer says that the gate saw a pass of it. The trailer is a claim of the gate, not a proof: an agent could write
+one by hand, and the review of the pull request is the check of that.
+
+Usage: commit_gate.py [--hook pre-commit|pre-merge-commit|commit-msg] [MESSAGE_FILE], or commit_gate.py --trailers
+BASE HEAD. It exits with 0 to let the commit through and with 1 to stop it.
 """
 
 from __future__ import annotations
@@ -420,13 +433,101 @@ def gate(root: Path) -> None:
                        + ": run them in this order")
 
 
+TRAILER = "Commit-Gate"
+
+
+def empty_tree(root: Path) -> str:
+    return git(["mktree"], root, plain_env()).strip()
+
+
+def patch_id(diff: str, root: Path) -> str:
+    """The stable patch ID of DIFF, or `none` for a change with no diff, as in git commit --allow-empty."""
+    run = subprocess.run(["git", "patch-id", "--verbatim"], cwd=root, input=diff, capture_output=True, text=True,
+                         errors="surrogateescape")
+    fields = run.stdout.split()
+    return fields[0] if run.returncode == 0 and fields else "none"
+
+
+# No lines of context, so a change of the lines next to a change, as in a rebase, keeps the patch ID.
+DIFF_OPTIONS = ["-p", "-U0", "--no-renames", "--binary", "--no-color", "--no-ext-diff"]
+
+
+def staged_patch_id(root: Path, parent: Optional[str]) -> str:
+    """The patch ID of the commit that git is making: the tree of the index of the hook against PARENT. The tree
+    leaves out a file of git add -N, as the commit does."""
+    base = empty_tree(root) if parent is None else parent
+    return patch_id(git(["diff-tree", *DIFF_OPTIONS, base, commit_tree(root)], root, plain_env()), root)
+
+
+def commit_patch_id(root: Path, commit: str) -> str:
+    """The patch ID of COMMIT against its one parent, or against the empty tree for a first commit."""
+    parents = git(["rev-list", "--parents", "-n", "1", commit], root).split()[1:]
+    base = parents[0] if parents else empty_tree(root)
+    return patch_id(git(["diff-tree", *DIFF_OPTIONS, base, commit], root), root)
+
+
+def trailer_value(root: Path) -> str:
+    """The words of the trailer: tree:<tree> for a merge, and patch:<id> for each parent that the commit may have.
+    An amend of a merge is a merge too."""
+    if resolve(root, "MERGE_HEAD") is not None:
+        return f"tree:{commit_tree(root)}"
+    words = []
+    for parent in parents_of_commit(root):
+        word = f"patch:{staged_patch_id(root, parent)}"
+        if word not in words:
+            words.append(word)
+    head = resolve(root, "HEAD")
+    if head is not None and is_amend(git_argv()) and len(git(["rev-list", "--parents", "-n", "1", head], root,
+                                                             plain_env()).split()) > 2:
+        words.append(f"tree:{commit_tree(root)}")
+    return " ".join(words)
+
+
+def add_trailer(root: Path, message: Path) -> None:
+    git(["interpret-trailers", "--in-place", "--if-exists", "replace", "--trailer",
+         f"{TRAILER}: {trailer_value(root)}", str(message)], root, plain_env())
+
+
+def check_trailers(root: Path, base: str, head: str) -> List[str]:
+    """The problems of the commits in BASE..HEAD: each one needs a trailer of the gate that names its change."""
+    problems = []
+    for commit in git(["rev-list", "--reverse", f"{base}..{head}"], root).split():
+        values = git(["log", "-1", f"--format=%(trailers:key={TRAILER},valueonly,separator=%x00)", commit],
+                     root).strip("\n").split("\0")
+        words = [value.split() for value in values if value.strip()]
+        short = commit[:12]
+        if not words:
+            problems.append(f"{short} has no {TRAILER} trailer, so it did not pass the commit gate")
+            continue
+        parents = git(["rev-list", "--parents", "-n", "1", commit], root).split()[1:]
+        if len(parents) > 1:
+            expected, kind = git(["rev-parse", f"{commit}^{{tree}}"], root).strip(), "tree"
+        else:
+            expected, kind = commit_patch_id(root, commit), "patch"
+        if not any(f"{kind}:{expected}" in w for w in words):
+            problems.append(f"{short} changed after the commit gate passed it: its {kind} is {expected}. Commit it "
+                            "again through the gate, for example with git commit --amend --no-edit")
+    return problems
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="The commit gate.")
-    parser.add_argument("--hook", choices=("pre-commit", "pre-merge-commit"), default="pre-commit")
-    parser.parse_args(argv)
+    parser.add_argument("--hook", choices=("pre-commit", "pre-merge-commit", "commit-msg"), default="pre-commit")
+    parser.add_argument("message", nargs="?", help="the message file, for the commit-msg hook")
+    parser.add_argument("--trailers", nargs=2, metavar=("BASE", "HEAD"), help="check the trailers of BASE..HEAD")
+    args = parser.parse_args(argv)
     root = Path(git(["rev-parse", "--show-toplevel"], Path.cwd(), plain_env()).strip())
     try:
+        if args.trailers:
+            problems = check_trailers(root, *args.trailers)
+            for problem in problems:
+                print(f"gate trailers: {problem}", file=sys.stderr)
+            return 1 if problems else 0
         gate(root)
+        if args.hook == "commit-msg":
+            if args.message is None:
+                raise Stop("the commit-msg hook needs the message file")
+            add_trailer(root, Path(args.message))
     except Stop as stop:
         print(f"commit gate: {stop}", file=sys.stderr)
         return 1

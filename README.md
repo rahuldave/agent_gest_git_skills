@@ -108,7 +108,7 @@ AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.m
 ```
 
 The CI job in `.github/workflows/check.yml` checks out the whole history and
-runs `just check` on each push and pull request. It is yours from then on. Add
+runs `just ci` on each pull request. It is yours from then on. Add
 the setup of the tools of your languages to it when the runner lacks them.
 
 It reports each workflow executable that is missing, such as `gest`. It checks for
