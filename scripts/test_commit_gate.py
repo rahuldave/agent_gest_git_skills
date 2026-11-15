@@ -57,9 +57,9 @@ class GateTests(unittest.TestCase):
                            GIT_COMMITTER_EMAIL="t@example.com")
         self.agent = dict(self.person, CLAUDE_CODE_SESSION_ID="session-1")
         git("init", "-q", "-b", "main", cwd=self.repo)
-        for hook in ("pre-commit", "pre-merge-commit"):
+        for hook in ("pre-commit", "pre-merge-commit", "commit-msg"):
             path = self.repo / ".git/hooks" / hook
-            path.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{SCRIPT}" --hook {hook}\n')
+            path.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{SCRIPT}" --hook {hook} "$@"\n')
             path.chmod(0o755)
         (self.repo / "Justfile").write_text(JUSTFILE)
         self.write(".agents/stack.json", json.dumps(STACK))
@@ -386,12 +386,12 @@ class GateTests(unittest.TestCase):
     def test_the_commit_that_installs_the_gates_in_a_repository_with_history_goes_through(self) -> None:
         stack = self.repo / ".agents/stack.json"
         stack.rename(self.base / "stack.json")
-        for hook in ("pre-commit", "pre-merge-commit"):
+        for hook in ("pre-commit", "pre-merge-commit", "commit-msg"):
             (self.repo / ".git/hooks" / hook).rename(self.base / hook)
         git("add", "-A", cwd=self.repo)
         self.assertGoes(self.commit())
         (self.base / "stack.json").rename(stack)
-        for hook in ("pre-commit", "pre-merge-commit"):
+        for hook in ("pre-commit", "pre-merge-commit", "commit-msg"):
             (self.base / hook).rename(self.repo / ".git/hooks" / hook)
         git("add", "-A", cwd=self.repo)
         self.passed()
@@ -512,6 +512,133 @@ class GateTests(unittest.TestCase):
         self.passed()
         git("merge", "--abort", cwd=self.repo)
         self.assertGoes(git(*merge, cwd=self.repo, env=self.person, check=False))
+
+    def trailers(self, base: str = "main~1", head: str = "HEAD") -> list:
+        return commit_gate.check_trailers(self.repo, base, head)
+
+    def change(self, name: str, text: str, *args: str) -> None:
+        self.write(name, text)
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(self.commit(*args))
+
+    def test_a_commit_through_the_gate_has_a_trailer_that_ci_accepts(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        message = git("log", "-1", "--format=%B", cwd=self.repo).stdout
+        self.assertIn("Commit-Gate: patch:", message)
+        self.assertEqual(self.trailers(), [])
+        # The first commit counts too, against the empty tree.
+        first = git("rev-list", "--max-parents=0", "HEAD", cwd=self.repo).stdout.strip()
+        self.assertEqual(commit_gate.commit_patch_id(self.repo, first) in git(
+            "log", "-1", "--format=%B", first, cwd=self.repo).stdout, True)
+
+    def test_a_commit_that_skipped_the_gate_fails_ci(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        problems = self.trailers()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("has no Commit-Gate trailer", problems[0])
+
+    def test_a_change_after_the_gate_fails_ci(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        self.write("a.txt", "changed\n")
+        git("add", "-A", cwd=self.repo)
+        amend = git("commit", "-q", "--amend", "--no-edit", "-n", cwd=self.repo, env=self.person, check=False)
+        self.assertEqual(amend.returncode, 0, amend.stderr)
+        problems = self.trailers()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("changed after the commit gate passed it", problems[0])
+
+    def test_a_rebase_with_no_conflict_keeps_the_trailers(self) -> None:
+        self.first_commit()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.change("b.txt", "b\n")
+        self.change("c.txt", "c\n")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.change("a.txt", "a\n")
+        git("checkout", "-q", "side", cwd=self.repo)
+        self.assertEqual(git("rebase", "-q", "main", cwd=self.repo, env=self.person, check=False).returncode, 0)
+        self.assertEqual(self.trailers("main", "side"), [])
+
+    def test_an_amend_and_an_empty_commit_through_the_gate_pass_ci(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        self.write("a.txt", "a2\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--amend", "--no-edit", cwd=self.repo, env=self.person, check=False))
+        self.passed()
+        self.assertGoes(self.commit("--allow-empty"))
+        self.assertEqual(self.trailers("main~2", "HEAD"), [])
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.repo).stdout.count("Commit-Gate:"), 1)
+
+    def test_a_merge_has_a_tree_trailer_that_ci_accepts(self) -> None:
+        self.first_commit()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.change("b.txt", "b\n")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.change("a.txt", "a\n")
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person, check=False)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "m", cwd=self.repo, env=self.person, check=False))
+        self.assertIn("Commit-Gate: tree:", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+        self.assertEqual(self.trailers(base + "~1", "HEAD"), [])
+
+    def test_a_rebase_past_a_change_next_to_the_change_keeps_the_trailer(self) -> None:
+        # A diff with context would hold the line that main changed, and the patch ID would change.
+        self.write("a.txt", "".join(f"line {n}\n" for n in range(20)))
+        self.first_commit()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.change("a.txt", (self.repo / "a.txt").read_text().replace("line 10\n", "ten\n"))
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.change("a.txt", (self.repo / "a.txt").read_text().replace("line 8\n", "eight\n"))
+        git("checkout", "-q", "side", cwd=self.repo)
+        self.assertEqual(git("rebase", "-q", "main", cwd=self.repo, env=self.person, check=False).returncode, 0)
+        self.assertEqual(self.trailers("main", "side"), [])
+
+    def test_a_file_of_git_add_n_is_not_in_the_patch_id(self) -> None:
+        self.first_commit()
+        self.write("new.txt", "later\n")
+        git("add", "-N", "new.txt", cwd=self.repo)
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        # The gate needs the whole worktree staged, so this commit stops; the patch ID is checked directly.
+        tree = git("write-tree", cwd=self.repo).stdout.strip()
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        staged = commit_gate.staged_patch_id(self.repo, head)
+        commit = git("commit-tree", tree, "-p", head, "-m", "x", cwd=self.repo, env=self.person).stdout.strip()
+        self.assertEqual(staged, commit_gate.commit_patch_id(self.repo, commit))
+
+    def test_an_amend_of_a_merge_passes_ci(self) -> None:
+        self.first_commit()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.change("b.txt", "b\n")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.change("a.txt", "a\n")
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person, check=False)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "m", cwd=self.repo, env=self.person, check=False))
+        self.write("c.txt", "c\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--amend", "--no-edit", cwd=self.repo, env=self.person, check=False))
+        self.assertEqual(self.trailers(base + "~1", "HEAD"), [])
+
+    def test_a_change_of_the_spaces_of_a_line_changes_the_patch_id(self) -> None:
+        self.first_commit()
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        ids = []
+        for body in ("if a:\n    b\n", "if a:\nb\n"):
+            self.write("a.py", body)
+            git("add", "-A", cwd=self.repo)
+            ids.append(commit_gate.staged_patch_id(self.repo, head))
+        self.assertNotEqual(ids[0], ids[1])
 
 
 if __name__ == "__main__":

@@ -84,11 +84,12 @@ install-test:
   done
   mv "$target/CLAUDE.md.off" "$target/CLAUDE.md"
   test -f "$target/.agents/just/roles/agent_gest_git_skills.just" || fail "missing the role recipes after the install"
-  # The CI job runs just check with the whole history, and the starter is a valid workflow.
+  # The CI job runs just ci with the whole history, and the starter is a valid workflow.
   ci="$target/.github/workflows/check.yml"
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$ci" || fail "the install wrote no CI starter"
-  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["check"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert steps[-1]["run"] == "just check"' "$ci" || fail "the CI starter does not run just check with fetch-depth 0"
-  just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx check || fail "the CI starter runs just check, and the project has no check recipe"
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["ci"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert steps[-1]["run"] == "just ci"' "$ci" || fail "the CI starter does not run just ci with fetch-depth 0"
+  just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci || fail "the CI starter runs just ci, and the project has no ci recipe"
+  just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci-gate || fail "the project has no ci-gate recipe of the tasker role"
   printf '# mine\n' > "$ci"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"

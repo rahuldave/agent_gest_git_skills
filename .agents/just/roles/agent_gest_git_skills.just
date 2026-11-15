@@ -69,3 +69,10 @@ record target file:
 [positional-arguments]
 record-skip target +reason:
     @{{jn_record}} skip "$@"
+
+jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py"
+
+# Check that each commit since BASE passed the commit gate: each one needs a trailer of the gate that names its
+# change. just ci runs this first. CI gives the base of the pull request in JN_CI_BASE
+ci-gate:
+    @{{jn_gate}} --trailers "${JN_CI_BASE:-origin/HEAD}" "${JN_CI_HEAD:-HEAD}"

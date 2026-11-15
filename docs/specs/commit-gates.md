@@ -60,7 +60,8 @@ The gates stop honest mistakes, for example an agent that forgets the review,
 or a commit with an unstaged fix. They do not stop an agent that tries to
 cheat. An agent with a shell can edit the log, remove the git hook or write a
 commit with `git commit-tree`. The spec makes these acts hard to do by
-accident.
+accident. A commit that skips the gate has no trailer of the gate, so `just
+ci` stops it in CI.
 
 ## Proposed Solution
 
@@ -718,79 +719,31 @@ only place for them.
     clear the variables without their names.
   - A write to the `sessions` folder of Codex.
   - A write to `.git/config`, where a `core.hooksPath` would move the hooks.
-  - `git commit`, `git merge` and `git pull` while git has a
-    `core.hooksPath` from any source, such as an include, `config.worktree`,
-    the config of the person or a variable. An empty value counts too.
-    Then git would not run the gate. The guard asks git in the repository
-    that `-C`, `--git-dir` or `GIT_DIR` names, with the `-c` settings and
-    the variables of the command. The variables include the exports and
-    `declare -x`, also in a nested `bash -c`, `eval` or `$(...)`.
-    A variable that is not exported may not reach git, so the guard also
-    asks git without the assignments of the line. A function gets the
-    assignments of the whole line.
-  - The same commands when the guard cannot know the answer. A folder, a
-    `-c` setting or a config variable can hold a value that the guard
-    cannot know. So can a variable that `read`, `printf -v` or `for`
-    sets. Git can also fail to read the repository or its config. The
-    message names the file of the setting when git names one.
-  - A `git commit`, `merge` or `pull` with a word that the shell changes,
-    such as `$(...)`, a `$`, `{a,b}` or a pattern such as `*`. A word in
-    the value of an option such as `-m` is fine. Otherwise the shell
-    could turn the word into `--no-verify`.
-  - A git line whose program is such a word, such as `$(command -v git)`
-    or `${X:-git}`. Another such program gets the checks of git on its
-    words, and the checks of a program that runs git, so `$X commit -n`
-    and `$UV run git commit -n` stop. A program with a plain last part,
-    such as `$VENV/bin/python`, counts as that program.
-    The guard also checks each git word, and each `sh -c`, here-doc or
-    here-string of a shell, after a program that runs it, such as `find -exec`, `uv run`
-    or `arch`, and the
-    command of `git submodule foreach`. It follows the aliases of the
-    shell that the line defines, and splits a variable such as `$X` that
-    holds spaces.
-  - A git line that is nested too deeply for the guard to follow.
-  - A `git commit`, `merge` or `pull` under `xargs`, which adds words
-    from its input.
+  - A commit while git has a `core.hooksPath`. The guard asks git once, in
+    the folder of the command. Then git would not run the gate.
   - Any git line when the guard itself fails. A line without git runs.
-- **The limits of the records.** The guard is a best effort, so an agent
-  that tries hard can still write a record that no fresh agent gave:
+- **The limits of the records.** The guard reads the words of a line. It
+  does not run the shell in its head, so a command that hides git runs:
+  - A program such as `python -c`, or a script, can commit or write a file
+    in `records/`.
+  - A here-doc or a pipe into a shell, as in `bash <<EOF`, runs. So does a
+    word that the shell makes, as in `git $(echo commit) -n`.
+  - A setting that a command writes first, as in `~/.gitconfig`, can give
+    git a `core.hooksPath` that the guard does not see.
   - A record hook in a setting that the script does not read, such as the
     managed settings or a plugin of Codex, does not stop `just record`.
-  - The guard sees the shell and the file tools only. A program such as
-    `python -c` can write a file in `records/`.
-  - The guard asks git before the command runs. A command that first
-    writes a config file, such as `~/.gitconfig`, and then commits can set
-    a `core.hooksPath` that the guard does not see.
-  - The guard does not follow `pushd`, or the `-C` option of GNU `env`.
-  - The guard reads the here-doc of a program that the shell names, as in
-    `"$PY" - <<EOF`, as shell text. A quoted string in it that names
-    `git commit -n` stops the line. Name the program plainly, as in
-    `python3 - <<EOF`. The guard also reads a here-doc as shell text when
-    a shell name is a word of its command, as in `tool --lang sh <<EOF`,
-    and when its line ends with `|`.
-  - After a program that runs another, such as `uv run`, a word that the
-    shell changes counts as a possible shell, as in `uv run pytest "$T"
-    <<EOF`. The here-doc is then read as shell text.
-  - The guard does not follow a here-doc piped into a compound command,
-    into `source`, or into a process substitution such as `>(bash)`.
-  - The guard does not read the output of a program as shell text. So
-    `echo 'git commit -n' | bash` runs, and so does a here-string piped
-    into a shell, as in `cat <<< 'git commit -n' | bash`.
-  - The guard reads each here-string as shell text when its program reads
-    as shell. It decodes each `$'...'` string. A NUL ends the value, and
-    an escape that bash does not know stays as it is.
-  - Some git commands put commits on a branch without a pre-commit hook.
-    Examples are a pull from a clone without hooks, `git am`, `git
-    cherry-pick` and `git reset` to a commit. The guard lets them run.
-    The gate checks each commit that `git commit` makes.
   - In a repository with no record hook, `just record` takes the result
     from the file of the agent.
   - In Codex, a command that sets `CODEX_HOME` in a way the guard does not
-    see, for example in a nested shell, can point the check at transcripts
-    that the agent wrote.
+    see can point the check at transcripts that the agent wrote.
   - A parent can tell a fresh agent to repeat a result that the parent wrote.
   - When the parent changes the worktree while a fresh agent runs, its
     changes are in the output tree of that record.
+
+  A commit that went around the gate has no trailer of the gate, so `just ci`
+  stops it. The section "The trailer and just ci" tells how. A record that an
+  agent wrote by hand gets through. The review of the pull request is the
+  check of that.
 - **The scripts.** `.agents/skills/gcm/scripts/record_result.py` writes the
   records. The hook `record-result.sh` runs it on `SubagentStop`. The recipes
   `record` and `record-skip` run it with `uv`, with pyyaml for the result
@@ -1125,7 +1078,9 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   `.agents/skills/gcm/scripts/gate_guard.py`, parses the hook input as JSON
   and splits the command into words as a shell does, so a quoted message does
   not hide a flag. In Claude Code and in Codex, a `PreToolUse` hook that exits
-  with 2 stops the command. The hooks stop these commands as a best effort:
+  with 2 stops the command. The guard stops mistakes. It is not the lock,
+  because a shell has too many ways to hide a command. The lock is the
+  trailer of the gate. The hooks stop these plain commands:
   - `--no-verify`, and `-n` with `commit`.
   - `core.hooksPath`, `git commit-tree` and `git update-ref`.
   - `just record-skip`, until the person agrees. In Claude Code the hook asks
@@ -1140,6 +1095,38 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   | `git merge` | The pre-merge-commit hook. |
   | `git rebase`, `git cherry-pick`, `git revert` | Allowed. A lab checks which trees they make. |
 
+- **The trailer and just ci.** The gate stamps each commit that it passes,
+  and CI checks the stamps:
+  - **The trailer.** The `commit-msg` hook runs the gate once more. Then it
+    adds `Commit-Gate: patch:<patch-id>` to the message. A merge gets
+    `Commit-Gate: tree:<tree>`.
+  - **The patch ID** is the hash of the change, from `git patch-id
+    --verbatim`, which keeps the spaces of each line. The diff has no lines of
+    context, so a rebase with no conflict keeps the ID, and a restacked branch
+    still passes. An added line that moves within one part of a file keeps
+    the ID too. The trailer is a claim, so that cost is fair. A file of `git add -N`
+    is not in the ID, since the commit does not hold it.
+  - **An amend.** For what looks like an amend, the trailer names the patch
+    IDs against both possible parents. When HEAD is a merge, it names the
+    tree too, since the amend is a merge.
+  - **A skip shows.** `git commit -n` skips the `commit-msg` hook too. So a
+    commit that went around the gate has no trailer.
+  - **`just ci`** runs `ci-gate`, then the steps in the list `ci` of
+    `.agents/stack.json`. jnterfaces writes the recipe `ci`, and the tasker
+    role gives `ci-gate`. Without the role, `ci-gate` only says that there
+    is no gate.
+  - **`ci-gate`** runs `commit_gate.py --trailers` on each commit after
+    `JN_CI_BASE`. Each commit needs a trailer that names its own patch ID,
+    or its own tree for a merge.
+  - **CI is a part of `just check`.** A step in the list `ci` must be a step
+    of `just check`. The installer leaves out any other name and says so.
+    The default list is empty. Put a step in it only when a clean machine
+    tells you more than your own machine, for example a test on Linux.
+  - **No agent runs in CI.** The fresh agents run before each commit, on
+    the machine of the person. CI reads only their trailers.
+  - **The limit.** A trailer is a claim of the gate, not a proof. An agent
+    can type one by hand. The review of the pull request is the check of
+    that.
 - **The cost.** The agent runs `just check` before it commits, and the gate
   only reads the pass. Integration tests stay in `just check` by default, so a
   slow suite makes each commit slow. The setup question `integration` can move
@@ -1201,16 +1188,17 @@ The tasker role writes the CI job, `.github/workflows/check.yml`, as a
 installer takes a `seed` out on removal, so the job has no `seed`. The tasker
 role ships it only after jnterfaces writes the `check` recipe:
 
-- **The events.** It runs on each push and each pull request. It does not use
+- **The events.** It runs on each pull request. It does not use
   `pull_request_target`, which would give the code of the pull request the
   secrets of the repository.
-- **The history.** The checkout has `fetch-depth: 0`, so `prose-check` can
-  find the changed pages.
+- **The history.** The checkout has `fetch-depth: 0`, so `ci-gate` can read
+  each commit. It checks out the head of the pull request. The merge commit
+  that GitHub makes has no trailer.
 - **The tools.** It installs `just`, `uv`, and `jlog` at a tagged release. The
   person adds the setup of the tools of a language that the runner lacks.
-- **The run.** It runs `just check` on the committed files, and not
-  `just install`. An install can change tracked files, and then `jlog pass`
-  refuses the run, because it needs a clean worktree.
+- **The run.** It runs `just ci` on the committed files, and not
+  `just install`. An install can change tracked files. It gives `ci-gate`
+  the base of the pull request in `JN_CI_BASE`.
 
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
@@ -1397,9 +1385,17 @@ needs it.
 - A reinstall of nossaifd after the tasker role does not bring back
   `nossaifd-prose.yml`.
 - With the tasker role, the project gets `.github/workflows/check.yml`. Its
-  job checks out with `fetch-depth: 0` and runs `just check`. With the
-  `nossaifd` role too, a push of a page with a hard problem fails it. A CI file
-  of the person stays as it is, and the file stays after `just uninstall`.
+  job checks out the head of the pull request with `fetch-depth: 0` and runs
+  `just ci`. A commit with no trailer of the gate fails it. A CI file of the
+  person stays as it is, and the file stays after `just uninstall`.
+- Each commit that passes the gate gets a `Commit-Gate` trailer. `ci-gate`
+  passes it, also after a rebase with no conflict. It fails a commit made with
+  `git commit -n`, and a commit changed after the gate passed it.
+- `just ci` runs `ci-gate` and the steps of the list `ci`. A name in the list
+  that is not a step of `just check` is left out, with a message.
+- The gate guard stops the plain forms of `--no-verify`, `-n`, `core.hooksPath`
+  and a write to a protected path. It lets a command that hides git run, such
+  as `bash <<EOF` or `python -c`. Its tests list both kinds.
 - `prose-check` and the turn gate accept the same pages, a `.qmd` file
   included. A change to `CHANGELOG.md` alone needs no `prose` record.
 - The removal of the GitButler `Stop` hook keeps the nossaifd `Stop` hook.
@@ -1474,8 +1470,8 @@ needs it.
   not a no-op step. Without the role, `prose-check` is a no-op step.
 - A change with no page passes `prose-check`, and so does the first commit of
   a repository with no page.
-- In CI, a pull request that adds a page with a hard problem fails `just
-  check`. So does a push of a branch whose first commit adds that page.
+- A commit that adds a page with a hard problem does not pass the gate. With
+  `prose-check` in the list `ci`, CI also runs the step on the pull request.
 - With `CI=1` on a machine, a page with a hard problem that is not committed
   yet still fails `prose-check`.
 - A repository with its own `test` recipe, and no
