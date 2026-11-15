@@ -214,7 +214,8 @@ class TestParentTests(unittest.TestCase):
                         break
                     try:
                         os.killpg(process.pid, number)
-                    except ProcessLookupError:
+                    except OSError:
+                        # The script ended: the group is gone, or only its leader is left, not yet reaped.
                         break
                     time.sleep(0.001)
                 self.assertEqual(process.wait(timeout=20), 128 + number)
