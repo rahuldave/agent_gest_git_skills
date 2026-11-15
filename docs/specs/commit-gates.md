@@ -1078,6 +1078,17 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
   - **`@pages`** names the files that `is_page` of nossaifd accepts. So
     `AGENTS.md` and `CHANGELOG.md` need no `prose` record. Without the
     `nossaifd` role, `@pages` is `**/*.md` and `**/*.qmd`.
+    - The gate reads `is_page` from `.agents/skills/nossaifd/scripts/prose_gate.py`
+      in the parent commit, as it reads `required.txt`. So a change cannot
+      loosen the rule for its own pages. The first commit has no parent, so
+      the globs apply to it.
+    - The rule runs in a Python of its own. It gets the changed paths and
+      gives back the pages. So it cannot end the gate or change its
+      environment.
+    - The commit stops when the rule does not load, has no `is_page`, fails,
+      ends before it checks each path, or gives back a path that the commit
+      does not change. The message names the Python of the gate, because a
+      rule can need a newer Python.
   - **`@code`** names the source files of each language in `.agents/stack.json`.
     Each profile gives its globs under the key `code` of `profile.json`, for
     example `**/*.py`, `**/*.ts` or
