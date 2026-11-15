@@ -474,10 +474,23 @@ hooks name the tasker variant, and they report the worktrees that are ready to
 prune. They remove nothing. In `gitwt`, a `git commit` in the main checkout gets
 a warning, not a block.
 
-No hook blocks a git command, so `git commit`, `git switch` and
-`git checkout` work as usual. Before a commit, a push or `gh pr create`, the Claude Code
-hook gives the agent the commit rules of `docs/dev/commits.md`, if the project has that file.
-A repo that already has the hooks refreshes them with `just install`.
+The installer also installs the pre-commit framework and its git hooks, from
+`.pre-commit-config.yaml`:
+
+- **pre-commit and pre-merge-commit** run the commit gate. The gate stops a
+  commit without a pass of `just check` for its tree, and an agent commit
+  without the records of its required targets.
+- **commit-msg** runs the gate again and adds the trailer `Commit-Gate:` to
+  the message. CI checks the trailer of each commit.
+- **pre-push** runs `just ci`, so a push checks on your machine what CI
+  checks.
+
+The hooks need a jnterfaces installer that runs the `programs` of a role. An
+older one installs no hook and gives no error. The specification is
+[`docs/specs/commit-gates.md`](docs/specs/commit-gates.md).
+Before a commit, a push or `gh pr create`, the Claude Code hook gives the agent
+the commit rules of `docs/dev/commits.md`, if the project has that file. A repo
+that already has the hooks refreshes them with `just install`.
 
 ## Automatic checks and delivery
 

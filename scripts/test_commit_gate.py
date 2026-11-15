@@ -533,6 +533,58 @@ class GateTests(unittest.TestCase):
         self.assertEqual(commit_gate.commit_patch_id(self.repo, first) in git(
             "log", "-1", "--format=%B", first, cwd=self.repo).stdout, True)
 
+    def test_the_range_comes_from_ci_then_the_push_then_the_upstream(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        rng = lambda **env: commit_gate.ci_range(self.repo, env)  # noqa: E731
+        # The push comes first, so a JN_CI_BASE in the shell does not change it.
+        self.assertEqual(rng(JN_CI_BASE="b", JN_CI_HEAD="h", PRE_COMMIT_FROM_REF="f", PRE_COMMIT_TO_REF="t"),
+                         ("f", "t"))
+        self.assertEqual(rng(PRE_COMMIT_FROM_REF="f", PRE_COMMIT_TO_REF="t", PRE_COMMIT_LOCAL_BRANCH="l"), ("f", "t"))
+        # A push of a new history: the remote has none of its commits, so each one counts.
+        self.assertEqual(rng(JN_CI_BASE="b", PRE_COMMIT_LOCAL_BRANCH="refs/heads/main"), (None, "refs/heads/main"))
+        self.assertEqual(rng(JN_CI_BASE="b", JN_CI_HEAD="h"), ("b", "h"))
+        with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_BASE"):
+            rng()
+        git("update-ref", "refs/remotes/origin/HEAD", "HEAD~1", cwd=self.repo)
+        self.assertEqual(rng(), ("origin/HEAD", "HEAD"))
+        git("branch", "-q", "up", "HEAD", cwd=self.repo)
+        git("branch", "-q", "--set-upstream-to", "up", cwd=self.repo)
+        self.assertEqual(rng(), ("@{upstream}", "HEAD"))
+
+    def test_a_base_of_none_checks_every_commit_of_head(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        self.assertEqual(commit_gate.check_trailers(self.repo, None, "HEAD~1"), [])
+        self.assertEqual(len(commit_gate.check_trailers(self.repo, None, "HEAD")), 1)
+
+    def test_the_trailers_option_with_no_range_reads_the_env(self) -> None:
+        self.first_commit()
+        env = dict(self.person, JN_CI_BASE="HEAD", JN_CI_HEAD="HEAD")
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
+                             text=True)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        env = {k: v for k, v in self.person.items() if not k.startswith(("JN_CI_", "PRE_COMMIT_"))}
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
+                             text=True)
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("Give the base in JN_CI_BASE", run.stderr)
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers", "HEAD"], cwd=self.repo, env=env,
+                             capture_output=True, text=True)
+        self.assertEqual(run.returncode, 2)
+
+    def test_a_message_with_a_dash_line_gets_a_trailer_that_ci_reads(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        result = git("commit", "-q", "-m", "x", "-m", "---", "-m", "below the line", cwd=self.repo,
+                     env=self.person, check=False)
+        self.assertGoes(result)
+        self.assertEqual(self.trailers(), [])
+
     def test_a_commit_that_skipped_the_gate_fails_ci(self) -> None:
         self.first_commit()
         self.write("a.txt", "a\n")
@@ -639,6 +691,262 @@ class GateTests(unittest.TestCase):
             git("add", "-A", cwd=self.repo)
             ids.append(commit_gate.staged_patch_id(self.repo, head))
         self.assertNotEqual(ids[0], ids[1])
+
+
+
+def pre_commit_python():
+    """A Python that has pre-commit: the one of `pre-commit` on PATH, as uv tool install puts it there."""
+    program = shutil.which("pre-commit")
+    try:
+        first = Path(program).read_text(errors="replace").splitlines()[0] if program else ""
+    except (OSError, IndexError):
+        return None
+    python = first[2:].strip() if first.startswith("#!") else ""
+    return python if python and os.access(python, os.X_OK) else None
+
+
+@unittest.skipUnless(pre_commit_python(), "needs pre-commit on PATH")
+class HookCheckTests(unittest.TestCase):
+    """`commit_gate.py --check-hooks`: the check of the hook install of the tasker role."""
+
+    def setUp(self) -> None:
+        scratch = tempfile.TemporaryDirectory(prefix="commit-gate-hooks-")
+        self.addCleanup(scratch.cleanup)
+        self.base = Path(scratch.name).resolve()
+        self.repo = self.base / "proj"
+        self.repo.mkdir()
+        git("init", "-q", cwd=self.repo)
+        self.bin = self.base / "bin"
+        self.bin.mkdir()
+        # A Python that has pre-commit, and one that has not.
+        self.good = self.base / "good-python"
+        self.good.write_text(f'#!/bin/sh\nexec "{pre_commit_python()}" "$@"\n')
+        self.good.chmod(0o755)
+        self.bad = self.fake("bad-python", 1)
+        shutil.copy(ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml", self.repo / ".pre-commit-config.yaml")
+
+    def fake(self, name: str, code: int) -> Path:
+        path = self.base / name
+        path.write_text(f"#!/bin/sh\nexit {code}\n")
+        path.chmod(0o755)
+        return path
+
+    def hook(self, stage: str, python: Path, mark: str = "# File generated by pre-commit: https://pre-commit.com",
+             hook_type: str = "", config: str = ".pre-commit-config.yaml") -> None:
+        path = self.repo / ".git/hooks" / stage
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(f"#!/usr/bin/env bash\n{mark}\nINSTALL_PYTHON={python}\n"
+                        f"ARGS=(hook-impl --config={config} --hook-type={hook_type or stage})\n")
+        path.chmod(0o755)
+
+    def check(self, path: str = "/usr/bin:/bin") -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, SCRIPT, "--check-hooks"], cwd=self.repo, capture_output=True,
+                              text=True, env=dict(os.environ, PATH=f"{self.bin}:{path}"))
+
+    def test_the_hooks_of_the_framework_pass(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        result = self.check()
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+
+    def test_a_missing_hook_fails(self) -> None:
+        for missing in commit_gate.INSTALLED_STAGES:
+            with self.subTest(missing=missing):
+                for stage in commit_gate.INSTALLED_STAGES:
+                    self.hook(stage, self.good)
+                (self.repo / ".git/hooks" / missing).unlink()
+                result = self.check()
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"{missing}: there is no hook", result.stderr)
+
+    def test_a_hook_that_is_not_of_the_framework_fails(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        self.hook("pre-commit", self.good, mark="# a hook of another tool")
+        self.hook("pre-merge-commit", self.good, hook_type="pre-commit")
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("pre-commit: the hook is not a pre-commit hook of the pre-commit framework", result.stderr)
+        self.assertIn("pre-merge-commit: the hook is not a pre-merge-commit hook", result.stderr)
+
+    @unittest.skipUnless(shutil.which("uv"), "needs uv")
+    def test_the_install_command_of_the_role_passes_the_check(self) -> None:
+        text = (ROOT / "skill-package.json").read_text()
+        command = json.loads("{" + next(line for line in text.splitlines() if "pre-commit install" in line)
+                             .rstrip().rstrip(",") + "}")
+        install = subprocess.run(command["install"].split(), cwd=self.repo, capture_output=True, text=True)
+        if install.returncode != 0:
+            self.skipTest(f"pre-commit cannot install here: {install.stderr.strip()}")
+        result = subprocess.run([sys.executable, SCRIPT, "--check-hooks"], cwd=self.repo, capture_output=True,
+                                text=True)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+
+    def test_a_hook_of_another_config_fails(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        self.hook("pre-commit", self.good, config="other.yaml")
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("pre-commit: the hook runs a config other than .pre-commit-config.yaml", result.stderr)
+
+    def test_a_config_without_the_hooks_of_the_role_fails(self) -> None:
+        # The local entry of the project took the place of the entry of the role.
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        (self.repo / ".pre-commit-config.yaml").write_text(
+            "repos:\n  - repo: local\n    hooks:\n      - id: my-own\n        name: x\n        entry: 'true'\n"
+            "        language: system\n")
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        for name in commit_gate.CONFIG_HOOKS:
+            self.assertIn(f".pre-commit-config.yaml has no local hook {name} that runs", result.stderr)
+        (self.repo / ".pre-commit-config.yaml").unlink()
+        self.assertIn("there is no .pre-commit-config.yaml", self.check().stderr)
+
+    def test_the_config_is_read_as_pre_commit_reads_it(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        config = self.repo / ".pre-commit-config.yaml"
+        asset = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
+        local = asset[:asset.index("  # Checks of any file")]
+        gate, trailer = commit_gate.CONFIG_HOOKS["commit-gate"][1], commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1]
+        flow = ("repos:\n  - repo: local\n    hooks:\n"
+                f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system, stages: [pre-commit]}}\n"
+                f"      - {{id: commit-gate-trailer, name: t, entry: \"{trailer}\", language: system, "
+                "stages: [commit-msg]}\n"
+                "      - {id: just-ci, name: c, entry: just ci, language: system, stages: [pre-push]}\n")
+        cases = (
+            ("the config of the role", local, 0, None),
+            ("the flow form of YAML", flow, 0, None),
+            ("a hook of the wrong stage", local.replace("stages: [pre-push]", "stages: [manual]"), 1, "just-ci"),
+            ("a hook with another entry", local.replace("entry: just ci", "entry: 'true'"), 1, "just-ci"),
+            ("the ids in a block of text", "repos:\n  - repo: local\n    hooks:\n      - id: x\n        name: x\n"
+             "        entry: 'true'\n        language: system\n        args:\n          - |\n"
+             "            id: commit-gate\n            id: commit-gate-trailer\n            id: just-ci\n",
+             1, "commit-gate"),
+            ("the ids in another repo", local.replace("repo: local", "repo: https://example.com/hooks\n    rev: v1"),
+             1, "commit-gate"),
+        )
+        for label, text, code, missing in cases:
+            with self.subTest(label):
+                config.write_text(text)
+                result = self.check()
+                self.assertEqual(result.returncode, code, result.stderr)
+                if missing:
+                    self.assertIn(f"no local hook {missing} that runs", result.stderr)
+
+    def test_the_hooks_of_the_role_match_its_config(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        self.assertEqual(commit_gate.config_problems(self.repo), [])
+
+    def test_a_python_without_pre_commit_fails(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        self.hook("pre-commit", self.bad)
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"pre-commit: {self.bad} of the hook has no pre-commit", result.stderr)
+
+    def test_without_its_python_the_hook_needs_pre_commit_on_path(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.base / "gone/python")
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("pre-commit: pre-commit is not on PATH", result.stderr)
+        program = self.bin / "pre-commit"
+        program.write_text(f"#!{pre_commit_python()}\nfrom pre_commit.main import main\nmain()\n")
+        program.chmod(0o755)
+        self.assertEqual(self.check().returncode, 0)
+
+    def test_the_python_of_pre_commit_on_path_is_read_from_its_first_line(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.base / "gone/python")
+        program = self.bin / "pre-commit"
+        # A link would lose the venv of pre-commit, so python3 on PATH is a copy of the Python that has it.
+        shutil.copy(self.good, self.bin / "python3")
+        cases = (
+            ("a python after env", "#!/usr/bin/env python3\n", 0),
+            ("the launcher of pip for a long path",
+             f"#!/bin/sh\n'''exec' \"{pre_commit_python()}\" \"$0\" \"$@\"\n' '''\nfrom pre_commit.main import main\n", 0),
+            ("a shell wrapper, as of pyenv", f'#!/bin/sh\nexec "{pre_commit_python()}" -m pre_commit "$@"\n', 1),
+            ("a Python without pre-commit", f"#!{self.bad}\n", 1),
+        )
+        for label, text, code in cases:
+            with self.subTest(label):
+                program.write_text(text)
+                program.chmod(0o755)
+                result = self.check()
+                self.assertEqual(result.returncode, code, result.stderr)
+                if code:
+                    self.assertIn("no Python with pre-commit can read .pre-commit-config.yaml", result.stderr)
+
+    def test_a_hook_with_no_stages_runs_in_the_default_stages(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        config = self.repo / ".pre-commit-config.yaml"
+        gate, trailer = commit_gate.CONFIG_HOOKS["commit-gate"][1], commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1]
+        hooks = ("repos:\n  - repo: local\n    hooks:\n"
+                 f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system}}\n"
+                 f"      - {{id: commit-gate-trailer, name: t, entry: \"{trailer}\", language: system}}\n"
+                 "      - {id: just-ci, name: c, entry: just ci, language: system}\n")
+        cases = (
+            ("no default_stages: each stage", hooks, 0, None),
+            ("default_stages of each stage", "default_stages: [pre-commit, commit-msg, pre-push]\n" + hooks, 0, None),
+            ("default_stages without pre-commit", "default_stages: [pre-push]\n" + hooks, 1, "commit-gate"),
+        )
+        for label, text, code, missing in cases:
+            with self.subTest(label):
+                config.write_text(text)
+                result = self.check()
+                self.assertEqual(result.returncode, code, result.stderr)
+                if missing:
+                    self.assertIn(f"no local hook {missing} that runs", result.stderr)
+
+    def test_a_module_of_the_project_cannot_answer_for_the_loader(self) -> None:
+        for stage in commit_gate.INSTALLED_STAGES:
+            self.hook(stage, self.good)
+        asset = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
+        (self.repo / ".pre-commit-config.yaml").write_text(asset.replace("entry: just ci", "entry: 'true'"))
+        # A pre_commit of the project whose loader gives each hook of the role, in the folder of the check.
+        hooks = [{"id": name, "entry": entry, "stages": [stage]}
+                 for name, (stage, entry) in commit_gate.CONFIG_HOOKS.items()]
+        (self.repo / "pre_commit").mkdir()
+        (self.repo / "pre_commit/__init__.py").write_text("")
+        (self.repo / "pre_commit/clientlib.py").write_text(
+            f"def load_config(path):\n    return {{'default_stages': [], 'repos': [{{'repo': 'local', "
+            f"'hooks': {hooks!r}}}]}}\n")
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("no local hook just-ci that runs", result.stderr)
+
+    def test_outside_a_repository_there_is_nothing_to_install(self) -> None:
+        # An install of the hooks would fail there, at the end of each just install.
+        result = subprocess.run([sys.executable, SCRIPT, "--check-hooks"], cwd=self.base, capture_output=True,
+                                text=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("not in a Git repository, so it has no hooks yet", result.stderr)
+
+    def test_with_core_hooks_path_the_check_passes_and_says_what_to_do(self) -> None:
+        # pre-commit refuses to install with core.hooksPath set, so the hooks of that folder must run the gate.
+        git("config", "core.hooksPath", ".husky", cwd=self.repo)
+        result = self.check()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("core.hooksPath is .husky, so pre-commit installs no hook", result.stderr)
+        self.assertIn(commit_gate.GATE_COMMAND, result.stderr)
+
+    def test_the_gate_command_is_the_entry_of_the_config(self) -> None:
+        config = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
+        self.assertIn(f"entry: {commit_gate.GATE_COMMAND}\n", config)
+        self.assertIn(f"entry: {commit_gate.GATE_COMMAND} --hook commit-msg\n", config)
+
+    def test_the_install_covers_each_stage(self) -> None:
+        text = (ROOT / "skill-package.json").read_text()
+        commands = [line for line in text.splitlines() if "pre-commit install" in line or "pre-commit uninstall" in line]
+        self.assertEqual(len(commands), 2)
+        for command in commands:
+            for stage in commit_gate.INSTALLED_STAGES:
+                self.assertIn(f"--hook-type {stage}", command)
 
 
 if __name__ == "__main__":
