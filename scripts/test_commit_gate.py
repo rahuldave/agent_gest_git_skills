@@ -37,6 +37,9 @@ security:
 """
 
 STACK = {"steps": ["lint"], "code": {"python": ["**/*.py"]}}
+# The page rule of a nossaifd checkout, from NOSSAIFD_DIR, for the test with the real rule.
+NOSSAIFD_RULE = (Path(os.environ.get("NOSSAIFD_DIR", Path.home() / "Projects/nossaifd"))
+                 / ".agents/skills/nossaifd/scripts/prose_gate.py")
 
 
 def git(*args: str, cwd: Path, env=None, check: bool = True) -> subprocess.CompletedProcess:
@@ -263,6 +266,99 @@ class GateTests(unittest.TestCase):
         self.record("prose", t1, t2)
         self.record("review")
         self.assertGoes(self.commit(env=self.agent))
+
+    # The pages
+
+    RULE = "def is_page(rel):\n    return rel.endswith('.md') and not rel.endswith('CHANGELOG.md')\n"
+
+    def change_only(self, path: str, text: str = "new\n") -> subprocess.CompletedProcess:
+        """Commit a change of PATH alone, as an agent, with a pass and a review record but no other record."""
+        self.write(path, text)
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        return self.commit(env=self.agent)
+
+    def test_with_the_page_rule_a_changelog_alone_needs_no_prose(self) -> None:
+        self.write(commit_gate.PAGE_RULE, self.RULE)
+        self.first_commit()
+        self.assertGoes(self.change_only("CHANGELOG.md"))
+        # A page with a pass and a review, but no prose record, still stops.
+        self.assertStops(self.change_only("guide.md"), "`just update-docs`, `just prose`")
+
+    def test_without_the_page_rule_a_changelog_is_a_page(self) -> None:
+        self.first_commit()
+        self.assertStops(self.change_only("CHANGELOG.md"), "`just update-docs`, `just prose`")
+
+    def test_the_page_rule_comes_from_the_parent(self) -> None:
+        self.write(commit_gate.PAGE_RULE, self.RULE)
+        self.first_commit()
+        self.write(commit_gate.PAGE_RULE, "def is_page(rel):\n    return False\n")
+        self.assertStops(self.change_only("guide.md"), "`just update-docs`, `just prose`")
+
+    def test_a_page_rule_that_fails_stops_the_commit(self) -> None:
+        cases = (
+            ("def is_page(:\n", "fails in Python"),
+            ("x = 1\n", "has no is_page"),
+            ("def is_page(rel):\n    raise ValueError('bad rule')\n", "ValueError: bad rule"),
+            # A rule that ends its Python, or that changes the environment, cannot let the page go.
+            ("import sys\nsys.exit(0)\n", "ends before it checks each path"),
+            ("import sys\ndef is_page(rel):\n    sys.exit(0)\n", "ends before it checks each path"),
+            ("import os\nos.environ.clear()\ndef is_page(rel):\n    return False\n", None),
+            ("import sys\ndef is_page(rel):\n    sys.__stdout__.buffer.write(b'other.md\\0')\n    return False\n",
+             "names paths that the commit does not change"),
+        )
+        for text, message in cases:
+            with self.subTest(text=text):
+                self.setUp()
+                self.write(commit_gate.PAGE_RULE, text)
+                self.first_commit()
+                if message:
+                    self.assertStops(self.change_only("guide.md"), message)
+                else:
+                    # The rule says no file is a page, and the environment of the gate is as it was: the gate still
+                    # asks for the other records.
+                    self.write("tool.py", "x = 1\n")
+                    self.assertStops(self.change_only("guide.md"), "`just test-review`")
+
+    def test_a_rule_that_prints_still_gives_the_pages(self) -> None:
+        self.write(commit_gate.PAGE_RULE, "print('loaded')\ndef is_page(rel):\n    print('checking', rel)\n"
+                   "    return rel.endswith('.md') and not rel.endswith('CHANGELOG.md')\n")
+        self.first_commit()
+        self.assertGoes(self.change_only("CHANGELOG.md"))
+        self.assertStops(self.change_only("guide.md"), "`just update-docs`, `just prose`")
+
+    def test_a_page_whose_name_is_not_utf8_is_a_page(self) -> None:
+        self.write(commit_gate.PAGE_RULE, self.RULE)
+        self.first_commit()
+        # git() keeps the bytes of such a name as surrogates. Some file systems refuse the name, so the rule gets it
+        # straight.
+        name = b"caf\xe9.md".decode(errors="surrogateescape")
+        rule = commit_gate.page_rule(self.repo, git("rev-parse", "HEAD", cwd=self.repo).stdout.strip())
+        self.assertEqual(rule([name, "tool.py", "CHANGELOG.md"]), [name])
+
+    def test_the_first_commit_uses_the_globs(self) -> None:
+        # The first commit has no parent, so its own rule cannot loosen the rule for its own pages.
+        self.write(commit_gate.PAGE_RULE, "def is_page(rel):\n    return False\n")
+        self.write("guide.md", "new\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
+
+    def test_a_generated_page_needs_no_prose(self) -> None:
+        self.write(commit_gate.PAGE_RULE, self.RULE)
+        self.write(".agents/generated.txt", "out/**\n")
+        self.first_commit()
+        self.assertGoes(self.change_only("out/api.md"))
+
+    @unittest.skipUnless(NOSSAIFD_RULE.is_file(), "needs a nossaifd checkout in NOSSAIFD_DIR")
+    def test_the_rule_of_nossaifd_skips_agents_md(self) -> None:
+        self.write(commit_gate.PAGE_RULE, NOSSAIFD_RULE.read_text())
+        self.first_commit()
+        self.assertGoes(self.change_only("AGENTS.md"))
+        self.assertGoes(self.change_only("CHANGELOG.md", "two\n"))
+        self.assertStops(self.change_only("docs/guide.qmd"), "`just prose`")
 
     def test_the_same_records_in_another_order_stop(self) -> None:
         self.first_commit()

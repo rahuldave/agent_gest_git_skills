@@ -112,6 +112,15 @@ python=(uv run --no-project --quiet python)
 "${python[@]}" -m json.tool "$repo_root/.claude/settings.json" >/dev/null
 "${python[@]}" -m json.tool "$repo_root/.codex/hooks.json" >/dev/null
 "${python[@]}" -m json.tool "$repo_root/skill-package.json" >/dev/null
+# The role has no Stop hook, so the Stop hook of the nossaifd role is the only one, and a reinstall over an old
+# role that had one keeps it.
+for settings in .claude/settings.json .codex/hooks.json; do
+  if "${python[@]}" -c 'import json, sys; sys.exit("Stop" in json.load(open(sys.argv[1])).get("hooks", {}))' \
+      "$repo_root/$settings"; then :; else
+    echo "$settings has a Stop hook: the Stop hook belongs to the nossaifd role" >&2
+    exit 1
+  fi
+done
 
 required_text=(
   "git rebase --update-refs"

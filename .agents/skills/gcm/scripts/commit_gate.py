@@ -18,7 +18,10 @@ what looks like `git commit --amend` the gate applies the rules of HEAD and of i
 
 Each line of `required.txt` names a target and the paths that make it required, as git pathspecs with `:(glob)`.
 `@code` names the source globs of each profile, from the key `code` of `.agents/stack.json`, less the paths of
-`generated.txt`. `@pages` is `**/*.md` and `**/*.qmd`. `@api` is empty until the installer writes the API packages.
+`generated.txt`. `@pages` is the files that `is_page` of the nossaifd role accepts, from its `prose_gate.py` in the
+parent, so `AGENTS.md` and `CHANGELOG.md` are not pages. The rule runs in a Python of its own. Without the role in
+the parent, as on the first commit, `@pages` is `**/*.md` and `**/*.qmd`. `@api` is empty until the installer writes
+the API packages.
 Every commit needs `review`, whatever the file says.
 
 A record is a JSON file in `records/` of the shared log folder, the `.agents/log/` of the main checkout:
@@ -68,7 +71,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 # The variables of a harness that mark a commit by an agent.
 AGENT_VARIABLES = ("CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDECODE")
@@ -85,6 +88,8 @@ prose        @pages  @api
 CHANGERS = ("update-docs", "prose")
 
 PAGES = ("**/*.md", "**/*.qmd")
+# The page rule of the nossaifd role. With it, @pages is the changed files that its is_page accepts.
+PAGE_RULE = ".agents/skills/nossaifd/scripts/prose_gate.py"
 
 STACK = ".agents/stack.json"
 REQUIRED = ".agents/targets/required.txt"
@@ -273,6 +278,72 @@ def pathspecs(paths: Iterable[str], code: List[str], generated: List[str]) -> Li
     return specs
 
 
+# The script that loads the page rule from the file in argv[1], in a Python of its own, and prints each path of
+# standard input that its is_page accepts. The paths come and go with a NUL after each one, and the last word is
+# PAGES_END, so that a rule that ends its Python early cannot give "no page". A path that is not UTF-8 keeps its
+# bytes, as git() keeps them. Exit 3: no is_page.
+# No changed path is "/", so the last word cannot be a path.
+PAGES_END = "/"
+PAGES_OF = """import importlib.util, sys
+spec = importlib.util.spec_from_file_location("nossaifd_prose_gate", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+out = sys.stdout.buffer
+# What the rule prints goes to standard error, so that it cannot come after the end word.
+sys.stdout = sys.stderr
+spec.loader.exec_module(module)
+rule = getattr(module, "is_page", None)
+if not callable(rule):
+    sys.exit(3)
+for path in sys.stdin.buffer.read().decode(errors="surrogateescape").split("\\0"):
+    if path and rule(path):
+        out.write(path.encode(errors="surrogateescape") + b"\\0")
+out.write(b"%s\\0")
+out.flush()""" % PAGES_END
+
+
+def page_rule(root: Path, parent: Optional[str]) -> Optional[Callable[[List[str]], List[str]]]:
+    """The pages of a list of paths, by is_page of the nossaifd role, from its prose_gate.py in PARENT. None without
+    the role, and on the first commit, where the globs apply as the default required.txt does. The rule comes from
+    the parent, so a change cannot loosen the rule for its own pages. It runs in a Python of its own, so it can only
+    answer which paths are pages: it cannot end the gate or change its environment."""
+    text = None if parent is None else read_at(root, parent, PAGE_RULE)
+    if text is None:
+        return None
+
+    def pages_of(paths: List[str]) -> List[str]:
+        with tempfile.TemporaryDirectory(prefix="commit-gate-pages-") as away:
+            script = Path(away) / "prose_gate.py"
+            script.write_text(text)
+            run = subprocess.run([sys.executable, "-I", "-B", "-c", PAGES_OF, str(script)], cwd=root,
+                                 input="".join(f"{path}\0" for path in paths).encode(errors="surrogateescape"),
+                                 capture_output=True)
+        python = f"Python {sys.version.split()[0]}"
+        if run.returncode == 3:
+            raise Stop(f"the page rule {PAGE_RULE} of the parent has no is_page: run `just install`")
+        if run.returncode != 0:
+            error = run.stderr.decode(errors="replace").strip().splitlines()[-1:] or ["no message"]
+            raise Stop(f"the page rule {PAGE_RULE} of the parent fails in {python} ({error[0]}): run "
+                       "`just install`, or run the gate with a Python that the rule supports")
+        found = [path for path in run.stdout.decode(errors="surrogateescape").split("\0") if path]
+        if found[-1:] != [PAGES_END]:
+            raise Stop(f"the page rule {PAGE_RULE} of the parent ends before it checks each path: run `just install`")
+        found = found[:-1]
+        if not set(found) <= set(paths):
+            raise Stop(f"the page rule {PAGE_RULE} of the parent names paths that the commit does not change")
+        return found
+
+    return pages_of
+
+
+def changed_files(root: Path, parent: Optional[str], tree: str, generated: List[str]) -> List[str]:
+    """The paths that the commit changes, less the paths of generated.txt. A deleted path counts."""
+    env = plain_env()
+    before = parent or git(["hash-object", "-t", "tree", "--stdin"], root, env).strip()
+    specs = [":(glob)**", *[f":(exclude,glob){g}" for g in generated]]
+    out = git(["diff", "--name-only", "-z", "--no-renames", before, tree, "--", *specs], root, env)
+    return [path for path in out.split("\0") if path]
+
+
 def changes_match(root: Path, parent: Optional[str], tree: str, specs: List[str]) -> bool:
     """True when the commit changes a path that the pathspecs match. A deleted path counts."""
     if not specs:
@@ -396,8 +467,20 @@ def required_against(root: Path, parent: Optional[str], stack: dict, tree: str) 
     # The code globs of the parent and of the commit both count, so a commit that removes a language still needs
     # test-review for its code. A parent with no stack.json, before the gates came, gives no globs.
     code = merged_code(stack, None if parent is None else read_at(root, parent, STACK))
-    return [t for t, paths in required_paths.items()
-            if changes_match(root, parent, tree, pathspecs(paths, code, generated))]
+    rule = page_rule(root, parent) if any("@pages" in paths for paths in required_paths.values()) else None
+    pages: Optional[bool] = None
+
+    def needed(paths: List[str]) -> bool:
+        nonlocal pages
+        if rule is not None and "@pages" in paths:
+            if pages is None:
+                pages = bool(rule(changed_files(root, parent, tree, generated)))
+            if pages:
+                return True
+            paths = [path for path in paths if path != "@pages"]
+        return changes_match(root, parent, tree, pathspecs(paths, code, generated))
+
+    return [t for t, paths in required_paths.items() if needed(paths)]
 
 
 def gate(root: Path) -> None:
