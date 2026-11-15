@@ -491,13 +491,15 @@ The first agentic targets:
 | `just visual-check [url-or-flow]` | Runs the app, goes through the flow in a browser and takes screenshots. | The screenshots, shown to the person, and a pass or fail for each step of the flow. |
 | `just visualize [topic]` | Draws a diagram of a part of the code, for a doc or for the person. | The diagram file and the doc that shows it. |
 
-Before it writes its packet, the `test-review` recipe runs a logged line,
-`test-parent`:
+Before it writes its packet, the `test-review` recipe runs the recipe
+`test-parent`, through `.agents/skills/gcm/scripts/test_parent.py`:
 
 - It makes a worktree of the parent commit in a temporary folder outside the
   repository, with `git worktree add --detach`.
-- It copies each added or changed test file in, runs the `test-paths` recipe
-  of the profile on them, and removes the worktree.
+- It copies each added or changed test file in, runs the recipe
+  `<language>::test-paths` of the parent on each file alone, and removes the
+  worktree. A file that does not build cannot hide a file that passes. A
+  parent with no such recipe gives "the runner failed".
 - **Test files.** Each profile names its test files with the globs of the key
   `tests` of `profile.json`. `test-parent` copies only those files, so no
   new code reaches the parent.
@@ -518,13 +520,19 @@ Before it writes its packet, the `test-review` recipe runs a logged line,
   - 1: a test failed, or a test did not build. A new test of new code often
     does not build on the parent, and that is a failure of the test.
   - 5: no test ran, as pytest exits when it collects no test. An example is
-    a file whose tests are all skipped. `test-paths` with no path exits with
+    a file whose tests are all skipped. An xfail test, which is expected to
+    fail, does not count as a test that ran. `test-paths` with no path exits with
     5 too, and it never runs all the tests.
-  - Any other code: the runner itself failed, for example with a usage error
-    or a crash.
-- **Each profile counts the tests.** It reads the count from the output of
-  the runner, such as the summary line of pytest or the lines "running N
-  tests" of cargo. A count of 0 gives 5, even when the runner exits with 0. A
+  - Any other code: the runner itself failed, for example with a usage error,
+    a crash, or an install of the environment that fails. A test that ends
+    the run, as with `os._exit(0)`, gives this code too.
+- **One line for each test.** The output of `test-paths` names each test and
+  its result. In a file with a test that fails, a test that passes gives no
+  case of its own, so `test-review` reads those lines.
+- **Each profile counts the tests.** It reads the count from a report or
+  the output of the runner, such as the JUnit report of pytest or the lines
+  "running N tests" of cargo. A plugin can change the terminal output of
+  pytest, so the Python profile reads the report. A count of 0 gives 5, even when the runner exits with 0. A
   runner that exits with 5 for another reason, such as a fatal error of Node,
   gets 2. vitest exits with 1 when a test fails, and also when it finds no
   test file. So the profile reads its output to tell the two apart.
@@ -535,11 +543,19 @@ Before it writes its packet, the `test-review` recipe runs a logged line,
   expected failure. 5 is "no test ran on the parent", and `test-review`
   judges those tests from the diff. Any other code is "the runner failed",
   which is neither a pass nor a failure.
+- **Two limits of the Python profile.**
+  - pytest finds its config from the test files that it runs. So a
+    `pytest.ini` in the folder of a test file takes the place of the config
+    of the project, as it does when you run pytest on that file yourself.
+  - `test-parent` stops the process group of each run. A test that leaves
+    its group, as with `setsid`, can outlive the run.
 - It writes the result, with the output of the tests, to
-  `test-parent/<run>.json` in the log folder. The result names the case. It
-  exits with 0 in each case above. It exits with 1 only when `test-parent`
+  `test-parent/<tree>.json` in the log folder. `<tree>` is the worktree tree,
+  as the gate computes it, so the packet of `test-review` for that tree
+  finds it. The result names the case. It exits with 0 in each case above. It exits with 1 only when `test-parent`
   itself fails. Examples are a worktree that git cannot make, a copy that
-  fails, and a log file that it cannot write.
+  fails, and a log file that it cannot write. On SIGTERM, SIGHUP or Ctrl-C it
+  stops the tests and removes the worktree before it exits.
 - The packet holds the result. So the run is logged, and the agent only judges
   it.
 - On the first commit, `test-parent` is a skip.

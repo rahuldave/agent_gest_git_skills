@@ -34,8 +34,13 @@ jn_target := "uv run --no-project --quiet --no-python-downloads --python '>=3.9'
 review:
     @{{jn_target}} review
 
+# Run the added and changed test files on the parent commit. test-review runs it first, and its packet holds the
+# result
+test-parent:
+    @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/test_parent.py
+
 # A fresh agent checks that each new behavior has a test that checks a result. Prints the packet
-test-review:
+test-review: test-parent
     @{{jn_target}} test-review
 
 # A fresh agent writes or changes the docs that the change affects, in AREA when given. Prints the packet

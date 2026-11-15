@@ -271,6 +271,14 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
     except OSError as exc:
         raise Stop(f"cannot write {diff_file}: {exc.strerror}")
     command = ["jagt", "render", target, f"--prompt-text={text}", f"--input={diff_file}"]
+    if target == "test-review":
+        # The result of test-parent for this tree, which the recipe test-review writes first.
+        parent_result = log / "test-parent" / f"{tree}.json"
+        if parent_result.is_file() and not parent_result.is_symlink():
+            command.append(f"--input={parent_result}")
+        else:
+            print(f"agentic target: no result of test-parent for the tree {tree}; run just test-parent",
+                  file=sys.stderr)
     # The = form keeps an argument that starts with - from looking like an option of jagt.
     command += [f"--arg={arg}" for arg in args]
     command += [f"--allowed-action={action}" for action in ALLOWED[target]]
