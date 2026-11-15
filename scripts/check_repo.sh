@@ -380,6 +380,9 @@ done
   "${python[@]}" -m unittest scripts/test_gate_guard.py -q
   "${python[@]}" -m unittest scripts/test_agentic_target.py -q
   "${python[@]}" -m unittest scripts/test_test_parent.py -q
+  "${python[@]}" -m unittest scripts/test_stack_prs.py -q
+  "${python[@]}" -m unittest scripts/test_lab_roots.py -q
+  "${python[@]}" -m unittest scripts/test_skill_text.py -q
   uv run --no-project --quiet --with pyyaml python -m unittest scripts/test_record_result.py -q
 )
 

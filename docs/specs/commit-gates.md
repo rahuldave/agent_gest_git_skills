@@ -977,8 +977,8 @@ must be staged:
 - **All changes staged.** The commit tree equals the worktree tree, and the
   gates go on.
 - **Part of the changes staged.** The commit stops. The gate prints the fix.
-  Run `git stash --keep-index -u`, then `just check`, then commit, then
-  `git stash pop`.
+  Run `git stash --keep-index -u`, then the targets that the new tree needs
+  and `just check`, then commit, then `git stash pop`.
 
 ### The pass
 

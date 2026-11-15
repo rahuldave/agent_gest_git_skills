@@ -82,3 +82,9 @@ jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' p
 # commits of the push, and by hand the base is the upstream of the branch
 ci-gate:
     @{{jn_gate}} --trailers
+
+# Open the PRs of a stack in order, from the bottom branch up: the PR of each branch has the branch below it as its
+# base, and the bottom one has BASE. Pushes a branch with no upstream. Takes --dry-run first
+[positional-arguments]
+stack-prs *args:
+    @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/stack_prs.py "$@"
