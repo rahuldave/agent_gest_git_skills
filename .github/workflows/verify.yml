@@ -41,14 +41,7 @@ jobs:
       - name: Install this package with the jnterfaces installer, then remove it
         run: just install-test
       - name: Validate package manifest with skill-package-maker
-        shell: bash
-        run: |
-          set -euo pipefail
-          tool_root="$(mktemp -d)"
-          trap 'rm -rf -- "$tool_root"' EXIT
-          git clone --quiet https://github.com/rahuldave/agent_skill_package_maker.git "$tool_root/package-maker"
-          git -C "$tool_root/package-maker" checkout --quiet 6a5938c49ca71c374dc1a234a4d15134c484a741
-          uv run --no-project python "$tool_root/package-maker/skills/skill-package-maker/scripts/lint_skill_bundle.py" .
+        run: just package-lint
       - name: Build and verify source distribution archive
         shell: bash
         run: |

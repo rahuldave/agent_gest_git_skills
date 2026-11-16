@@ -119,7 +119,11 @@ install-test:
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$target/.github/workflows/check.yml" || fail "the removal took out the CI starter"
   echo "install-test: install and removal passed"
 
-ci-local: lint install-test stack-rebase-lab
+ci-local: lint install-test stack-rebase-lab package-lint
+
+# Check the package manifest and the bundled resources of each skill, as CI does
+package-lint:
+  scripts/lint_package.sh
 
 diff-check:
   scripts/check_repo.sh --diff
