@@ -52,8 +52,8 @@ The parts of a solution exist, but they are not joined:
 | Adapter | The parts that join one harness to the gates: its hooks in agent_gest_git_skills, and its plugin in the repository of `jlog`. |
 | Agent hook | A hook of a harness that runs before or after a tool call. |
 | smalldocs | The program that builds the docs websites of the stack. |
-| Docments | The comments beside the arguments of a Python function. smalldocs reads them for the API pages. |
-| API pages | The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.5 makes them for Python only. |
+| Docments | The comments beside the arguments of a Python function. smalldocs reads them for the API pages. In TypeScript, the same comments come after each parameter. |
+| API pages | The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.12 makes them for Python, TypeScript and Rust. |
 
 ## The threat model
 
@@ -337,8 +337,9 @@ just check     fmt-check lint typecheck test integration coverage-check docstrin
     `.agents/just/roles/nossaifd.just`, with the name `prose-check`. So it
     fills the step in a project with the `nossaifd` role. Without the role,
     the step is a no-op step.
-  - **The API pages.** The step runs `smalldocs api module NAME` for each
-    changed module into a temporary file, and checks that file.
+  - **The API pages.** The step builds the API page of each changed module or
+    file into a temporary folder, and checks that page. Python uses
+    `smalldocs api module NAME`, and TypeScript uses `smalldocs api build`.
   - **No writes.** The step writes nothing into the repository. When
     `prose_gate.py` or its checker is missing, the step fails and prints the
     install line.
@@ -360,19 +361,25 @@ repositories and agent_gest_git_skills, for their own websites.
   `docs-publish` matches the recipes that exist now.
 - **An `api` tool in jnprofile-python.** It adds the `api` settings to the
   smalldocs config. The key `packages` names the packages of the project. The
-  tool adds `smalldocs api check` to `docs-check`. That command exits with 1
-  when it finds a gap, as the code of smalldocs 0.5.5 shows. The step runs it
-  with `uv run --with smalldocs==0.5.5`, so the package and its dependencies
-  can be imported. The profile turns the tool on by default when the project
-  has the `docs` tool.
-- **No API pages for TypeScript or Rust yet.** smalldocs 0.5.5 reads the API
-  with the Python `ast` module and reads the docments with fastcore. Work is
-  under way in smalldocs to read the API of Rust with rustdoc and of TypeScript
-  with JSDoc. Until a release has it, a TypeScript or Rust project gets the
-  `docs` tool only. After that release, jnprofile-typescript adds an `api` tool
-  like the one of Python. That tool pins the new release, and it says which
-  source files `@api` names. jnprofile-rust adds its `api` tool after the
-  release that reads rustdoc.
+  tool has a recipe `api-check`, which runs `smalldocs api check`. That command
+  exits with 1 when it finds a gap, as the code of smalldocs shows. The recipe
+  runs it with `uv run --with smalldocs==0.5.12`, so the package and its
+  dependencies can be imported. The `docs-check` of the `docs` tool runs
+  `api-check` when the project has that recipe. The profile turns the `api`
+  tool on by default. Without the `docs` tool, no step of `just check` runs it.
+- **An `api` tool in jnprofile-typescript.** smalldocs 0.5.12 reads the API
+  of TypeScript with TypeDoc, and the JSDoc and the comments of each item. The tool
+  pins that release, and runs it with `--with nodejs-wheel==24.*`, so the
+  machine needs no node of its own. Its settings are the TypeScript sections of
+  the `api` key. Without them, the entry is `src/index.ts`, or the same name
+  with `.tsx`, `.mts` or `.cts`, and else each code file of `src/`.
+- **An `api` tool in jnprofile-rust, later.** smalldocs 0.5.12 reads the API
+  of Rust from the JSON of rustdoc, which needs a nightly Rust. That tool is
+  rahuldave/jnprofile-rust#8. Until it exists, a Rust project gets the `docs`
+  tool only.
+- **The `docs` tool pins the same release.** The `docs` tool and the `api`
+  tools pin smalldocs 0.5.12. Before 0.5.9, smalldocs read each `api` section
+  as Python.
 
 ### Skills and targets
 
@@ -1086,10 +1093,15 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
   - **The default.** When the file is missing, the gate uses these lines.
   - **The syntax** is that of git pathspecs with `:(glob)`. So `*` does not
     match `/`, and `**` does. A deleted path counts as a changed path.
-  - **`@api`** names the source files of the packages in `packages`. For a
-    package `pkg.sub`, it is `src/pkg/sub/**` or `pkg/sub/**`, whichever
-    exists, plus the `check` globs of the `api` settings. The `api` tool of
-    each profile defines `@api` for its language. Only Python has one now.
+  - **`@api`** names the source files of the API pages. The `api` tool of
+    each profile is to define `@api` for its language:
+    - Python: for each package `pkg.sub` in `packages`, `src/pkg/sub/**` or
+      `pkg/sub/**`, whichever exists, plus the `check` globs of the `api`
+      settings.
+    - TypeScript: the entry files and the code files in their folders. Without
+      an `api` section, that is the code files of `src/`.
+    - Python and TypeScript have an `api` tool now, but neither tool defines
+      `@api` yet, and the gate does not expand it. So `@api` names no file.
   - **`@pages`** names the files that `is_page` of nossaifd accepts. So
     `AGENTS.md` and `CHANGELOG.md` need no `prose` record. Without the
     `nossaifd` role, `@pages` is `**/*.md` and `**/*.qmd`.
@@ -1134,7 +1146,8 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     - A commit that changes code needs a `test-review` record.
     - A commit with a docs file needs an `update-docs` record and a `prose` record.
     - A commit that changes a module of the API pages needs the same two
-      records. Its docstrings become text on the website.
+      records, once the gate expands `@api`. Its docstrings become text on the
+      website. Until then, such a commit needs neither record.
     - A change to other code needs neither record.
 - **The agent hooks** of each harness do not check records. The gate guard,
   `.agents/skills/gcm/scripts/gate_guard.py`, parses the hook input as JSON
@@ -1303,7 +1316,7 @@ in the log folders.
 | `JLOG_RUN` as the run ID of each line of the run log, and the tree of the first line of a run | jlog |
 | The run ID in the coverage reports, and the match in `coverage-check` | each profile |
 | The recipe `test-parent` | agent_gest_git_skills |
-| The `api` tool of TypeScript, after the smalldocs release that reads JSDoc | jnprofile-typescript |
+| The `api` tool of TypeScript | jnprofile-typescript |
 | The base task of `prose`, `check.py`, `is_page`, and the turn gate with its message when the gates are installed | nossaifd |
 | The `prose-check` recipe, in the role file `.agents/just/roles/nossaifd.just`, with its CI mode and the install line when `prose_gate.py` or a checker is missing | nossaifd |
 | The removal of `nossaifd-prose.yml` when the tasker role is installed, and the rule that keeps a reinstall from writing it again | jnterfaces, in the installer |
@@ -1357,8 +1370,7 @@ needs it.
   `docstring-check`, and the tools of jnprofile-rust.
 - A model inside the git hook. A git hook cannot start an agent.
 - A defense against an agent that tries to cheat.
-- API pages for TypeScript, until smalldocs has a release that reads JSDoc.
-- API pages for Rust, until smalldocs has a release that reads rustdoc.
+- The `api` tool of Rust, which is rahuldave/jnprofile-rust#8.
 - The targets in the list "Other targets to consider later".
 - Signatures for agentic targets.
 - Adapters for harnesses other than Claude Code and Codex.
@@ -1539,8 +1551,9 @@ needs it.
 
 - A new Python project with the `docs` tool has the `api` tool, and a public
   function with no docments fails `just check`.
-- Until the smalldocs release that reads JSDoc, a new TypeScript project with
-  the `docs` tool passes `just check`, with no `api` step.
+- A new TypeScript project with the `docs` tool has the `api` tool. An
+  exported function with no JSDoc, a parameter with no comment, or a file with
+  no module comment fails `just check`.
 - `prose-check` runs `prose_gate.py check-changed` on the changed pages, the files
   that `is_page` accepts, and writes nothing into the repository. A page that
   `.agents/nossaifd-checkers.json` maps to another checker gets that checker.
@@ -1559,8 +1572,9 @@ needs it.
   `set allow-duplicate-recipes`, still gets the combined recipes and the
   no-op steps of the other names. Two runs of `just install` in a row write
   the same index.
-- In a Python project with the `api` tool, `prose-check` also checks the API
-  pages of each changed module, through a temporary file.
+- In a Python or TypeScript project with the `api` tool, `prose-check` also
+  checks the API page of each changed module or file, through a temporary
+  folder.
 - In CI, `just docs-publish` pushes to `gh-pages` for a public repository.
 - It skips a private repository, and it fails in CI when `gh` has no token.
 
@@ -1596,7 +1610,8 @@ needs it.
 - openai/codex `codex-rs/protocol/src/shell_environment.rs`
 - The hook names in the Codex binary 0.163.0-alpha, and the format of its
   rollout files, read on 2026-11-12
-- smalldocs 0.5.5, `api.py`
+- smalldocs 0.5.5, `api.py`, smalldocs 0.5.12 with SPEC-rust-typescript.md,
+  and the commits of smalldocs 0.5.9 to 0.5.12
 - The three adversarial reviews of 2026-11-12, and their tests with git and
   just 1.50
 - The just changelog, entry "Remove logging" (#2305)
