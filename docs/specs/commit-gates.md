@@ -1093,15 +1093,33 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
   - **The default.** When the file is missing, the gate uses these lines.
   - **The syntax** is that of git pathspecs with `:(glob)`. So `*` does not
     match `/`, and `**` does. A deleted path counts as a changed path.
-  - **`@api`** names the source files of the API pages. The `api` tool of
-    each profile is to define `@api` for its language:
+  - **`@api`** names the source files of the API pages. Each language
+    profile gives a rule for its language, in the file
+    `.agents/just/<profile>/api_rule.py` of the project. `<profile>` is a
+    name in the list `profiles` of `.agents/stack.json`, such as `python`.
+    - The rule defines `is_api(path)`. It gets a path from the root of the
+      repository, and it gives `True` for a source file of the API pages.
+      The rule uses only the standard library of Python 3.9 or later, and it
+      writes nothing.
     - Python: for each package `pkg.sub` in `packages`, `src/pkg/sub/**` or
       `pkg/sub/**`, whichever exists, plus the `check` globs of the `api`
       settings.
     - TypeScript: the entry files and the code files in their folders. Without
       an `api` section, that is the code files of `src/`.
-    - Python and TypeScript have an `api` tool now, but neither tool defines
-      `@api` yet, and the gate does not expand it. So `@api` names no file.
+    - The profiles are the names in `profiles` of the parent commit and of the
+      commit. So a commit that removes a profile still needs the records for
+      its API.
+    - The gate reads each rule from the parent commit. So a change cannot
+      loosen the rule for its own API. A profile without a rule in the parent
+      adds no file. The first commit has no parent, so `@api` names no file
+      in it.
+    - A changed file counts when one of the rules accepts it, and it is not in
+      `.agents/generated.txt`. A deleted file counts too.
+    - Each rule runs in a Python of its own, as the page rule runs. The
+      commit stops for the same failures as those of the page rule, and the
+      message names the rule. The gate runs each rule, even when another rule
+      already makes the records necessary. So a broken rule stops the commit
+      in that case too.
   - **`@pages`** names the files that `is_page` of nossaifd accepts. So
     `AGENTS.md` and `CHANGELOG.md` need no `prose` record. Without the
     `nossaifd` role, `@pages` is `**/*.md` and `**/*.qmd`.
@@ -1114,7 +1132,8 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
       environment.
     - The commit stops when the rule does not load, has no `is_page`, fails,
       ends before it checks each path, or gives back a path that the commit
-      does not change. The message names the Python of the gate, because a
+      does not change. It also stops when the rule does not finish in 120
+      seconds. The message names the Python of the gate, because a
       rule can need a newer Python.
   - **`@code`** names the source files of each language in `.agents/stack.json`.
     Each profile gives its globs under the key `code` of `profile.json`, for
@@ -1145,9 +1164,10 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     - Every commit needs a `review` record.
     - A commit that changes code needs a `test-review` record.
     - A commit with a docs file needs an `update-docs` record and a `prose` record.
-    - A commit that changes a module of the API pages needs the same two
-      records, once the gate expands `@api`. Its docstrings become text on the
-      website. Until then, such a commit needs neither record.
+    - A commit that changes a source file of the API pages needs the same two
+      records, because its docstrings become text on the website. A rule of
+      `@api` decides which files are source files of the API pages. Without
+      a rule in the parent, such a commit needs neither record.
     - A change to other code needs neither record.
 - **The agent hooks** of each harness do not check records. The gate guard,
   `.agents/skills/gcm/scripts/gate_guard.py`, parses the hook input as JSON
