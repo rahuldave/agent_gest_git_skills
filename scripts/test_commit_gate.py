@@ -379,6 +379,205 @@ class GateTests(unittest.TestCase):
         self.assertGoes(self.change_only("CHANGELOG.md", "two\n"))
         self.assertStops(self.change_only("docs/guide.qmd"), "`just prose`")
 
+    # The API
+
+    API = "def is_api(rel):\n    return rel.startswith('src/') and rel.endswith('.py')\n"
+
+    def profiles(self, *names: str) -> None:
+        self.write(".agents/stack.json", json.dumps(dict(STACK, profiles=list(names))))
+
+    def api_rule(self, profile: str, text: str) -> None:
+        self.write(commit_gate.API_RULE.format(profile), text)
+
+    def change_api(self, path: str = "src/api.py") -> subprocess.CompletedProcess:
+        """Commit a change of PATH alone, as an agent, with every record but update-docs and prose."""
+        self.write(path, "def f():\n    '''new'''\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        self.record("test-review")
+        return self.commit(env=self.agent)
+
+    def test_an_api_change_that_the_rule_accepts_needs_update_docs_and_prose(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.assertStops(self.change_api(), "`just update-docs`, `just prose`")
+
+    def test_a_change_that_the_api_rule_rejects_needs_no_prose(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.assertGoes(self.change_api("tools/helper.py"))
+
+    def test_without_an_api_rule_the_api_names_no_file(self) -> None:
+        self.profiles("python")
+        self.first_commit()
+        self.assertGoes(self.change_api())
+
+    def test_a_profile_not_in_a_stack_has_no_api_rule(self) -> None:
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.assertGoes(self.change_api())
+
+    def test_the_first_commit_has_no_api_rule(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", "def is_api(rel):\n    return True\n")
+        self.write("src/api.py", "x = 1\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        self.record("test-review")
+        self.assertGoes(self.commit(env=self.agent))
+
+    def test_an_api_rule_that_the_commit_adds_does_not_count(self) -> None:
+        self.profiles("python")
+        self.first_commit()
+        self.api_rule("python", self.API)
+        self.assertGoes(self.change_api())
+        # The next commit has the rule in its parent.
+        self.assertStops(self.change_api("src/other.py"), "`just update-docs`, `just prose`")
+
+    def test_an_api_rule_comes_from_the_parent(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.api_rule("python", "def is_api(rel):\n    return False\n")
+        self.assertStops(self.change_api(), "`just update-docs`, `just prose`")
+
+    def test_a_profile_that_the_commit_removes_still_has_its_api_rule(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.profiles()
+        self.assertStops(self.change_api(), "`just update-docs`, `just prose`")
+
+    def test_a_profile_that_the_commit_adds_uses_the_rule_of_the_parent(self) -> None:
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.profiles("python")
+        self.assertStops(self.change_api(), "`just update-docs`, `just prose`")
+
+    def test_with_two_profiles_either_rule_makes_an_api_change(self) -> None:
+        for path, api in (("web/index.ts", True), ("src/api.py", True), ("tools/helper.py", False)):
+            with self.subTest(path=path):
+                self.setUp()
+                self.profiles("python", "typescript")
+                self.api_rule("python", self.API)
+                self.api_rule("typescript", "def is_api(rel):\n    return rel.endswith('.ts')\n")
+                self.first_commit()
+                if api:
+                    self.assertStops(self.change_api(path), "`just update-docs`, `just prose`")
+                else:
+                    self.assertGoes(self.change_api(path))
+
+    def test_a_deleted_api_file_needs_update_docs_and_prose(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.write("src/api.py", "x = 1\n")
+        self.first_commit()
+        (self.repo / "src/api.py").unlink()
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        self.record("test-review")
+        self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
+
+    def test_a_generated_api_file_needs_no_prose(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", "def is_api(rel):\n    return True\n")
+        self.write(".agents/generated.txt", "src/gen/**\n")
+        self.first_commit()
+        self.assertGoes(self.change_api("src/gen/api.py"))
+
+    def test_an_odd_profile_name_has_no_rule(self) -> None:
+        self.assertEqual(commit_gate.profile_names({"profiles": ["python", "../x", "a/b", "..", "", 3, "ts-1"]}),
+                         ["python", "ts-1"])
+        self.assertEqual(commit_gate.profile_names({"profiles": "python"}), [])
+
+    def test_an_api_rule_that_fails_stops_the_commit(self) -> None:
+        cases = (
+            ("def is_api(:\n", "fails in Python"),
+            ("x = 1\n", "has no is_api"),
+            ("def is_api(rel):\n    raise ValueError('bad rule')\n", "ValueError: bad rule"),
+            ("import sys\nsys.exit(0)\n", "ends before it checks each path"),
+            ("import sys\ndef is_api(rel):\n    sys.exit(0)\n", "ends before it checks each path"),
+            ("import sys\ndef is_api(rel):\n    sys.__stdout__.buffer.write(b'other.py\\0')\n    return False\n",
+             "names paths that the commit does not change"),
+        )
+        for text, message in cases:
+            with self.subTest(text=text):
+                self.setUp()
+                self.profiles("python", "typescript")
+                # The other rule accepts the change, and the broken rule still stops the commit.
+                self.api_rule("python", self.API)
+                self.api_rule("typescript", text)
+                self.first_commit()
+                result = self.change_api()
+                self.assertStops(result, message)
+                self.assertIn(commit_gate.API_RULE.format("typescript"), result.stderr)
+
+    def test_a_broken_api_rule_stops_the_commit_when_a_page_changes_too(self) -> None:
+        self.profiles("python")
+        self.write(commit_gate.PAGE_RULE, self.RULE)
+        self.api_rule("python", "def is_api(:\n")
+        self.first_commit()
+        self.write("guide.md", "new\n")
+        result = self.change_api()
+        self.assertStops(result, "fails in Python")
+        self.assertIn(commit_gate.API_RULE.format("python"), result.stderr)
+
+    def test_a_rule_that_exits_with_3_fails_and_does_not_lack_its_function(self) -> None:
+        for path, text in ((commit_gate.PAGE_RULE, "import sys\nsys.exit(3)\ndef is_page(rel):\n    return True\n"),
+                           (commit_gate.API_RULE.format("python"),
+                            "import sys\nsys.exit(3)\ndef is_api(rel):\n    return True\n")):
+            with self.subTest(path=path):
+                self.setUp()
+                self.profiles("python")
+                self.write(path, text)
+                self.first_commit()
+                result = self.change_api("src/api.md")
+                self.assertStops(result, "fails in Python")
+                self.assertNotIn("has no", result.stderr)
+
+    def test_an_amend_of_a_commit_that_loosened_the_api_rule_uses_the_rule_before_it(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        self.api_rule("python", "def is_api(rel):\n    return False\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(self.commit())
+        self.assertStops(self.change_api_amend(), "`just update-docs`, `just prose`")
+
+    def change_api_amend(self) -> subprocess.CompletedProcess:
+        self.write("src/api.py", "def f():\n    '''new'''\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review")
+        self.record("test-review")
+        return self.commit("--amend", env=self.agent)
+
+    def test_an_api_file_whose_name_is_not_utf8_is_an_api_file(self) -> None:
+        self.profiles("python")
+        self.api_rule("python", self.API)
+        self.first_commit()
+        name = b"src/caf\xe9.py".decode(errors="surrogateescape")
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        stack = json.loads((self.repo / ".agents/stack.json").read_text())
+        [rule] = commit_gate.api_rules(self.repo, head, stack, None)
+        self.assertEqual(rule([name, "tools/x.py", "src/a.md"]), [name])
+
+    def test_a_rule_that_does_not_finish_stops_the_commit(self) -> None:
+        rule = commit_gate.rule_runner(self.repo, "import time\ntime.sleep(30)\n", "rule.py", "is_api",
+                                       "the API rule")
+        old = commit_gate.RULE_TIMEOUT
+        commit_gate.RULE_TIMEOUT = 1
+        self.addCleanup(setattr, commit_gate, "RULE_TIMEOUT", old)
+        with self.assertRaises(commit_gate.Stop) as stop:
+            rule(["src/api.py"])
+        self.assertIn("does not finish in 1 seconds", str(stop.exception))
+
     def test_the_same_records_in_another_order_stop(self) -> None:
         self.first_commit()
         self.write("guide.md", "draft\n")
