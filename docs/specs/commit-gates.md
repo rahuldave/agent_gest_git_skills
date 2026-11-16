@@ -863,6 +863,17 @@ one JSON line to the run log:
   starts no download, and its failure never fails the line.
 - **The gate is a plain script, not a recipe.** So nothing runs on its own
   inside the git hook.
+- **The sandbox of Codex.** In the mode `workspace-write`, Codex keeps
+  `.agents/` and `.git/` read-only, also under a writable root of the folder
+  above them. So `just check` cannot write its run log, the targets cannot
+  write their packets, and `git commit` cannot write the git folder. The
+  person approves these commands outside the sandbox. Or the person gives
+  each of these folders as a `sandbox_workspace_write.writable_roots` entry.
+  The folders are `.agents` and `.git` of the main checkout, and in a
+  worktree also its `.agents` and its git folder, from
+  `git rev-parse --git-dir`. On 2026-11-16, with Codex 0.167.2, a
+  `codex exec` commit in a main checkout checked the two roots of the main
+  checkout. Probes with `codex sandbox` checked the four roots of a worktree.
 
 **Which session.** Each harness shows its session in a different way:
 
