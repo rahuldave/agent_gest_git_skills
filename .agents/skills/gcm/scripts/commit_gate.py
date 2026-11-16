@@ -513,7 +513,13 @@ def gate(root: Path) -> None:
 
     folders = log_folders(root)
     if not has_pass(folders, tree, stack["steps"]):
-        raise Stop("no pass of `just check` for this tree: run `just check`")
+        message = "no pass of `just check` for this tree: run `just check`"
+        if os.environ.get("PRE_COMMIT") == "1":
+            # The framework puts the unstaged changes aside before its hooks, so partial staging looks like this.
+            message += (". If only part of the changes is staged, pre-commit put the rest aside, so a pass of the "
+                        "whole worktree does not count. Stage them all, or run `git stash --keep-index -u`, then the "
+                        "targets that the new tree needs and `just check`, then commit, then `git stash pop`")
+        raise Stop(message)
 
     if is_agent():
         missing = missing_targets(required, load_records(folders), tree)
@@ -627,11 +633,12 @@ def check_trailers(root: Path, base: Optional[str], head: str) -> List[str]:
 GATE_COMMAND = ("uv run --no-project --quiet --no-python-downloads --python '>=3.9' python "
                 ".agents/skills/gcm/scripts/commit_gate.py")
 
-# The config of the framework, and the hooks of it that the tasker role needs: the stage and the entry of each one.
+# The config of the framework, and the hooks of it that the tasker role needs: the stages and the entry of each one.
+# The gate runs before a commit and before the commit of a merge.
 CONFIG = ".pre-commit-config.yaml"
-CONFIG_HOOKS = {"commit-gate": ("pre-commit", GATE_COMMAND),
-                "commit-gate-trailer": ("commit-msg", f"{GATE_COMMAND} --hook commit-msg"),
-                "just-ci": ("pre-push", "just ci")}
+CONFIG_HOOKS = {"commit-gate": (("pre-commit", "pre-merge-commit"), GATE_COMMAND),
+                "commit-gate-trailer": (("commit-msg",), f"{GATE_COMMAND} --hook commit-msg"),
+                "just-ci": (("pre-push",), "just ci")}
 
 # The stages of the gate, the stages that the tasker role installs, and the text that each hook of the pre-commit
 # framework holds. The pre-push hook runs just ci, not the gate.
@@ -735,12 +742,13 @@ def config_problems(root: Path) -> List[str]:
     if not isinstance(hooks, list):
         return [f"pre-commit cannot read {CONFIG}: {(run.stderr.strip().splitlines() or ['no output'])[-1]}"]
     problems = []
-    for name, (stage, entry) in CONFIG_HOOKS.items():
-        if not any(isinstance(h, dict) and h.get("id") == name and h.get("entry") == entry
-                   and stage in (h.get("stages") or ()) for h in hooks):
-            problems.append(f"{CONFIG} has no local hook {name} that runs {entry} for the stage {stage}. A repo: "
-                            "local entry of the project takes the place of the entry of the tasker role, so copy "
-                            "the hooks of .agents/skills/gcm/assets/pre-commit-config.yaml into it")
+    for name, (stages, entry) in CONFIG_HOOKS.items():
+        for stage in stages:
+            if not any(isinstance(h, dict) and h.get("id") == name and h.get("entry") == entry
+                       and stage in (h.get("stages") or ()) for h in hooks):
+                problems.append(f"{CONFIG} has no local hook {name} that runs {entry} for the stage {stage}. A "
+                                "repo: local entry of the project takes the place of the entry of the tasker role, so "
+                                "copy the hooks of .agents/skills/gcm/assets/pre-commit-config.yaml into it")
     return problems
 
 

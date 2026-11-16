@@ -123,7 +123,9 @@ The message of the gate names what is missing. Do what it says, then commit
 again:
 
 - **No pass for this tree.** Run `just check`, and fix what fails. A change
-  after the pass makes a new tree, so run it again after each change.
+  after the pass makes a new tree, so run it again after each change. Under
+  pre-commit, an unstaged edit of a tracked file gives this stop too, because
+  pre-commit puts it aside. The stop then also gives the stash fix below.
 - **No record of a target.** Run the targets in the order that the message
   gives. A record counts only when its status is a pass and each finding is
   fixed.
