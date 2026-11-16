@@ -136,6 +136,28 @@ again:
   3. Commit, then run `git stash pop`.
 - **A finding that is not fixed.** Fix it with a test, and run the target again
   on the new tree.
+- **In Codex, a write to `.agents` or `.git` is denied.** The
+  `workspace-write` sandbox of Codex keeps both folders read-only, and a
+  writable root of the folder above them does not help. `just check` writes
+  its run log in `.agents/log` of the worktree. The targets write their
+  packets in `.agents/log` of the main checkout. `git commit` writes in the
+  git folder. Ask the person to approve the command outside the sandbox. Or
+  ask them to start Codex with each of these folders as a writable root:
+  - `<main>/.agents` and `<main>/.git`, where `<main>` is the main checkout.
+  - In a worktree, also `<worktree>/.agents`, and the git folder of the
+    worktree, which `git rev-parse --git-dir` prints.
+
+  For the main checkout, the command is:
+
+  ```bash
+  codex -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<main>/.agents","<main>/.git"]'
+  ```
+
+  In a worktree, it is:
+
+  ```bash
+  codex -s workspace-write -c "sandbox_workspace_write.writable_roots=[\"<main>/.agents\",\"<main>/.git\",\"$PWD/.agents\",\"$(git rev-parse --git-dir)\"]"
+  ```
 
 Do not go around the gate. `--no-verify`, `core.hooksPath`, `git commit-tree`
 and `git update-ref` are stopped by the guard of the hooks, and a commit
