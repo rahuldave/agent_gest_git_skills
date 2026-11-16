@@ -275,6 +275,25 @@ class WorktreeScriptTests(unittest.TestCase):
         self.assertIn(".pytest_cache, .venv", out)
         self.assertFalse(folder.exists())
 
+    def test_a_worktree_with_only_the_run_log_of_jlog_can_be_pruned(self) -> None:
+        # jnterfaces writes .agents/log/ into .gitignore and .worktreedisposable, and just check writes the run log.
+        with (self.repo / ".gitignore").open("a") as handle:
+            handle.write(".agents/log/\n")
+        (self.repo / ".worktreedisposable").write_text("# the run log of jlog, made again by just check\n"
+                                                       ".agents/log/\n")
+        # .agents holds tracked files, as in a project of jnterfaces, so only the nested folder .agents/log/ matches.
+        (self.repo / ".agents").mkdir()
+        (self.repo / ".agents/stack.json").write_text("{}\n")
+        git("add", ".", cwd=self.repo)
+        git("commit", "-qm", "log", cwd=self.repo)
+        self.run_script("new", "log", "--no-setup")
+        folder = self.shelf / "log"
+        (folder / ".agents/log").mkdir(parents=True)
+        (folder / ".agents/log/run.jsonl").write_text('{"kind":"pass"}\n')
+        self.age(folder, 5)
+        self.run_script("prune")
+        self.assertFalse(folder.exists())
+
     def test_an_output_that_worktreedisposable_does_not_name_still_keeps_a_worktree(self) -> None:
         folder = self.disposable_worktree()
         (folder / "out.log").write_text("an output\n")
