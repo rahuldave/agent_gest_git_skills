@@ -1047,9 +1047,13 @@ check: fmt-check lint typecheck test coverage-check integration docstring-check 
     `pre-commit install` with a `--hook-type` for each of `pre-commit`,
     `pre-merge-commit`, `commit-msg` and `pre-push` installs them. jnterfaces installs the programs of a role after its
     files.
-  - The framework stashes the unstaged changes before its hooks run. So the
-    gate sees partial staging as a tree without a pass, not as unstaged
-    changes.
+  - The framework stashes the unstaged edits of tracked files before its
+    hooks run. So the gate sees them as a tree without a pass, not as
+    partial staging. The framework sets `PRE_COMMIT=1` for its hooks, so then
+    the stop also gives the stash fix. Untracked files stay in place, so they
+    give the stop of partial staging.
+  - `--check-hooks` needs the hook `commit-gate` in the stages `pre-commit`
+    and `pre-merge-commit`, so that `git merge` runs the gate too.
   - The removal of the tasker role runs `pre-commit uninstall` for the four
     hooks, because a hook without its config stops each commit.
   - The removal of a profile tool, such as `lint`, does not touch the hooks.

@@ -54,8 +54,9 @@ class GateTests(unittest.TestCase):
         self.base = Path(scratch.name).resolve()
         self.repo = self.base / "proj"
         self.repo.mkdir()
+        # PRE_COMMIT is set when the suite runs inside a hook of the pre-commit framework.
         self.person = {k: v for k, v in os.environ.items()
-                       if k not in commit_gate.AGENT_VARIABLES and not k.startswith("GIT_")}
+                       if k not in commit_gate.AGENT_VARIABLES and not k.startswith("GIT_") and k != "PRE_COMMIT"}
         self.person.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.com", GIT_COMMITTER_NAME="t",
                            GIT_COMMITTER_EMAIL="t@example.com")
         self.agent = dict(self.person, CLAUDE_CODE_SESSION_ID="session-1")
@@ -194,6 +195,24 @@ class GateTests(unittest.TestCase):
         git("add", "a.txt", cwd=self.repo)
         self.passed()
         self.assertStops(self.commit(), "git stash --keep-index -u")
+
+    def test_under_the_framework_partial_staging_still_gives_the_stash_fix(self) -> None:
+        # pre-commit puts the unstaged edits of tracked files aside before its hooks run, as git stash --keep-index
+        # does, so the gate sees a staged tree with no pass. It sets PRE_COMMIT=1, and then the stop names the stash
+        # fix too.
+        self.write("b.txt", "b\n")
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        self.write("b.txt", "b2\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        git("stash", "push", "-q", "--keep-index", cwd=self.repo, env=self.person)
+        framework = dict(self.person, PRE_COMMIT="1")
+        result = self.commit(env=framework)
+        self.assertStops(result, "no pass of `just check` for this tree")
+        self.assertIn("pre-commit put the rest aside", result.stderr)
+        self.assertIn("git stash --keep-index -u", result.stderr)
+        self.assertNotIn("pre-commit put the rest aside", self.commit().stderr)
 
     def test_commit_all_by_an_agent_stops_when_the_records_cover_only_the_staged_files(self) -> None:
         self.first_commit()
@@ -374,6 +393,31 @@ class GateTests(unittest.TestCase):
         self.record("update-docs", t1, t2)
         self.record("review")
         self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
+
+    def test_test_review_then_review_passes(self) -> None:
+        # test-review and review both check the last tree, in either order.
+        self.first_commit()
+        self.write("a.py", "x = 1\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("test-review")
+        self.record("review")
+        self.assertGoes(self.commit(env=self.agent))
+
+    def test_a_test_review_before_the_last_change_does_not_count(self) -> None:
+        self.first_commit()
+        self.write("guide.md", "draft\n")
+        t0 = self.tree()
+        self.write("a.py", "x = 1\n")
+        self.record("test-review")
+        self.write("guide.md", "docs\n")
+        t1 = self.tree()
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("update-docs", t0, t1)
+        self.record("prose", t1, t1)
+        self.record("review")
+        self.assertStops(self.commit(env=self.agent), "`just test-review`")
 
     def test_a_review_before_the_last_change_does_not_count(self) -> None:
         self.first_commit()
@@ -907,7 +951,8 @@ class HookCheckTests(unittest.TestCase):
         local = asset[:asset.index("  # Checks of any file")]
         gate, trailer = commit_gate.CONFIG_HOOKS["commit-gate"][1], commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1]
         flow = ("repos:\n  - repo: local\n    hooks:\n"
-                f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system, stages: [pre-commit]}}\n"
+                f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system, "
+                "stages: [pre-commit, pre-merge-commit]}\n"
                 f"      - {{id: commit-gate-trailer, name: t, entry: \"{trailer}\", language: system, "
                 "stages: [commit-msg]}\n"
                 "      - {id: just-ci, name: c, entry: just ci, language: system, stages: [pre-push]}\n")
@@ -915,6 +960,8 @@ class HookCheckTests(unittest.TestCase):
             ("the config of the role", local, 0, None),
             ("the flow form of YAML", flow, 0, None),
             ("a hook of the wrong stage", local.replace("stages: [pre-push]", "stages: [manual]"), 1, "just-ci"),
+            ("a gate with no merge stage", local.replace("stages: [pre-commit, pre-merge-commit]",
+                                                        "stages: [pre-commit]"), 1, "commit-gate"),
             ("a hook with another entry", local.replace("entry: just ci", "entry: 'true'"), 1, "just-ci"),
             ("the ids in a block of text", "repos:\n  - repo: local\n    hooks:\n      - id: x\n        name: x\n"
              "        entry: 'true'\n        language: system\n        args:\n          - |\n"
@@ -988,7 +1035,10 @@ class HookCheckTests(unittest.TestCase):
                  "      - {id: just-ci, name: c, entry: just ci, language: system}\n")
         cases = (
             ("no default_stages: each stage", hooks, 0, None),
-            ("default_stages of each stage", "default_stages: [pre-commit, commit-msg, pre-push]\n" + hooks, 0, None),
+            ("default_stages of each stage",
+             "default_stages: [pre-commit, pre-merge-commit, commit-msg, pre-push]\n" + hooks, 0, None),
+            ("default_stages without pre-merge-commit", "default_stages: [pre-commit, commit-msg, pre-push]\n" + hooks,
+             1, "commit-gate"),
             ("default_stages without pre-commit", "default_stages: [pre-push]\n" + hooks, 1, "commit-gate"),
         )
         for label, text, code, missing in cases:
@@ -1005,8 +1055,8 @@ class HookCheckTests(unittest.TestCase):
         asset = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
         (self.repo / ".pre-commit-config.yaml").write_text(asset.replace("entry: just ci", "entry: 'true'"))
         # A pre_commit of the project whose loader gives each hook of the role, in the folder of the check.
-        hooks = [{"id": name, "entry": entry, "stages": [stage]}
-                 for name, (stage, entry) in commit_gate.CONFIG_HOOKS.items()]
+        hooks = [{"id": name, "entry": entry, "stages": list(stages)}
+                 for name, (stages, entry) in commit_gate.CONFIG_HOOKS.items()]
         (self.repo / "pre_commit").mkdir()
         (self.repo / "pre_commit/__init__.py").write_text("")
         (self.repo / "pre_commit/clientlib.py").write_text(
