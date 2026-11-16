@@ -119,6 +119,10 @@ check_gate_stops() {
     cat "$dir/.agents/log/lab-commit.out" >&2
     exit 1
   fi
+  git -C "$dir" log -1 --format=%B | grep -q '^Commit-Gate: patch:' || {
+    echo "[$name] the commit has no Commit-Gate trailer" >&2
+    exit 1
+  }
   printf '[%s] the gate stops the commit after a failed just check, and lets it through after a pass\n' "$name"
 }
 
