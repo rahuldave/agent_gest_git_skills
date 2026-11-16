@@ -74,6 +74,33 @@ install_lab() {
     --profile "$profile" --defaults --clone "agent_gest_git_skills=$repo_root" "$@"
 }
 
+# The commit gate of the tasker role: a commit of a tree whose just check fails stops. FILE gets a line that the
+# lint of the profile fails on. The commit is by a person, so the gate needs only the pass of just check.
+check_gate_stops() {
+  local dir="$1"
+  local file="$2"
+  local line="$3"
+
+  printf '%s\n' "$line" >>"$dir/$file"
+  run "$dir" git add -A
+  if (cd "$dir" && just check) >"$dir/.agents/log/lab-check.out" 2>&1; then
+    echo "[$(basename "$dir")] just check passed with a lint error in $file" >&2
+    exit 1
+  fi
+  if (cd "$dir" && env -u CLAUDECODE -u CLAUDE_CODE_SESSION_ID -u CODEX_THREAD_ID \
+    git -c user.name=lab -c user.email=lab@example.com -c commit.gpgsign=false commit -q -m "lab: a failed check") \
+    >"$dir/.agents/log/lab-commit.out" 2>&1; then
+    echo "[$(basename "$dir")] the commit went through after a failed just check" >&2
+    exit 1
+  fi
+  grep -q "no pass of \`just check\` for this tree" "$dir/.agents/log/lab-commit.out" || {
+    echo "[$(basename "$dir")] the commit stopped, but not at the gate:" >&2
+    cat "$dir/.agents/log/lab-commit.out" >&2
+    exit 1
+  }
+  printf '[%s] a failed just check stops the commit at the gate\n' "$(basename "$dir")"
+}
+
 write_python_lab() {
   local dir="$workspace/hello-python"
   install_lab "$dir" python typecheck
@@ -98,6 +125,7 @@ PYTHON
 
   run "$dir" just fmt
   run "$dir" just verify
+  check_gate_stops "$dir" hello.py "import os"
 }
 
 write_typescript_lab() {
@@ -123,6 +151,7 @@ TYPESCRIPT
 
   run "$dir" just fmt
   run "$dir" just verify
+  check_gate_stops "$dir" src/hello.ts "debugger;"
 }
 
 write_go_lab() {
@@ -195,6 +224,7 @@ RUST
   run "$dir" just setup
   run "$dir" just fmt
   run "$dir" just verify
+  check_gate_stops "$dir" src/lib.rs "fn unused() {}"
 }
 
 require_tool git
