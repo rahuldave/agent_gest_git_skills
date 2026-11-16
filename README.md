@@ -376,7 +376,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
 | `just worktree-sync` | Sets up a worktree that another tool made, such as Claude Code |
 | `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
 | `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
-| `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream. Takes `--dry-run` first |
+| `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream or ahead of it, never with force. Takes `--dry-run` first |
 
 Setup follows two files in the main checkout, as other tools do:
 
@@ -501,7 +501,9 @@ It checks the shell and JSON contracts, the behavior of the hooks, the mirrors o
 canonical references and the package manifest. It builds and verifies a source archive, and it
 uploads the archive as a CI artifact.
 
-`just ci-local` runs the part of the checks that runs locally without other setup. `just verify`
+`just ci-local` runs the part of the checks that runs locally without other setup. It includes
+`just package-lint`, the check of the package manifest that CI runs, which needs to reach
+GitHub. `just verify`
 also runs the broader labs for languages and protocols, with the prerequisites that their docs
 give. The automatic CI does not claim that these extra local labs ran.
 

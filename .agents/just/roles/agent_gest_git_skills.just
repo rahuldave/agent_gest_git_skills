@@ -34,8 +34,7 @@ jn_target := "uv run --no-project --quiet --no-python-downloads --python '>=3.9'
 review:
     @{{jn_target}} review
 
-# Run the added and changed test files on the parent commit. test-review runs it first, and its packet holds the
-# result
+# Run the added and changed test files on the parent commit; test-review runs it first and its packet holds the result
 test-parent:
     @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/test_parent.py
 
@@ -77,14 +76,17 @@ record-skip target +reason:
 
 jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py"
 
-# Check that each commit since BASE passed the commit gate: each one needs a trailer of the gate that names its
-# change. just ci runs this first. CI gives the base of the pull request in JN_CI_BASE, the pre-push hook gives the
-# commits of the push, and by hand the base is the upstream of the branch
+# just ci runs this first. CI gives the base of the pull request in JN_CI_BASE, the pre-push hook gives the commits
+# of the push, and by hand the base is the upstream of the branch, else origin/HEAD.
+
+# Check that each commit since BASE has the trailer of the commit gate that names its change
 ci-gate:
     @{{jn_gate}} --trailers
 
-# Open the PRs of a stack in order, from the bottom branch up: the PR of each branch has the branch below it as its
-# base, and the bottom one has BASE. Pushes a branch with no upstream. Takes --dry-run first
+# The PR of each branch has the branch below it as its base, and the bottom one has BASE. A branch with no upstream,
+# or ahead of its upstream, is pushed first, never with force.
+
+# Open the PRs of a stack in order, from the bottom branch up, on the branch below each. Takes --dry-run first
 [positional-arguments]
 stack-prs *args:
     @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/stack_prs.py "$@"
