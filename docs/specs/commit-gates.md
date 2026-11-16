@@ -141,7 +141,7 @@ anything. When one is missing, it stops and prints the install line.
 Every repository has the same steps, for any language:
 
 ```text
-just check     fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check
+just check     fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check
 ```
 
 - **jnterfaces names the steps.** It holds the list and the meaning of each
@@ -996,7 +996,7 @@ must be staged:
 The last line of `check` is `jlog pass`:
 
 ```just
-check: fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check
+check: fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check
   jlog pass
 ```
 
