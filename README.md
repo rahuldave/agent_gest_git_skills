@@ -45,8 +45,8 @@ branch `gh-pages`.
   expands the dependencies with `ast-grep`.
 - `scripts/run_tag_dependency_typescript_lab.sh`: a live local TypeScript lab. It expands
   the dependencies from Gest tags, and it expands the call sites with `ast-grep`.
-- `scripts/run_language_profile_labs.sh`: live local labs that run the setup from start to end
-  for the Python/UV, TypeScript/NPM, Go and Rust/Cargo profiles.
+- `scripts/run_language_profile_labs.sh`: live local labs that run the setup from start to end.
+  Python, TypeScript and Rust use the profiles of jnterfaces, and Go uses the setup snippets.
 - `scripts/run_cx_examples_lab.sh`: live local examples of incremental builds with `cx`,
   and of pipelines that make files.
 - `scripts/run_agentic_target_lab.sh`: a local lab for generic agentic targets of the

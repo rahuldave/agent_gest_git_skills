@@ -1,9 +1,12 @@
 # GSU language profile labs
 
-These disposable labs check that `gsu` can join setup snippets for several
-kinds of project. A setup snippet is a short template file, for example a set
-of ignore rules or the recipes of a `Justfile`. A profile is the set of
-snippets for one kind of project. The labs are examples, and they are not
+These disposable labs set up one project for each of several languages, and
+check it with `just verify`. Python, TypeScript and Rust use a profile of
+jnterfaces. A profile is the set of tools, configs and recipes for one
+language. Go has no profile, so its lab joins the setup snippets of `gsu`.
+
+A setup snippet is a short template file, for example a set of ignore rules or
+the recipes of a `Justfile`. The labs are examples, and they are not
 reference generators of projects. Use them to test the workflow in a new chat
 or in a clean project. Then delete the lab folders.
 
@@ -13,12 +16,22 @@ The repository has a live local end-to-end harness for the labs:
 just language-profile-labs
 ```
 
-The command makes four disposable repositories, for Python/UV, TypeScript/NPM,
-Go and Rust/Cargo. In each repository, it does these steps:
+The command makes four disposable repositories, for Python, TypeScript, Go and
+Rust. Python, TypeScript and Rust have a profile of jnterfaces, and Go has
+none. So the labs start in two ways:
 
-1. It starts Git and a local Gest.
-2. It joins the `.gitignore`, `.envrc` and `Justfile` snippets of the profile.
-3. It runs the commands for setup and verification.
+- **A lab with a profile** runs `install_stack.py --profile NAME --defaults` of
+  jnterfaces, with each tool that the profile leaves off by default. The
+  profile writes the manifest, the tool configs and the `Justfile`, as in a
+  real project. The lab writes only the code and a test, then runs `just fmt`
+  and `just verify`.
+- **The packages of a lab** are fresh clones from GitHub, in the folder
+  `packages` of the workspace. So the result follows the main branch of each
+  profile on GitHub, and the labs need the network. There are two exceptions:
+  - agent_gest_git_skills is this checkout, with its uncommitted changes.
+  - jnterfaces is the clone in `JNTERFACES_DIR`.
+- **The Go lab** starts Git and a local Gest. It joins the `.gitignore`,
+  `.envrc` and `Justfile` snippets of this repository, then runs `just verify`.
 
 The command does not make GitHub remotes or pull requests. The labs are setup
 profiles for languages, and they are not tutorials for the flow of a pull
@@ -27,91 +40,33 @@ request.
 Each lab must show these results:
 
 - Git starts in the folder.
-- Local Gest starts with `gest init --local`.
-- The `.gitignore` has the base rules and the ignore rules of the profile.
 - The `Justfile` gives a stable command contract.
-- Dependencies and caches stay in the folder, where that applies.
-- `just verify` runs the checks for lint, types, build, tests, smoke and diff.
+- `just verify` runs the checks for lint, types, tests and diff.
 
-## Python With UV
+## Python, TypeScript and Rust
 
-Profile snippets:
-
-- `templates/gitignore/base.gitignore`
-- `templates/gitignore/python-uv.gitignore`
-- `templates/env/env.example`
-- `templates/env/envrc.local-bin`
-- `templates/env/python-uv.envrc`
-- `python-uv.just`, from the `just` skill of jnterfaces
-
-Local state:
-
-- `.venv/` holds the dependencies.
-- `.local/uv-cache` holds the cache of uv.
-- `.envrc` can expose `.local/bin` and `UV_CACHE_DIR`.
-- Commit `uv.lock` when uv makes it.
-
-The hello-world verification used these commands:
+Each of these labs runs the steps of
+[Start a Python, TypeScript or Rust project](https://rahuldave.github.io/jnterfaces/new-project.html):
 
 ```bash
 git init
-git branch -m main
-gest init --local
-direnv allow .
-just setup
-direnv exec . just verify
+uv run "$JNTERFACES_DIR/scripts/install_stack.py" --profile python --defaults typecheck
+just fmt
+just verify
 ```
 
-The lab copies `python-uv.just` from the `just` skill of jnterfaces as its
-`Justfile`. Its recipes are `setup`, `hook`, `fmt`, `lint`, `typecheck`,
-`test`, `cov` and `diff-check`. `verify` runs `fmt --check`, `lint`, `test` and
-`diff-check`.
+The profiles are jnprofile-python, jnprofile-typescript and jnprofile-rust.
+The lab writes no config of a tool, so a change to a profile shows up in the
+lab. Each lab differs in these ways:
 
-`just test` does not put the project folder on the import path, so
-`from hello import greet` fails without help. The lab adds the folder to the
-import path in its `pyproject.toml`, as the `test` tool of jnprofile-python
-does.
-
-## TypeScript With NPM
-
-Profile snippets:
-
-- `templates/gitignore/base.gitignore`
-- `templates/gitignore/typescript-npm.gitignore`
-- `templates/env/typescript-npm.envrc`
-- `npm-local-cache.just`, from the `just` skill of jnterfaces
-- `typescript-npm.just`, from the `just` skill of jnterfaces
-
-Local state:
-
-- `node_modules/` holds the dependencies.
-- `.local/npm-cache` holds the cache of npm.
-- `.envrc` can expose `.local/bin` and `npm_config_cache`.
-- Commit `package-lock.json` when npm makes it.
-
-The hello-world verification used these commands:
-
-```bash
-git init
-git branch -m main
-gest init --local
-direnv allow .
-just setup
-direnv exec . just verify
-```
-
-The lab copies `typescript-npm.just` from the `just` skill of jnterfaces as its
-`Justfile`. Its recipes are `setup`, `fmt`, `lint`, `typecheck`, `build`,
-`test` and `diff-check`. `verify` runs `lint`, `typecheck`, `test` and
-`diff-check`. The template holds the tool that each recipe runs.
-
-Lessons:
-
-- Include `@types/node` for TypeScript that runs on Node.
-- By default, lint the source and the configuration, and not the generated
-  `dist/`.
-- In a real project, `just install --profile typescript` gives these recipes
-  from jnprofile-typescript.
+- **Python.** The lab adds the tool `typecheck`. The code is `hello.py`, and
+  the test is `tests/test_hello.py`.
+- **TypeScript.** The lab adds the tool `test`. The code and the test are in
+  `src/`. The test imports `./hello.js`, the name that the build writes.
+- **Rust.** The lab is a library. It runs `cargo init --lib --vcs none` before
+  the install, so `cargo init` names the package after the folder, `hello-rust`. It runs
+  `just setup` first, to make `Cargo.lock`. Each item has a doc comment,
+  because `docstring-check` fails on an item with none.
 
 ## Go
 
@@ -133,8 +88,7 @@ Local state:
 The hello-world verification used these commands:
 
 ```bash
-git init
-git branch -m main
+git -c init.defaultBranch=main init
 gest init --local
 direnv allow .
 direnv exec . just verify
@@ -148,42 +102,6 @@ holds the tool that each recipe runs.
 Lesson: `GOCACHE` must be an absolute path. In a recipe of `just`,
 `$PWD/.local/go-build` gives that path. No profile covers Go, so the recipes
 of the template are the only recipes.
-
-## Rust With Cargo
-
-Profile snippets:
-
-- `templates/gitignore/base.gitignore`
-- `templates/gitignore/rust-cargo.gitignore`
-- `templates/env/rust-cargo.envrc`
-- `templates/rust/rust-toolchain.toml`
-- `rust-cargo.just`, from the `just` skill of jnterfaces
-
-Local state:
-
-- `target/` holds the build artifacts of Cargo.
-- `rust-toolchain.toml` pins the channel of the Rust toolchain.
-- Commit `Cargo.lock` for apps and binaries. For a library, ask before you
-  ignore it.
-
-The hello-world verification used these commands:
-
-```bash
-git init
-git branch -m main
-gest init --local
-direnv allow .
-direnv exec . just verify
-```
-
-The lab copies `rust-cargo.just` from the `just` skill of jnterfaces as its
-`Justfile`. Its recipes are `fmt`, `lint`, `typecheck`, `build`, `test`,
-`docs`, `smoke` and `diff-check`. `verify` depends on all of them except
-`docs`. The template holds the tool that each recipe runs. In a real project,
-`just install --profile rust` gives these recipes from jnprofile-rust.
-
-Lesson: the toolchain is outside the repository, but the repository can pin it
-with `rust-toolchain.toml`. The build artifacts stay local, in `target/`.
 
 ## Add a profile for a new kind of project
 
