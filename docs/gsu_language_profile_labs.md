@@ -55,10 +55,14 @@ just fmt
 just verify
 ```
 
-Then each of these labs checks the commit gate of the tasker role. It adds a
-line that the lint of the profile fails on, stages it, and runs `just check`,
-which must fail. Then a commit by a person must stop at the gate, with the
-message "no pass of `just check` for this tree".
+Then each of these labs checks the commit gate of the tasker role:
+
+1. It adds a line that the lint of the profile fails on, and stages it.
+2. `just check` must fail at `lint`.
+3. A commit by a person must stop at the gate, with the message "no pass of
+   `just check` for this tree".
+4. It takes the line out. `just check` must pass, and the same commit must
+   go through.
 
 The profiles are jnprofile-python, jnprofile-typescript and jnprofile-rust.
 The lab writes no config of a tool, so a change to a profile shows up in the
