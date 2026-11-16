@@ -76,7 +76,7 @@ log and the records, and it runs no step itself.
 
 ```
  person / agent
-     │  just check                         just review | update-docs …     
+     │  just check                         just review | update-docs …
      ▼                                          ▼
  ┌──── jnterfaces ─────────────────────┐  ┌─ agent_gest_git_skills ───────┐
  │ root Justfile + index: step names,  │  │ target recipes, base tasks    │
@@ -91,9 +91,9 @@ log and the records, and it runs no step itself.
  └──────┬─────────────────┘                      ▼ (jagt-protocol rules)
         ▼                                 fresh agent → AGENT_RESULT
  ┌─ profile modules ───────────────┐             │
- │ python.just, typescript.just,   │             ▼ SubagentStop hook
- │ rust.just → ruff, ty, pytest,   │      writes the record; the jlog
- │ biome, tsc, smalldocs, cargo …  │      plugin gives the model
+ │ python.just: ruff, ty, pytest   │             ▼ SubagentStop hook
+ │ typescript.just: biome, tsc     │      writes the record; the jlog
+ │ rust.just: cargo, clippy …      │      plugin gives the model
  └─────────────────────────────────┘             │
                                                  ▼
  git commit ──► pre-commit hook ──► gate (agent_gest_git_skills)
