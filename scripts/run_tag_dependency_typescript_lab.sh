@@ -113,12 +113,27 @@ run gest task create "Polish reader hover affordance" \
   --quiet
 
 # The installer writes package.json, tsconfig.json and the Justfile of the
-# typescript profile, with its typecheck tool. The lab installs no role, so
-# no commit gate stops the commit of the fixture.
+# typescript profile, with its typecheck tool. The lab turns off the default
+# roles of the profile, so no commit gate stops the commit of the fixture.
+# The lab has no terminal, so it answers each setup question of the
+# installer. --defaults would answer them too, but it also turns on the
+# default roles.
 run uv run "$jnterfaces_dir/scripts/install_stack.py" \
   --target "$lab_root" \
   --profile typescript \
+  --without tasker,prose \
+  --answer issues=top --answer integration=check --answer review-model=strongest \
   typecheck
+
+# A later installer can turn on a new default role. Stop then, so that the
+# lab names it in --without, rather than fail later at its gate.
+roles_on="$(python3 -c 'import json, sys
+choices = json.load(open(".agents/stack.json")).get("choices", {})
+print(" ".join(name for name, on in choices.items() if on))')"
+if [ -n "$roles_on" ]; then
+  echo "The installer turned on roles that the lab does not want: $roles_on. Add them to --without." >&2
+  exit 1
+fi
 
 cat >src/colors.ts <<'TYPESCRIPT'
 export type ColorToken = "blue" | "green" | "red";

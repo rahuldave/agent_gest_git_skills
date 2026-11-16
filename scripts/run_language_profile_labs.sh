@@ -150,7 +150,9 @@ PYTHON
 
   run "$dir" just fmt
   run "$dir" just verify
-  check_gate_stops "$dir" hello.py "import os"
+  # just check runs fmt-check before lint, so the line has the two blank lines that ruff format puts after a
+  # function. Then only lint fails, at the unused import.
+  check_gate_stops "$dir" hello.py $'\n\nimport os'
 }
 
 write_typescript_lab() {
@@ -159,6 +161,13 @@ write_typescript_lab() {
   mkdir -p "$dir/src"
 
   cat >"$dir/src/hello.ts" <<'TYPESCRIPT'
+/** The greeting of the lab. */
+
+/**
+ * Give the greeting for a name.
+ * @param name The name to greet.
+ * @returns The greeting, such as "Hello, TypeScript!".
+ */
 export function greet(name: string): string {
   return `Hello, ${name}!`;
 }
