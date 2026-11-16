@@ -134,7 +134,9 @@
       },
       {
         "name": "gest",
-        "check": "gest --version"
+        "check": "gest --version",
+        "install": "cargo install --locked --git https://github.com/rahuldave/gest gest",
+        "description": "Tracks the tasks, specs and iterations of the g* skills."
       },
       {
         "name": "just",
