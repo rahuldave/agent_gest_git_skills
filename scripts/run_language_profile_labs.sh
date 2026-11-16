@@ -59,34 +59,85 @@ init_lab() {
   run "$dir" direnv allow .
 }
 
+# A lab with a profile of jnterfaces: the profile writes the manifest, the tool configs and the Justfile, as in a
+# real project. TOOLS adds the tools that the profile leaves off by default. The packages are fresh clones in the
+# workspace, except two: agent_gest_git_skills is the working files of this checkout, and jnterfaces is
+# $JNTERFACES_DIR.
+install_lab() {
+  local dir="$1"
+  local profile="$2"
+  shift 2
+
+  mkdir -p "$dir"
+  run "$dir" git -c init.defaultBranch=main init
+  run "$dir" env SKILL_PACKAGES_DIR="$workspace/packages" uv run "$jnterfaces_dir/scripts/install_stack.py" \
+    --profile "$profile" --defaults --clone "agent_gest_git_skills=$repo_root" "$@"
+}
+
+# The commit gate of the tasker role. FILE gets a line that the lint of the profile fails on: just check must fail
+# at lint, and the commit must stop at the gate. Without the line, just check passes and the same commit goes
+# through. The commit is by a person, so the gate needs only the pass of just check.
+lab_commit() {
+  (cd "$1" && env -u CLAUDECODE -u CLAUDE_CODE_SESSION_ID -u CODEX_THREAD_ID \
+    git -c user.name=lab -c user.email=lab@example.com -c commit.gpgsign=false commit -q -m "lab: the first commit")
+}
+
+check_gate_stops() {
+  local dir="$1"
+  local file="$2"
+  local line="$3"
+  local name
+  name="$(basename "$dir")"
+
+  cp "$dir/$file" "$dir/.agents/log/lab-good-file"
+  printf '%s\n' "$line" >>"$dir/$file"
+  run "$dir" git add -A
+  if (cd "$dir" && just check) >"$dir/.agents/log/lab-check.out" 2>&1; then
+    echo "[$name] just check passed with a lint error in $file" >&2
+    exit 1
+  fi
+  grep -q 'Recipe `lint` failed' "$dir/.agents/log/lab-check.out" || {
+    echo "[$name] just check failed, but not at lint:" >&2
+    cat "$dir/.agents/log/lab-check.out" >&2
+    exit 1
+  }
+  if lab_commit "$dir" >"$dir/.agents/log/lab-commit.out" 2>&1; then
+    echo "[$name] the commit went through after a failed just check" >&2
+    exit 1
+  fi
+  grep -q "no pass of \`just check\` for this tree" "$dir/.agents/log/lab-commit.out" || {
+    echo "[$name] the commit stopped, but not at the gate:" >&2
+    cat "$dir/.agents/log/lab-commit.out" >&2
+    exit 1
+  }
+
+  cp "$dir/.agents/log/lab-good-file" "$dir/$file"
+  run "$dir" git add -A
+  run "$dir" just check
+  if ! lab_commit "$dir" >"$dir/.agents/log/lab-commit.out" 2>&1; then
+    echo "[$name] the commit stopped after just check passed:" >&2
+    cat "$dir/.agents/log/lab-commit.out" >&2
+    exit 1
+  fi
+  git -C "$dir" log -1 --format=%B | grep -q '^Commit-Gate: patch:' || {
+    echo "[$name] the commit has no Commit-Gate trailer" >&2
+    exit 1
+  }
+  printf '[%s] the gate stops the commit after a failed just check, and lets it through after a pass\n' "$name"
+}
+
 write_python_lab() {
-  local dir="$workspace/python-uv"
-  init_lab "$dir" "python-uv" "python-uv.just"
+  local dir="$workspace/hello-python"
+  install_lab "$dir" python typecheck
   mkdir -p "$dir/tests"
 
-  cat >"$dir/pyproject.toml" <<'PYPROJECT'
-[project]
-name = "language-profile-python"
-version = "0.1.0"
-requires-python = ">=3.12"
-dependencies = [
-  "pytest>=8.0.0",
-  "ruff>=0.8.0",
-  "ty>=0.0.1a0",
-]
-
-# just test runs pytest, which does not put the project folder on the import path.
-[tool.pytest.ini_options]
-pythonpath = ["."]
-PYPROJECT
-
   cat >"$dir/hello.py" <<'PYTHON'
+"""The greeting of the lab."""
+
+
 def greet(name: str) -> str:
+    """Give the greeting for NAME, such as greet("Python") == "Hello, Python!"."""
     return f"Hello, {name}!"
-
-
-if __name__ == "__main__":
-    print(greet("Python"))
 PYTHON
 
   cat >"$dir/tests/test_hello.py" <<'PYTHON'
@@ -97,82 +148,35 @@ def test_greet() -> None:
     assert greet("Python") == "Hello, Python!"
 PYTHON
 
-  run_env "$dir" just setup
-  run_env "$dir" just verify
+  run "$dir" just fmt
+  run "$dir" just verify
+  check_gate_stops "$dir" hello.py "import os"
 }
 
 write_typescript_lab() {
-  local dir="$workspace/typescript-npm"
-  init_lab "$dir" "typescript-npm" "typescript-npm.just"
+  local dir="$workspace/hello-typescript"
+  install_lab "$dir" typescript test
   mkdir -p "$dir/src"
 
-  cat >"$dir/package.json" <<'JSON'
-{
-  "name": "language-profile-typescript",
-  "version": "0.1.0",
-  "private": true,
-  "type": "commonjs",
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
-    "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
-  }
-}
-JSON
-
-  cat >"$dir/tsconfig.json" <<'JSON'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "types": ["node"],
-    "esModuleInterop": true
-  },
-  "include": ["src/**/*.ts"]
-}
-JSON
-
-  cat >"$dir/biome.json" <<'JSON'
-{
-  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
-  "formatter": {
-    "enabled": false
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
-    }
-  }
-}
-JSON
-
-  cat >"$dir/src/index.ts" <<'TYPESCRIPT'
+  cat >"$dir/src/hello.ts" <<'TYPESCRIPT'
 export function greet(name: string): string {
   return `Hello, ${name}!`;
 }
-
-if (require.main === module) {
-  console.log(greet("TypeScript"));
-}
 TYPESCRIPT
 
-  cat >"$dir/src/index.test.ts" <<'TYPESCRIPT'
+  cat >"$dir/src/hello.test.ts" <<'TYPESCRIPT'
 import assert from "node:assert/strict";
-import test from "node:test";
-import { greet } from "./index";
+import { test } from "node:test";
+import { greet } from "./hello.js";
 
 test("greet", () => {
   assert.equal(greet("TypeScript"), "Hello, TypeScript!");
 });
 TYPESCRIPT
 
-  run_env "$dir" just setup
-  run_env "$dir" just verify
+  run "$dir" just fmt
+  run "$dir" just verify
+  check_gate_stops "$dir" src/hello.ts "debugger;"
 }
 
 write_go_lab() {
@@ -217,27 +221,18 @@ GO
 }
 
 write_rust_lab() {
-  local dir="$workspace/rust-cargo"
-  init_lab "$dir" "rust-cargo" "rust-cargo.just"
-  mkdir -p "$dir/src"
-  cp "$repo_root/templates/rust/rust-toolchain.toml" "$dir/rust-toolchain.toml"
+  local dir="$workspace/hello-rust"
+  # A library: cargo init names the package after the folder, hello-rust.
+  mkdir -p "$dir"
+  run "$dir" cargo init --lib --vcs none
+  install_lab "$dir" rust
 
-  cat >"$dir/Cargo.toml" <<'CARGO'
-[package]
-name = "language-profile-rust"
-version = "0.1.0"
-edition = "2021"
+  cat >"$dir/src/lib.rs" <<'RUST'
+//! The greeting of the lab.
 
-[dependencies]
-CARGO
-
-  cat >"$dir/src/main.rs" <<'RUST'
-fn greet(name: &str) -> String {
+/// Gives the greeting for `name`, such as `greet("Rust") == "Hello, Rust!"`.
+pub fn greet(name: &str) -> String {
     format!("Hello, {name}!")
-}
-
-fn main() {
-    println!("{}", greet("Rust"));
 }
 
 #[cfg(test)]
@@ -251,7 +246,10 @@ mod tests {
 }
 RUST
 
-  run_env "$dir" just verify
+  run "$dir" just setup
+  run "$dir" just fmt
+  run "$dir" just verify
+  check_gate_stops "$dir" src/lib.rs "fn unused() {}"
 }
 
 require_tool git
@@ -259,9 +257,9 @@ require_tool gest
 require_tool direnv
 require_tool just
 require_tool uv
-require_tool npm
 require_tool go
 require_tool cargo
+require_tool rustup
 
 echo "Running language profile labs in $workspace"
 write_python_lab

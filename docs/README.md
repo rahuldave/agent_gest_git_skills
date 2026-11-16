@@ -25,9 +25,9 @@ Read the other documents only when you need reference material:
 - `cx_incremental_pipelines.md`: a pointer. The `cx` guidance is in the
   `cx` skill of jnterfaces.
 - `gsu_typescript_hello_world.md`: a small example of setup.
-- `gsu_language_profile_labs.md`: live local labs that run setup from start to end with the
-  setup and profile templates for Python, TypeScript, Go and Rust. The profiles are command
-  contracts, and they are not skills for how to reason in a language.
+- `gsu_language_profile_labs.md`: live local labs that run setup from start to end. Python,
+  TypeScript and Rust use the profiles of jnterfaces, and Go uses the setup snippets. The
+  profiles are command contracts, and they are not skills for how to reason in a language.
 
 The beginner tutorial is the source of truth for the review shapes that the package supports:
 
