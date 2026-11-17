@@ -15,42 +15,32 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
+      # The whole history and the tags, for just release-check.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - uses: extractions/setup-just@v3
-      - name: Get jnterfaces, whose link checker the lint runs
+      - name: Get jnterfaces, whose link checker the lint runs and whose installer install-test runs
         shell: bash
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
-          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet 7fe681106dcc1f2b2738a0abade8cba40a860dbb
+          git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet "$(cat scripts/jnterfaces_commit)"
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
       - name: Keep the build of jlog
         id: jlog
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/jlog
-          key: jlog-v0.1.1-${{ runner.os }}
-      - name: Install jlog v0.1.1, which the jnterfaces installer needs
+          key: jlog-v0.2.0-${{ runner.os }}
+      - name: Install jlog v0.2.0, which the jnterfaces installer needs
+        # The tag v0.2.0 of jlog is the commit 8febdf1, as in the CI of jnterfaces.
         if: steps.jlog.outputs.cache-hit != 'true'
-        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.1
-      - name: Check contracts, hooks, and source mirrors
-        run: just lint
-      - name: Restack a plain-git stack after an amend, a new commit and a squash merge
-        run: just stack-rebase-lab
-      - name: Install this package with the jnterfaces installer, then remove it
-        run: just install-test
-      - name: Validate package manifest with skill-package-maker
-        run: just package-lint
-      - name: Build and verify source distribution archive
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          git archive --format=tar.gz --prefix=agent_gest_git_skills/ -o dist/agent_gest_git_skills-source.tar.gz HEAD
-          tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/skill-package.json'
-          tar -tzf dist/agent_gest_git_skills-source.tar.gz | grep -Fx 'agent_gest_git_skills/.agents/skills/gest_git_installer/SKILL.md'
-          (cd dist && sha256sum agent_gest_git_skills-source.tar.gz > SHA256SUMS && sha256sum -c SHA256SUMS)
+        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0 jlog
+      # CI runs just check and no other check, so a developer finds each failure of CI with just check.
+      - name: Check the release, the lint, the manifest, the labs, the install, the source archive and the diff
+        run: just check
       - uses: actions/upload-artifact@v4
         with:
           name: verified-source-package

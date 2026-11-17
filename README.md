@@ -508,9 +508,13 @@ It checks the shell and JSON contracts, the behavior of the hooks, the mirrors o
 canonical references and the package manifest. It builds and verifies a source archive, and it
 uploads the archive as a CI artifact.
 
-`just ci-local` runs the part of the checks that runs locally without other setup. It includes
-`just package-lint`, the check of the package manifest that CI runs, which needs to reach
-GitHub. `just verify`
+CI runs `just check` and no other check, so `just check` finds each failure of CI. It runs
+`just release-check`, `just lint`, `just package-lint`, `just stack-rebase-lab`,
+`just install-test`, `just source-archive` and `just diff-check`. `just package-lint` clones
+skill-package-maker from GitHub, so `just check` needs the network. `just install-test` needs a
+clone of jnterfaces next to this repository, or at `JNTERFACES_DIR`. CI tests the commit of
+jnterfaces in `scripts/jnterfaces_commit`, and `just lint` and `just install-test` warn when the clone
+is at another commit or has changes that are not committed. `just verify`
 also runs the broader labs for languages and protocols, with the prerequisites that their docs
 give. The automatic CI does not claim that these extra local labs ran.
 

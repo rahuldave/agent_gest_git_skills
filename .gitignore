@@ -6,3 +6,6 @@ __pycache__/
 
 # The site that just docs builds
 docs/_site/
+
+# The source archive that just source-archive builds
+dist/

@@ -50,6 +50,7 @@ install-test:
   #!/usr/bin/env bash
   set -euo pipefail
   jnterfaces="${JNTERFACES_DIR:-$PWD/../jnterfaces}"
+  scripts/warn_jnterfaces_pin.sh "$jnterfaces"
   target="$(mktemp -d)"; trap 'rm -rf -- "$target"' EXIT
   git -C "$target" init -q
   printf '{"model": "mine", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "mine.sh"}]}]}}\n' > "$target/x.json"
@@ -129,19 +130,42 @@ install-test:
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$target/.github/workflows/check.yml" || fail "the removal took out the CI starter"
   echo "install-test: install and removal passed"
 
-ci-local: lint install-test stack-rebase-lab package-lint
+# Everything a commit must pass, and each check that CI runs: the release version, the lint, the manifest, the labs, the install, the source archive and the diff
+check: release-check lint package-lint stack-rebase-lab install-test source-archive diff-check
+
+# The release tags, with release_tag.py of the skill gpa. The job release of verify.yml runs just release on each push to main.
+release_tag := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py"
 
 # Tag HEAD with the next release vX.Y.Z by semver, push the tag and check it. Takes --dry-run first
 [positional-arguments]
 release *args:
-  @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py "$@"
+  @{{release_tag}} "$@"
+
+# Print the next tag, or fail on a git error. It needs no network and no remote
+release-check:
+  {{release_tag}} --check
+
+# Build the source archive of HEAD into dist/, and check that it holds the manifest and the installer skill
+source-archive:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  name=agent_gest_git_skills-source.tar.gz
+  mkdir -p dist
+  git archive --format=tar.gz --prefix=agent_gest_git_skills/ -o "dist/$name" HEAD
+  listing="$(tar -tzf "dist/$name")"
+  for file in skill-package.json .agents/skills/gest_git_installer/SKILL.md; do
+    grep -Fxq "agent_gest_git_skills/$file" <<<"$listing" || { echo "source-archive: dist/$name has no $file" >&2; exit 1; }
+  done
+  # shasum is on macOS and on the Ubuntu runner, and sha256sum is not on macOS before 14.
+  (cd dist && shasum -a 256 "$name" > SHA256SUMS && shasum -a 256 -c SHA256SUMS)
 
 # Check the package manifest and the bundled resources of each skill, as CI does
 package-lint:
   scripts/lint_package.sh
 
+# Check the changes that are not committed for whitespace errors and conflict markers
 diff-check:
-  scripts/check_repo.sh --diff
+  git diff --check
 
 verify: lint test diff-check
 
