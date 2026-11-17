@@ -1314,6 +1314,22 @@ role ships it only after jnterfaces writes the `check` recipe:
   `just install`. An install can change tracked files. It gives `ci-gate`
   the base of the pull request in `JN_CI_BASE`.
 
+The tasker role also writes the release job,
+`.github/workflows/release.yml`, as a `starter` only:
+
+- **The events.** It runs on each push to `main`.
+- **The jobs.** The job `check` runs `just check`. When it passes, the job
+  `release` runs `just release`, which tags the next release `vX.Y.Z` by
+  semver, pushes the tag and checks it. Only the job `release` has
+  `contents: write`. No agent runs in either job.
+- **The number.** It comes from the conventional commits since the last tag,
+  or from the version that the recipe `<profile>::version` of each language
+  profile gives. The rules are in "Release tags" of
+  `integration_delivery_workflow.md`.
+- **The plan in the PR.** The job of `check.yml` also runs
+  `just release --dry-run`. It fails when a profile gives a version lower than
+  the bump that the commits of the PR ask for.
+
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
 
@@ -1343,6 +1359,8 @@ in the log folders.
 | `jlog`, and the plugins, one folder and one uv project for each harness | jlog |
 | The gate, the git hooks, the agent hooks, the agentic targets with their base tasks, `just record` | agent_gest_git_skills |
 | The CI job `.github/workflows/check.yml`, a starter of the tasker role that runs `just check` | agent_gest_git_skills |
+| The release job `.github/workflows/release.yml`, a starter of the tasker role, and `just release` with its script in the `gpa` skill | agent_gest_git_skills |
+| The recipe `<profile>::version`, which prints the version of the manifest | each profile |
 | The removal of GitButler from the hooks, the skills and the docs | agent_gest_git_skills |
 | Stacked PRs with plain git, in the `gcm`, `gpa` and `gor` skills | agent_gest_git_skills |
 | The changes to the skills, in the section "The skills" | agent_gest_git_skills |

@@ -90,3 +90,11 @@ ci-gate:
 [positional-arguments]
 stack-prs *args:
     @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/stack_prs.py "$@"
+
+# The release tag comes from the commits since the last tag, or from the version that the profiles give. Run it after
+# the post-merge CI passed. The CI starter release.yml runs it on each push to main.
+
+# Tag HEAD with the next release vX.Y.Z by semver, push the tag and check it. Takes --dry-run first
+[positional-arguments]
+release *args:
+    @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py "$@"

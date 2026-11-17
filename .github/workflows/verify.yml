@@ -56,3 +56,27 @@ jobs:
           name: verified-source-package
           path: dist/
           if-no-files-found: error
+
+  # On a push to main, after the verify job passed, tag the next release with just release. No agent runs here.
+  release:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+      - name: Name the author of the tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Tag the release
+        run: just release

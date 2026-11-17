@@ -87,9 +87,18 @@ install-test:
   # The CI job runs just ci with the whole history, and the starter is a valid workflow.
   ci="$target/.github/workflows/check.yml"
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$ci" || fail "the install wrote no CI starter"
-  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["ci"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert steps[-1]["run"] == "just ci"' "$ci" || fail "the CI starter does not run just ci with fetch-depth 0"
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["ci"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert [s.get("run") for s in steps][-2:] == ["just ci", "just release --dry-run"]' "$ci" || fail "the CI starter does not run just ci and the release plan with fetch-depth 0"
   just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci || fail "the CI starter runs just ci, and the project has no ci recipe"
   just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci-gate || fail "the project has no ci-gate recipe of the tasker role"
+  # The release starter runs just check on a push to main, then just release with write access, and no agent.
+  release="$target/.github/workflows/release.yml"
+  cmp -s .agents/skills/gsu/assets/templates/github-release.yml "$release" || fail "the install wrote no release starter"
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; flow = yaml.safe_load(open(sys.argv[1])); jobs = flow["jobs"]; assert flow[True]["push"]["branches"] == ["main"]; assert jobs["check"]["steps"][-1]["run"] == "just check"; job = jobs["release"]; assert job["needs"] == "check"; assert job["permissions"] == {"contents": "write"}; assert job["steps"][0]["with"]["fetch-depth"] == 0; assert job["steps"][-1]["run"] == "just release"' "$release" || fail "the release starter does not run just release after just check"
+  for recipe in check release; do
+    just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx "$recipe" || fail "the release starter runs just $recipe, and the project has no $recipe recipe"
+  done
+  git -C "$target" -c user.name=t -c user.email=t@example.com commit -q --allow-empty --no-verify -m "docs: start"
+  (cd "$target" && just release --dry-run) | grep -qx 'next tag: v0.1.0 (no tag yet)' || fail "just release --dry-run does not give v0.1.0 in a new project"
   printf '# mine\n' > "$ci"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"
@@ -120,6 +129,11 @@ install-test:
   echo "install-test: install and removal passed"
 
 ci-local: lint install-test stack-rebase-lab package-lint
+
+# Tag HEAD with the next release vX.Y.Z by semver, push the tag and check it. Takes --dry-run first
+[positional-arguments]
+release *args:
+  @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py "$@"
 
 # Check the package manifest and the bundled resources of each skill, as CI does
 package-lint:
