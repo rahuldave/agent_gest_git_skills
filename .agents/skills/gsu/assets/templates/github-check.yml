@@ -33,10 +33,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/jlog
-          key: jlog-v0.1.1-${{ runner.os }}
+          key: jlog-v0.2.0-${{ runner.os }}
       - name: Install jlog
+        # The tag v0.2.0 of jlog is the commit 8febdf1, as in the CI of jnterfaces.
         if: steps.jlog.outputs.cache-hit != 'true'
-        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.1
+        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0 jlog
       - name: CI
         env:
           JN_CI_BASE: ${{ github.event.pull_request.base.sha }}
