@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -108,6 +109,81 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(job["permissions"], {"contents": "write"})
         self.assertEqual(job["steps"][-1]["run"], "just release")
         self.assertEqual(job["steps"], RELEASE_STEPS)
+
+
+# A line that names jlog names only the version of jlog, so each version on such a line is a pin: in a cargo install,
+# the key of a cache, the name of a step, a variable or a comment. A version may lack the v. Each must be JLOG.
+JLOG_LINE = re.compile(r"jlog", re.IGNORECASE)
+VERSION = re.compile(r"(?<![\w.])v?([0-9]+\.[0-9]+\.[0-9]+)(?![\w.])")
+INSTALL = re.compile(r"cargo (b?install)\b.*\bjlog\b")
+PINNED_INSTALL = re.compile(r"--tag v[0-9]+\.[0-9]+\.[0-9]+ jlog$")
+# The commit of the tag of jlog, which the comment next to each install names.
+JLOG_COMMIT = "8febdf1"
+TAG_COMMIT = re.compile(r"\bis the commit ([0-9a-f]{7,40})\b")
+
+
+def jlog_pins(files: dict[str, str]) -> tuple[list[tuple[str, str]], list[str]]:
+    """The pins of jlog in the text of each file, as pairs of a place and a version with a v, and the findings: a
+    cargo install of jlog with no pin at its end, or a comment that names another commit for the tag of jlog."""
+    pins, findings = [], []
+    for name, text in files.items():
+        for number, line in enumerate(text.splitlines(), 1):
+            if not JLOG_LINE.search(line):
+                continue
+            place = f"{name}:{number}"
+            pins += [(place, f"v{version}") for version in VERSION.findall(line)]
+            if INSTALL.search(line) and not PINNED_INSTALL.search(line.strip()):
+                findings.append(f"{place}: a cargo install of jlog without --tag VERSION jlog at the end")
+            commit = TAG_COMMIT.search(line)
+            if commit and not JLOG_COMMIT.startswith(commit.group(1)[:7]):
+                findings.append(f"{place}: the tag of jlog is the commit {JLOG_COMMIT}, not {commit.group(1)}")
+    return pins, findings
+
+
+def repository_files() -> dict[str, str]:
+    """The text of each file that git tracks, and of each new file that git does not ignore. A file that is not text
+    is skipped, and so is this test file, whose probe lines name wrong pins on purpose."""
+    names = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                           check=True, capture_output=True, text=True).stdout.split("\0")
+    files = {}
+    for name in filter(None, names):
+        path = ROOT / name
+        if not path.is_file() or path == Path(__file__).resolve():
+            continue
+        try:
+            files[name] = path.read_text()
+        except UnicodeDecodeError:
+            continue
+    return files
+
+
+class JlogPinTests(unittest.TestCase):
+    """Each pin of jlog in the repository, in CI and in the CI starters, is the same version, so no pin drifts."""
+
+    def test_each_pin_of_jlog_is_the_same(self) -> None:
+        pins, findings = jlog_pins(repository_files())
+        self.assertEqual(findings, [])
+        places = {place.split(":")[0] for place, _ in pins}
+        self.assertLessEqual({".github/workflows/verify.yml", ".agents/skills/gsu/assets/templates/github-check.yml",
+                              ".agents/skills/gsu/assets/templates/github-release.yml"}, places)
+        self.assertEqual({version for _, version in pins}, {JLOG}, [pin for pin in pins if pin[1] != JLOG])
+
+    def test_the_scan_finds_each_form_of_a_pin(self) -> None:
+        for line in ("key: jlog-v0.1.1-${{ runner.os }}", "key: jlog-0.1.1-${{ runner.os }}",
+                     "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.1 jlog",
+                     "- name: Install jlog v0.1.1, which the installer needs", "JLOG_VERSION: v0.1.1",
+                     "# The tag v0.1.1 of jlog is the commit 8febdf1.", "cargo binstall jlog@0.1.1"):
+            with self.subTest(line=line):
+                self.assertEqual([version for _, version in jlog_pins({"a.yml": line})[0]], ["v0.1.1"])
+
+    def test_the_scan_finds_an_install_without_a_pin_and_a_wrong_commit(self) -> None:
+        for line in ("run: cargo install --git https://github.com/rahuldave/jlog jlog",
+                     "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0",
+                     "run: cargo install --git https://github.com/rahuldave/jlog --rev 8febdf1 jlog",
+                     "run: cargo install jlog --version 0.2.0",
+                     "# The tag v0.2.0 of jlog is the commit abc1234."):
+            with self.subTest(line=line):
+                self.assertNotEqual(jlog_pins({"a.yml": line})[1], [])
 
 
 class PinWarningTests(unittest.TestCase):
