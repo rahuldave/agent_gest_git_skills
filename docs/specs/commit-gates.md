@@ -1326,9 +1326,13 @@ The tasker role also writes the release job,
   or from the version that the recipe `<profile>::version` of each language
   profile gives. The rules are in "Release tags" of
   `integration_delivery_workflow.md`.
-- **The plan in the PR.** The job of `check.yml` also runs
-  `just release --dry-run`. It fails when a profile gives a version lower than
-  the bump that the commits of the PR ask for.
+- **The step `release-check`.** It is a step of `just check`, from the role
+  file of the tasker role, so CI runs it only through `just check`. It runs
+  `release_tag.py --check`, with no network and no remote. It fails when the
+  profiles give different versions, or a version lower than the last tag or
+  than the bump that the commits ask for. In a shallow checkout it passes and
+  says that the tags are unknown. jnterfaces puts `release-check` in the
+  steps of `just check`, with a no-op step where the role is not installed.
 
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
@@ -1361,6 +1365,8 @@ in the log folders.
 | The CI job `.github/workflows/check.yml`, a starter of the tasker role that runs `just check` | agent_gest_git_skills |
 | The release job `.github/workflows/release.yml`, a starter of the tasker role, and `just release` with its script in the `gpa` skill | agent_gest_git_skills |
 | The recipe `<profile>::version`, which prints the version of the manifest | each profile |
+| The step `release-check` in the steps of `just check`, and its no-op step | jnterfaces |
+| The recipe `release-check`, in the role file | agent_gest_git_skills |
 | The removal of GitButler from the hooks, the skills and the docs | agent_gest_git_skills |
 | Stacked PRs with plain git, in the `gcm`, `gpa` and `gor` skills | agent_gest_git_skills |
 | The changes to the skills, in the section "The skills" | agent_gest_git_skills |

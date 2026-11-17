@@ -220,6 +220,50 @@ class ReleaseTests(ReleaseBase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("shallow", result.stderr)
 
+    def test_the_check_passes_a_shallow_checkout_and_says_so(self) -> None:
+        self.commit("feat: start")
+        self.commit("fix: a")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        shallow = self.repo.parent / "shallow"
+        git("clone", "-q", "--depth", "1", "-b", "main", f"file://{self.origin}", str(shallow), cwd=self.repo.parent)
+        result = subprocess.run([sys.executable, str(SCRIPT), "--check"], cwd=shallow, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("shallow", result.stdout)
+
+    def test_the_check_passes_with_no_commit_and_with_no_tag(self) -> None:
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no commit yet", result.stdout)
+        self.commit("feat: start")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release tag in this checkout", result.stdout)
+
+    def test_the_check_on_a_merge_commit(self) -> None:
+        self.commit("feat: start")
+        self.tag("v0.1.0")
+        git("switch", "-q", "-c", "topic", cwd=self.repo)
+        self.commit("feat: a")
+        git("switch", "-q", "main", cwd=self.repo)
+        self.commit("docs: b")
+        git("merge", "-q", "--no-ff", "-m", "Merge topic", "topic", cwd=self.repo)
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("the next tag is v0.2.0", result.stdout)
+
+    def test_the_check_ignores_the_remote_and_tags_elsewhere(self) -> None:
+        self.commit("feat: start")
+        self.tag("v0.1.0")
+        git("switch", "-q", "-c", "other", cwd=self.repo)
+        self.commit("fix: elsewhere")
+        self.tag("v0.1.1")
+        git("switch", "-q", "main", cwd=self.repo)
+        self.commit("fix: here")
+        git("remote", "set-url", "origin", "/nonexistent/origin.git", cwd=self.repo)
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: the next tag is v0.1.1", result.stdout)
+
     def test_a_remote_tag_missing_here_stops_the_release(self) -> None:
         self.commit("feat: start")
         self.tag("v0.1.0")
@@ -316,6 +360,46 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("feat: start")
         self.assertIn("next tag: v0.1.0", self.run_script("--dry-run").stdout)
 
+    def test_the_check_fails_on_a_version_below_the_bump_without_a_remote(self) -> None:
+        self.profile("1.0.0")
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        git("remote", "remove", "origin", cwd=self.repo)
+        self.commit("feat: a page")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("at least 1.1.0", result.stderr)
+        (self.repo / "VERSION").write_text("1.1.0\n")
+        self.commit("chore: raise the version")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: the next tag is v1.1.0", result.stdout)
+
+    def test_the_check_passes_a_tagged_version_with_docs_only(self) -> None:
+        self.profile("1.0.0")
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("docs: a")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: no release", result.stdout)
+
+    def test_the_check_fails_on_a_version_below_the_tag(self) -> None:
+        self.profile("0.9.0")
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("lower than the last tag", result.stderr)
+
+    def test_the_check_fails_when_profiles_disagree(self) -> None:
+        self.profile("1.0.0")
+        (self.repo / ".agents/stack.json").write_text(json.dumps({"profiles": ["py", "ts"]}))
+        (self.repo / "Justfile").write_text("mod py 'prof.just'\nmod ts 'ts.just'\n")
+        (self.repo / "ts.just").write_text("version:\n    @echo 1.1.0\n")
+        self.commit("feat: start")
+        self.assertEqual(self.run_script("--check").returncode, 1)
+
     def test_two_profiles_that_disagree_fail(self) -> None:
         self.profile("1.0.0")
         (self.repo / ".agents/stack.json").write_text(json.dumps({"profiles": ["py", "ts"]}))
@@ -348,9 +432,14 @@ class WorkflowTests(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertIn(line, job)
 
-    def test_the_pr_starter_runs_the_release_plan(self) -> None:
+    def test_ci_gets_the_release_check_only_through_just_check(self) -> None:
         text = (ROOT / ".agents/skills/gsu/assets/templates/github-check.yml").read_text()
-        self.assertIn("run: just release --dry-run", text)
+        self.assertNotIn("just release", text)
+        self.assertIn("fetch-depth: 0", text)
+        role = (ROOT / ".agents/just/roles/agent_gest_git_skills.just").read_text()
+        recipe = role[role.index("\nrelease-check:\n"):]
+        self.assertIn("release_tag.py --check", recipe)
+        self.assertIn("jlog step release-check", recipe)
 
 
 if __name__ == "__main__":

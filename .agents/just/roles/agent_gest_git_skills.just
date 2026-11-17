@@ -98,3 +98,12 @@ stack-prs *args:
 [positional-arguments]
 release *args:
     @uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py "$@"
+
+# The step release-check of just check, so CI checks it through just check. It needs no network and no remote. The
+# index of jnterfaces sets jlog as the shell, and the last line records the step; where the role is not installed,
+# the index has a no-op release-check.
+
+# Fail when the profiles give different versions, or a version below the last tag or the bump that the commits ask for
+release-check:
+    uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py --check
+    jlog step release-check

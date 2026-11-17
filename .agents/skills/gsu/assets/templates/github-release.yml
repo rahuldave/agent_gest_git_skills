@@ -22,7 +22,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # The whole history and the tags, for the step release-check of just check.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v6
       - name: Keep the build of jlog

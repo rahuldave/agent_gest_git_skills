@@ -47,7 +47,10 @@ class StackPrsTests(unittest.TestCase):
         self.repo.mkdir()
         self.bin.mkdir()
         git("init", "-q", "-b", "main", cwd=self.repo)
-        for key, value in (("user.name", "t"), ("user.email", "t@example.com"), ("commit.gpgsign", "false")):
+        # Git 2.47 and later start a detached auto maintenance after a commit. It can write into .git while the
+        # cleanup removes it, which fails with "Directory not empty", so the repository has no auto maintenance.
+        for key, value in (("user.name", "t"), ("user.email", "t@example.com"), ("commit.gpgsign", "false"),
+                           ("maintenance.auto", "false"), ("gc.auto", "0")):
             git("config", key, value, cwd=self.repo)
         git("remote", "add", "origin", str(self.origin), cwd=self.repo)
         self.commit("base")

@@ -213,8 +213,17 @@ Git. The CI starter `.github/workflows/release.yml` runs `just check` on each
 push to `main`. When the check passes, it runs `just release`. The job has
 `contents: write`, to push the tag, and it runs no agent.
 
-The CI starter `.github/workflows/check.yml` runs `just release --dry-run` on each PR, so a PR
-that needs a higher version fails before the merge.
+The step `release-check` of `just check` runs the script with `--check`. So a
+commit or a PR that needs a higher version fails before the merge, and CI
+checks it through `just check`.
+
+The step needs no network and no remote. It fails on the errors of the
+version that the rules below list. In a shallow checkout, or in a checkout
+with no release tag, it says so and passes. So CI fetches the whole history
+and the tags first, with `fetch-depth: 0`.
+
+Where the gpa skill is not installed, `release-check` is a step that does nothing. jnterfaces adds the
+step to `just check`. Until it does, `just check` does not run it.
 
 The last tag is the newest tag `vX.Y.Z` that is an ancestor of HEAD. The
 script reads the messages of the commits since the last tag, and skips the
@@ -237,7 +246,8 @@ A language profile gives the version of its manifest with the recipe
 `<profile>::version`. The recipe prints `X.Y.Z`, or nothing when the manifest
 has no version, and it exits 2 when it cannot read the manifest. The Python
 profile reads `pyproject.toml`, the TypeScript profile `package.json`, and the
-Rust profile `Cargo.toml`.
+Rust profile `Cargo.toml`. The recipe reads only the local file, and needs no
+network, because the step `release-check` runs it.
 
 The script runs the recipe of each profile in the key
 `profiles` of `.agents/stack.json`. A profile without the recipe, such as a

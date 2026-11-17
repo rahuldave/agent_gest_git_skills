@@ -109,8 +109,8 @@ AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.m
 ```
 
 The CI job in `.github/workflows/check.yml` checks out the whole history and
-runs `just ci` on each pull request. It also runs `just release --dry-run`,
-which fails when the PR needs a higher version in the manifest. The CI job in
+runs `just ci` on each pull request. The step `release-check` of `just check`
+fails when a change needs a higher version in the manifest. The CI job in
 `.github/workflows/release.yml` runs `just check` on each push to `main`. When
 the check passes, it runs `just release`, which tags the release. Both files
 are yours from then on. Add the setup of the tools of your languages to them

@@ -42,7 +42,3 @@ jobs:
           JN_CI_BASE: ${{ github.event.pull_request.base.sha }}
           JN_CI_HEAD: ${{ github.event.pull_request.head.sha }}
         run: just ci
-      # just release --dry-run fails when a profile gives a version lower than the bump that the commits ask for,
-      # so a pull request that needs a bump also raises the version of the manifest. It changes nothing.
-      - name: Release plan
-        run: just release --dry-run

@@ -87,7 +87,7 @@ install-test:
   # The CI job runs just ci with the whole history, and the starter is a valid workflow.
   ci="$target/.github/workflows/check.yml"
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$ci" || fail "the install wrote no CI starter"
-  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["ci"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert [s.get("run") for s in steps][-2:] == ["just ci", "just release --dry-run"]' "$ci" || fail "the CI starter does not run just ci and the release plan with fetch-depth 0"
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -c 'import sys, yaml; job = yaml.safe_load(open(sys.argv[1]))["jobs"]["ci"]; steps = job["steps"]; assert steps[0]["with"]["fetch-depth"] == 0; assert steps[-1]["run"] == "just ci"' "$ci" || fail "the CI starter does not run just ci with fetch-depth 0"
   just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci || fail "the CI starter runs just ci, and the project has no ci recipe"
   just --justfile "$target/Justfile" --summary | tr ' ' '\n' | grep -qx ci-gate || fail "the project has no ci-gate recipe of the tasker role"
   # The release starter runs just check on a push to main, then just release with write access, and no agent.
@@ -99,6 +99,7 @@ install-test:
   done
   git -C "$target" -c user.name=t -c user.email=t@example.com commit -q --allow-empty --no-verify -m "docs: start"
   (cd "$target" && just release --dry-run) | grep -qx 'next tag: v0.1.0 (no tag yet)' || fail "just release --dry-run does not give v0.1.0 in a new project"
+  (cd "$target" && just release-check) | grep -q 'release-check: no release tag in this checkout' || fail "just release-check does not pass in a new project"
   printf '# mine\n' > "$ci"
   [ "$(just --justfile "$target/Justfile" tasker-mode)" = git ] || fail "just tasker-mode does not print git"
   just --justfile "$target/Justfile" worktrees > /dev/null || fail "just worktrees failed"

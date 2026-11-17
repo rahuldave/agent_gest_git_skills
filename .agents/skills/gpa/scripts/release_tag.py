@@ -25,6 +25,10 @@ two profiles give different versions, when the version is lower than the last ta
 that the commits ask for. A version higher than the commits ask for is allowed. With no tag yet, the tag is the
 version.
 
+`--check` is the step release-check of `just check`. It reads no remote and needs no network. It fails on the errors
+of the version only: profiles that disagree, and a version lower than the last tag or than the bump of the commits.
+In a shallow checkout, a checkout with no release tag, or a repository with no commit, it says so and passes.
+
 `--dry-run` prints the next tag and the reason, and changes nothing. Without it, the script makes an annotated tag on
 HEAD, pushes it, and checks with `git ls-remote` that the remote tag points at HEAD. It never moves or deletes a tag.
 When there is nothing to tag, it prints "no release" and exits 0. A tag at or above the next number on a later
@@ -295,16 +299,41 @@ def release(root: Path, remote: str, dry_run: bool) -> str:
     return f"tagged {name} on {head[:12]} and pushed it to {remote} ({reason})"
 
 
+def check(root: Path) -> str:
+    """The step release-check: the plan without the network and without the remote. It fails on the errors of the
+    version only, which a commit or a pull request can fix: profiles that disagree, and a version lower than the last
+    tag or than the bump that the commits ask for. A shallow checkout has no last tag to compare with, so it passes."""
+    if subprocess.run(["git", "rev-parse", "--verify", "--quiet", "HEAD"], cwd=root, capture_output=True).returncode:
+        return "release-check: no commit yet, so there is nothing to check"
+    if git(root, "rev-parse", "--is-shallow-repository").strip() == "true":
+        return ("release-check: the checkout is shallow, so the tags and the commits since the last tag are unknown. "
+                "Passed without a check. Fetch the whole history with its tags to check the version")
+    manifest_version(root)  # profiles that disagree fail with or without a tag
+    if not git(root, "tag", "--list", "v*").split():
+        return ("release-check: no release tag in this checkout, so there is no version to compare with. Passed. "
+                "If the remote has tags, fetch them with git fetch --tags to check the version")
+    version, reason = plan(root)
+    if version is None:
+        return f"release-check: no release ({reason})"
+    return f"release-check: the next tag is {tag_name(version)} ({reason})"
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Make the next release tag vX.Y.Z on HEAD, push it and check it.")
-    parser.add_argument("--dry-run", action="store_true", help="print the next tag and the reason, and change nothing")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="print the next tag and the reason, and change nothing")
+    mode.add_argument("--check", action="store_true",
+                      help="the step release-check: check the version against the tags, offline, and change nothing")
     parser.add_argument("--remote", default="origin", help="the remote to push the tag to (default origin)")
     args = parser.parse_args(argv)
     try:
         root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
-        print(release(root, args.remote, args.dry_run))
+        print(check(root) if args.check else release(root, args.remote, args.dry_run))
     except ReleaseError as error:
         print(f"release: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"release: cannot run a program, such as git or just: {error}", file=sys.stderr)
         return 1
     return 0
 
