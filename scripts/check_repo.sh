@@ -2,7 +2,6 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-mode="${1:-all}"
 
 required_files=(
   "README.md"
@@ -355,6 +354,7 @@ if [ ! -f "$jnterfaces_dir/scripts/check_skill_links.py" ]; then
   echo "The link check needs a jnterfaces clone with scripts/check_skill_links.py at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
   exit 1
 fi
+"$repo_root/scripts/warn_jnterfaces_pin.sh" "$jnterfaces_dir"
 "${python[@]}" "$jnterfaces_dir/scripts/check_skill_links.py" --package "$repo_root" --resolve "$jnterfaces_dir" "${shipped_text[@]}"
 
 # Shipped files must not carry paths from one machine.
@@ -388,10 +388,7 @@ done
   "${python[@]}" -m unittest scripts/test_recipe_docs.py -q
   "${python[@]}" -m unittest scripts/test_release_tag.py -q
   uv run --no-project --quiet --with pyyaml python -m unittest scripts/test_record_result.py -q
+  uv run --no-project --quiet --with pyyaml==6.0.2 python -m unittest scripts/test_ci_check.py -q
 )
-
-if [ "$mode" = "--diff" ]; then
-  git -C "$repo_root" diff --check
-fi
 
 echo "repository checks passed"
