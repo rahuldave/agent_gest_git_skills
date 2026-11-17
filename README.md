@@ -105,11 +105,16 @@ files into the project:
 AGENTS.starter.md -> AGENTS.md, only if AGENTS.md does not already exist
 AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.md that points to it
 .agents/skills/gsu/assets/templates/github-check.yml -> .github/workflows/check.yml, only if that file does not already exist
+.agents/skills/gsu/assets/templates/github-release.yml -> .github/workflows/release.yml, only if that file does not already exist
 ```
 
 The CI job in `.github/workflows/check.yml` checks out the whole history and
-runs `just ci` on each pull request. It is yours from then on. Add
-the setup of the tools of your languages to it when the runner lacks them.
+runs `just ci` on each pull request. The step `release-check` of `just check`
+fails when a change needs a higher version in the manifest. The CI job in
+`.github/workflows/release.yml` runs `just check` on each push to `main`. When
+the check passes, it runs `just release`, which tags the release. Both files
+are yours from then on. Add the setup of the tools of your languages to them
+when the runner lacks them.
 
 It reports each workflow executable that is missing, such as `gest`. It checks for
 conflicts before it writes, and it keeps the instructions and the other settings that the
@@ -367,8 +372,9 @@ or `just install tasker=git`. `just tasker-mode` prints the variant.
 
 The package adds these recipes in a project that jnterfaces started. The file
 is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
-`.agents/skills/gtw/scripts/worktree.py` and
-`.agents/skills/gcm/scripts/stack_prs.py`.
+`.agents/skills/gtw/scripts/worktree.py`,
+`.agents/skills/gcm/scripts/stack_prs.py` and
+`.agents/skills/gpa/scripts/release_tag.py`.
 
 | Recipe | What it does |
 |---|---|
@@ -377,6 +383,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
 | `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
 | `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
 | `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream or ahead of it, never with force. Takes `--dry-run` first |
+| `just release` | Tags HEAD with the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag, or from the version that the language profiles give. Never moves or deletes a tag. Takes `--dry-run` first |
 
 Setup follows two files in the main checkout, as other tools do:
 

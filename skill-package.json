@@ -93,7 +93,8 @@
     },
     "starter": {
       "AGENTS.md": "AGENTS.starter.md",
-      ".github/workflows/check.yml": ".agents/skills/gsu/assets/templates/github-check.yml"
+      ".github/workflows/check.yml": ".agents/skills/gsu/assets/templates/github-check.yml",
+      ".github/workflows/release.yml": ".agents/skills/gsu/assets/templates/github-release.yml"
     },
     "programs": [
       {

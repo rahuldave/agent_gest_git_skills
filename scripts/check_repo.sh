@@ -51,6 +51,8 @@ required_files=(
   ".agents/skills/gest_git_installer/SKILL.md"
   ".agents/skills/gest_git_installer/scripts/install_gest_git_package.sh"
   ".agents/skills/gtw/scripts/worktree.py"
+  ".agents/skills/gpa/scripts/release_tag.py"
+  ".agents/skills/gsu/assets/templates/github-release.yml"
   ".agents/just/roles/agent_gest_git_skills.just"
   "templates/README.md"
 )
@@ -384,6 +386,7 @@ done
   "${python[@]}" -m unittest scripts/test_lab_roots.py -q
   "${python[@]}" -m unittest scripts/test_skill_text.py -q
   "${python[@]}" -m unittest scripts/test_recipe_docs.py -q
+  "${python[@]}" -m unittest scripts/test_release_tag.py -q
   uv run --no-project --quiet --with pyyaml python -m unittest scripts/test_record_result.py -q
 )
 
