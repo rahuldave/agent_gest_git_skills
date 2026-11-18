@@ -175,6 +175,39 @@ A project can use a protected tag or a manual release job. Protect its
 credentials, and verify the artifacts that it makes. Do not call a delivery of
 source only a package release.
 
+### Push a topic that has merged its PR base
+
+This procedure requires the tasker pre-push hook, which runs `just ci` and its
+`ci-gate` trailer check. Use the project's `just install` composition to install
+or refresh the tasker role. Commit through its hooks to generate the
+`Commit-Gate` trailers; this push command only checks them.
+
+Verify the PR's target branch on GitHub, then read its current remote tip with
+`git ls-remote origin refs/heads/<PR-target>`. Pin that tip's full commit SHA as
+the base. For a topic branch that already exists on the remote, set
+`JN_CI_BASE` to that verified SHA for the normal push:
+
+```bash
+JN_CI_BASE=<verified-PR-target-tip-SHA> git push origin <topic>
+```
+
+The gate checks every commit in `BASE..HEAD`. The range contains commits
+reachable from the pushed head, excluding those reachable from the selected
+base. This includes original feature commits and the local integration merge.
+
+The gate checks that the supplied base resolves to a commit and is an ancestor
+of the pushed head. The operator must verify that it is the PR target's tip;
+the gate does not validate PR acceptance. The hook supplies the pushed head;
+a conflicting `JN_CI_HEAD` fails. Inspect the complete range with
+`git log <verified-PR-target-tip-SHA>..<topic>` before pushing. Do not select a
+topic commit as the base to omit unaccepted feature work.
+
+Without an explicit base, the hook checks the ordinary push range, from the
+remote topic's old tip to its pushed head. For a new-history push, the pre-commit
+framework finds no shared history on the remote and supplies only the local
+branch. In that case, the gate checks all commits, even with `JN_CI_BASE` set.
+This setting does not establish independent review, CI success or acceptance.
+
 ## Release tags
 
 Every repository gets semantic version tags. A semantic version is a number
@@ -466,3 +499,10 @@ check ownership, so an agent runs it only when the user asks, after
 - [GitHub issue linking and non-default targets](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue)
 - [Required checks and skipped workflows](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
 - [GitHub approval restrictions](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews)
+
+## Recommendations
+
+Before pushing a topic that merged its base, verify the current remote PR-target
+tip and inspect the complete range from that tip to the topic. Set `JN_CI_BASE`
+to that tip's full SHA for the push. Check the PR's required CI results on
+GitHub for the exact published head, as the CI and delivery contract requires.
