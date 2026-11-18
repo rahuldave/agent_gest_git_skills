@@ -872,13 +872,10 @@ class GateTests(unittest.TestCase):
         self.assertEqual(commit_gate.commit_patch_id(self.repo, first) in git(
             "log", "-1", "--format=%B", first, cwd=self.repo).stdout, True)
 
-    def test_the_range_comes_from_ci_then_the_push_then_the_upstream(self) -> None:
+    def test_the_default_range_comes_from_push_then_ci_then_upstream(self) -> None:
         self.first_commit()
         self.change("a.txt", "a\n")
         rng = lambda **env: commit_gate.ci_range(self.repo, env)  # noqa: E731
-        # The push comes first, so a JN_CI_BASE in the shell does not change it.
-        self.assertEqual(rng(JN_CI_BASE="b", JN_CI_HEAD="h", PRE_COMMIT_FROM_REF="f", PRE_COMMIT_TO_REF="t"),
-                         ("f", "t"))
         self.assertEqual(rng(PRE_COMMIT_FROM_REF="f", PRE_COMMIT_TO_REF="t", PRE_COMMIT_LOCAL_BRANCH="l"), ("f", "t"))
         # A push of a new history: the remote has none of its commits, so each one counts.
         self.assertEqual(rng(JN_CI_BASE="b", PRE_COMMIT_LOCAL_BRANCH="refs/heads/main"), (None, "refs/heads/main"))
@@ -890,6 +887,72 @@ class GateTests(unittest.TestCase):
         git("branch", "-q", "up", "HEAD", cwd=self.repo)
         git("branch", "-q", "--set-upstream-to", "up", cwd=self.repo)
         self.assertEqual(rng(), ("@{upstream}", "HEAD"))
+
+    def selected_base_fixture(self):
+        """A published gated feature merges accepted main, whose server merge has no gate trailer."""
+        self.first_commit()
+        root = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        git("switch", "-q", "-c", "topic", cwd=self.repo)
+        self.change("feature.txt", "feature\n")
+        feature = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        git("switch", "-q", "-c", "accepted", root, cwd=self.repo)
+        self.change("accepted.txt", "accepted\n")
+        accepted = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        # Model the remote server's normal two-parent merge object, outside local hooks.
+        main = git("commit-tree", "HEAD^{tree}", "-p", root, "-p", accepted,
+                   "-m", "Accepted PR merge", cwd=self.repo, env=self.person).stdout.strip()
+        git("update-ref", "refs/heads/main", main, cwd=self.repo)
+        git("switch", "-q", "topic", cwd=self.repo)
+        git("merge", "--no-commit", "--no-ff", "main", cwd=self.repo, env=self.person)
+        self.passed()
+        self.assertGoes(self.commit())
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        return root, feature, main, head
+
+    def test_selected_push_base_checks_feature_and_merge_but_not_accepted_main(self):
+        _, feature, main, head = self.selected_base_fixture()
+        env = dict(JN_CI_BASE=main, PRE_COMMIT_FROM_REF=feature, PRE_COMMIT_TO_REF=head)
+        self.assertEqual(commit_gate.ci_range(self.repo, env), (main, head))
+        commits = git("rev-list", f"{main}..{head}", cwd=self.repo).stdout.split()
+        self.assertEqual(set(commits), {feature, head})
+        self.assertEqual(commit_gate.check_trailers(self.repo, main, head), [])
+        self.assertTrue(commit_gate.check_trailers(self.repo, feature, head))
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo,
+                             env=dict(self.person, **env), capture_output=True, text=True)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertEqual(commit_gate.ci_range(self.repo, dict(PRE_COMMIT_FROM_REF=feature,
+                                                            PRE_COMMIT_TO_REF=head)), (feature, head))
+        # A missing original-feature trailer must still fail in the complete PR range.
+        message = git("log", "-1", "--format=%B", feature, cwd=self.repo).stdout
+        bare_feature = git("commit-tree", f"{feature}^{{tree}}", "-p", f"{feature}^",
+                           "-m", "Feature without gate", cwd=self.repo, env=self.person).stdout.strip()
+        bad_head = git("commit-tree", f"{head}^{{tree}}", "-p", bare_feature, "-p", main,
+                       "-m", git("log", "-1", "--format=%B", head, cwd=self.repo).stdout,
+                       cwd=self.repo, env=self.person).stdout.strip()
+        problems = commit_gate.check_trailers(self.repo, main, bad_head)
+        self.assertTrue(any(bare_feature[:12] in p and "no Commit-Gate" in p for p in problems))
+        self.assertIn("Commit-Gate:", message)
+        # A merge with the wrong tree trailer must fail too.
+        bad_merge = git("commit-tree", f"{head}^{{tree}}", "-p", feature, "-p", main,
+                        "-m", "Bad merge\n\nCommit-Gate: tree:" + "0" * 40,
+                        cwd=self.repo, env=self.person).stdout.strip()
+        self.assertTrue(any("changed after" in p for p in commit_gate.check_trailers(self.repo, main, bad_merge)))
+        # Hook head wins even when an ambient head names another valid commit.
+        with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_HEAD"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_HEAD=feature))
+        self.assertEqual(commit_gate.ci_range(self.repo, dict(env, JN_CI_HEAD="topic")), (main, head))
+
+    def test_selected_push_base_rejects_missing_or_nonancestor_commits(self):
+        _, feature, main, head = self.selected_base_fixture()
+        env = dict(PRE_COMMIT_FROM_REF=feature, PRE_COMMIT_TO_REF=head)
+        with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_BASE"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE="missing-base"))
+        unrelated = git("commit-tree", f"{main}^{{tree}}", "-m", "Unrelated root",
+                        cwd=self.repo, env=self.person).stdout.strip()
+        with self.assertRaisesRegex(commit_gate.Stop, "ancestor"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=unrelated))
+        with self.assertRaisesRegex(commit_gate.Stop, "pushed head"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=main, PRE_COMMIT_TO_REF="missing-head"))
 
     def test_a_base_of_none_checks_every_commit_of_head(self) -> None:
         self.first_commit()
