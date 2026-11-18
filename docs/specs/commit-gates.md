@@ -1221,15 +1221,31 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     is no gate.
   - **`ci-gate`** runs `commit_gate.py --trailers` on each commit of a
     range. Each commit needs a trailer that names its own patch ID, or its
-    own tree for a merge. The range comes from the first of these that is
-    there:
-    1. `JN_CI_BASE` and `JN_CI_HEAD`, which CI sets.
-    2. `PRE_COMMIT_FROM_REF` and `PRE_COMMIT_TO_REF`, which the pre-push
-       hook sets for a push to a branch that the remote has.
-    3. `PRE_COMMIT_LOCAL_BRANCH` alone, for a push of a new history. Each
-       commit of the branch counts.
-    4. By hand, the upstream of the branch, or else `origin/HEAD`. With
+    own tree for a merge. Range selection follows these rules:
+    1. For an existing remote branch, the pre-push hook sets
+       `PRE_COMMIT_FROM_REF` and `PRE_COMMIT_TO_REF`. With an explicit
+       `JN_CI_BASE`, the gate resolves the supplied base and checks that it
+       is an ancestor of the pushed head. Each commit of the base must be on
+       the remote of the push already, so a base of a new commit stops the
+       push. It checks the complete selected-base range, retaining
+       `PRE_COMMIT_TO_REF` as the head. A conflicting
+       `JN_CI_HEAD` fails. Without `JN_CI_BASE`, it checks the ordinary push range.
+    2. When the hook supplies `PRE_COMMIT_LOCAL_BRANCH` without the two
+       push refs above, it means a push of a new history. Every commit counts,
+       including when `JN_CI_BASE` is set.
+    3. Outside a push, an explicit `JN_CI_BASE` selects the CI range.
+       Optional `JN_CI_HEAD` selects its head, which defaults to `HEAD`.
+    4. Otherwise, the base is the branch upstream, or else `origin/HEAD`. With
        neither, `ci-gate` fails and says to set `JN_CI_BASE`.
+    With the tasker pre-push hook installed, verify the PR target's current
+    remote tip and pin its full SHA.
+    Use `JN_CI_BASE=<verified-PR-target-tip-SHA> git push origin <topic>`.
+    `BASE..HEAD` contains commits reachable from the pushed head, excluding
+    those reachable from the selected base. Inspect that full feature range
+    first; never select a topic commit to omit unaccepted work.
+    This includes original feature commits and the gated local merge. The
+    operator must verify that the supplied base is the PR target's current
+    remote tip; the gate does not establish PR acceptance.
   - **Limits of the pre-push hook.**
     - The framework reads only the first branch of a push. So
       `git push origin a b` checks the commits of `a`. CI checks each pull
@@ -1668,3 +1684,10 @@ needs it.
 - The three adversarial reviews of 2026-11-12, and their tests with git and
   just 1.50
 - The just changelog, entry "Remove logging" (#2305)
+
+## Recommendations
+
+Keep the hook's pushed head authoritative. Before pushing a topic that merged
+its PR base, verify the current remote PR-target tip and inspect the full range
+from that tip to the topic. Set `JN_CI_BASE` to that tip's full SHA. Check the
+PR's required CI results on GitHub for the exact published head.

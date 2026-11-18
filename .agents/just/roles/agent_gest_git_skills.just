@@ -76,8 +76,8 @@ record-skip target +reason:
 
 jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py"
 
-# just ci runs this first. CI gives the base of the pull request in JN_CI_BASE, the pre-push hook gives the commits
-# of the push, and by hand the base is the upstream of the branch, else origin/HEAD.
+# JN_CI_BASE selects the verified PR base for an existing-topic push; the hook keeps its pushed head.
+# Without selection use the push range; new history checks all commits. Outside a push use CI, upstream or origin/HEAD.
 
 # Check that each commit since BASE has the trailer of the commit gate that names its change
 ci-gate:

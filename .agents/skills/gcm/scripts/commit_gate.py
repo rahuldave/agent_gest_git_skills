@@ -661,9 +661,37 @@ def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
 
     The pre-push hook of the pre-commit framework gives the commits of the push in PRE_COMMIT_FROM_REF and
     PRE_COMMIT_TO_REF, or only PRE_COMMIT_LOCAL_BRANCH for a push of a new history, which the remote has no commit of.
-    The push comes first, so a JN_CI_BASE in the shell of the person does not change it. CI gives the commits in
-    JN_CI_BASE and JN_CI_HEAD. By hand, the base is the upstream of the branch, or else origin/HEAD."""
+    For an existing remote branch, JN_CI_BASE selects the PR target tip as base. It must be an ancestor of the
+    pushed head, and each of its commits must be on the remote. PRE_COMMIT_TO_REF remains the head; a conflicting
+    JN_CI_HEAD stops the push. Without that selection, the push range is unchanged. New-history pushes still check all commits. Outside a push, CI gives
+    JN_CI_BASE and JN_CI_HEAD; by hand the base is the upstream of the branch, or else origin/HEAD."""
     if env.get("PRE_COMMIT_FROM_REF") and env.get("PRE_COMMIT_TO_REF"):
+        if env.get("JN_CI_BASE"):
+            def resolve(value: str, label: str) -> str:
+                commit = git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{value}^{{commit}}"],
+                             root, plain_env(), check=False).strip()
+                if not commit:
+                    raise Stop(f"{label} does not resolve to a commit: {value}")
+                return commit
+
+            base = resolve(env["JN_CI_BASE"], "JN_CI_BASE")
+            head = resolve(env["PRE_COMMIT_TO_REF"], "pushed head")
+            if env.get("JN_CI_HEAD") and resolve(env["JN_CI_HEAD"], "JN_CI_HEAD") != head:
+                raise Stop("JN_CI_HEAD differs from the pushed head in PRE_COMMIT_TO_REF")
+            try:
+                git(["merge-base", "--is-ancestor", base, head], root, plain_env())
+            except Stop as exc:
+                raise Stop("JN_CI_BASE must be an ancestor of the pushed head") from exc
+            # Each commit of the base must be on the remote already, so that each commit new to the remote stays in
+            # BASE..HEAD. A base of HEAD, of a new commit or of a local branch ahead of the remote stops the push.
+            remote = env.get("PRE_COMMIT_REMOTE_NAME")
+            remotes = f"--remotes={remote}" if remote else "--remotes"
+            if git(["rev-list", "-n", "1", base, "--not", remotes], root, plain_env()).strip():
+                raise Stop(f"JN_CI_BASE contains commits that are not on the remote{' ' + remote if remote else ''}. Fetch the PR "
+                           "target and give the SHA of its tip")
+            count = git(["rev-list", "--count", f"{base}..{head}"], root, plain_env()).strip()
+            print(f"ci-gate: JN_CI_BASE {base[:12]} selects {count} commits of the push", file=sys.stderr)
+            return base, head
         return env["PRE_COMMIT_FROM_REF"], env["PRE_COMMIT_TO_REF"]
     if env.get("PRE_COMMIT_LOCAL_BRANCH"):
         return None, env["PRE_COMMIT_LOCAL_BRANCH"]
@@ -674,7 +702,7 @@ def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
         if git(["rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"], root, plain_env(), check=False).strip():
             return name, head
     raise Stop("the commits to check have no base: the branch has no upstream and there is no origin/HEAD. Give "
-               "the base in JN_CI_BASE, as JN_CI_BASE=main just ci")
+               "the base in JN_CI_BASE for one command, as JN_CI_BASE=origin/main just ci")
 
 
 def check_trailers(root: Path, base: Optional[str], head: str) -> List[str]:
