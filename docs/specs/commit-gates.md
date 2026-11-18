@@ -115,9 +115,9 @@ anything. When one is missing, it stops and prints the install line.
 | `git` | Everything | The system package manager. |
 | `just` | All recipes | `cargo install just` or the system package manager. |
 | `uv` | Python, the installer, smalldocs, nossaifd, the plugins | https://docs.astral.sh/uv/ |
-| `jlog` | The run log, as the shell of each recipe | The release binary: run its `scripts/install.sh` with `--tag v0.3.0`, as the README of jlog shows. To build it from source instead, `git clone https://github.com/rahuldave/jlog`, then `just install` in the clone. |
-| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | The release binary: run its `scripts/install.sh` with `--tag v0.6.3`, as the README of jagt shows. To build it from source instead, `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.3 jagt`. |
-| `gest` | The task tracker, from the fork of rahuldave. Version 0.6.0 or later, and `gest --version` must print `(rahuldave)`. | The release binary: run its `scripts/install.sh` from the tag `v0.6.0` with `--tag v0.6.0`, as the README of gest shows. To build it from source instead, `git clone https://github.com/rahuldave/gest`, `git checkout v0.6.0`, then `cargo install --locked --path .` in the clone. |
+| `jlog` | The run log, as the shell of each recipe | The release binary, from the install line of jlog under this table. To build it from source instead, `git clone https://github.com/rahuldave/jlog`, then `just install` in the clone. |
+| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | The release binary, from the install line of jagt under this table. To build it from source instead, `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.3 jagt`. |
+| `gest` | The task tracker, from the fork of rahuldave. Version 0.6.0 or later, and `gest --version` must print `(rahuldave)`. | The release binary, from the install line of gest under this table. To build it from source instead, `git clone https://github.com/rahuldave/gest`, `git checkout v0.6.0`, then `cargo install --locked --path .` in the clone. |
 | `gh` | Publishing, GitHub issues | https://cli.github.com/ |
 | `jq` | The agent hooks | The system package manager. |
 | `rg` | Search, for agents and in the docs | `cargo install ripgrep` or the system package manager. |
@@ -125,6 +125,15 @@ anything. When one is missing, it stops and prints the install line.
 | `node` | The TypeScript profile | Through `uv`, as the profile does now. |
 | `cargo-llvm-cov` | `coverage-check` in the Rust profile, with the rustup component `llvm-tools-preview` | `cargo install cargo-llvm-cov`, and `rustup component add llvm-tools-preview` |
 | `cargo` | The Rust profile, and the builds of `just`, `jlog`, `jagt` and `gest` from source | https://rustup.rs/ |
+
+The install lines of jlog, jagt and gest put the release binary in `~/.local/bin`.
+The tag v0.6.3 of jagt lacks the script, so its line takes it from the commit of jagt that adds it.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a/scripts/install.sh | sh -s -- --tag v0.6.3
+curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
+```
 
 - **The other new tools come through the profiles.** `diff-cover` and
   `interrogate` run with `uv run --with`, in any language. eslint and
