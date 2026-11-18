@@ -907,6 +907,9 @@ class GateTests(unittest.TestCase):
         self.passed()
         self.assertGoes(self.commit())
         head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        # The remote has accepted main and the published feature, not the local merge.
+        git("update-ref", "refs/remotes/origin/main", main, cwd=self.repo)
+        git("update-ref", "refs/remotes/origin/topic", feature, cwd=self.repo)
         return root, feature, main, head
 
     def test_selected_push_base_checks_feature_and_merge_but_not_accepted_main(self):
@@ -919,7 +922,8 @@ class GateTests(unittest.TestCase):
         self.assertTrue(commit_gate.check_trailers(self.repo, feature, head))
         run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo,
                              env=dict(self.person, **env), capture_output=True, text=True)
-        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertEqual((run.returncode, run.stderr),
+                         (0, f"ci-gate: JN_CI_BASE {main[:12]} selects 2 commits of the push\n"))
         self.assertEqual(commit_gate.ci_range(self.repo, dict(PRE_COMMIT_FROM_REF=feature,
                                                             PRE_COMMIT_TO_REF=head)), (feature, head))
         # A missing original-feature trailer must still fail in the complete PR range.
@@ -941,6 +945,33 @@ class GateTests(unittest.TestCase):
         with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_HEAD"):
             commit_gate.ci_range(self.repo, dict(env, JN_CI_HEAD=feature))
         self.assertEqual(commit_gate.ci_range(self.repo, dict(env, JN_CI_HEAD="topic")), (main, head))
+
+    def test_selected_push_base_must_be_on_the_remote(self):
+        _, feature, main, head = self.selected_base_fixture()
+        env = dict(PRE_COMMIT_FROM_REF=feature, PRE_COMMIT_TO_REF=head, PRE_COMMIT_REMOTE_NAME="origin")
+        self.assertEqual(commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=main)), (main, head))
+        # A base of the head, or of a commit new in this push, would check no commit, so it stops.
+        for base in ("HEAD", head, "topic"):
+            with self.assertRaisesRegex(commit_gate.Stop, "not on the remote"):
+                commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=base))
+        # An exported JN_CI_BASE=main, with a local main ahead of origin/main, stops too.
+        git("switch", "-q", "main", cwd=self.repo)
+        self.change("local.txt", "local\n")
+        local_main = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        head2 = git("commit-tree", f"{head}^{{tree}}", "-p", head, "-p", local_main,
+                    "-m", "Merge local main", cwd=self.repo, env=self.person).stdout.strip()
+        self.assertNotEqual(local_main, main)
+        with self.assertRaisesRegex(commit_gate.Stop, "not on the remote"):
+            commit_gate.ci_range(self.repo, dict(env, PRE_COMMIT_TO_REF=head2, JN_CI_BASE="main"))
+        # Without a remote name, any remote counts; a commit on no remote still stops.
+        del env["PRE_COMMIT_REMOTE_NAME"]
+        self.assertEqual(commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=main)), (main, head))
+        with self.assertRaisesRegex(commit_gate.Stop, "not on the remote"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=head))
+        # A base on another remote only does not count for the remote of the push.
+        git("update-ref", "refs/remotes/fork/topic", head, cwd=self.repo)
+        with self.assertRaisesRegex(commit_gate.Stop, "not on the remote"):
+            commit_gate.ci_range(self.repo, dict(env, JN_CI_BASE=head, PRE_COMMIT_REMOTE_NAME="origin"))
 
     def test_selected_push_base_rejects_missing_or_nonancestor_commits(self):
         _, feature, main, head = self.selected_base_fixture()

@@ -196,11 +196,19 @@ reachable from the pushed head, excluding those reachable from the selected
 base. This includes original feature commits and the local integration merge.
 
 The gate checks that the supplied base resolves to a commit and is an ancestor
-of the pushed head. The operator must verify that it is the PR target's tip;
-the gate does not validate PR acceptance. The hook supplies the pushed head;
-a conflicting `JN_CI_HEAD` fails. Inspect the complete range with
+of the pushed head. It also checks that each commit of the base is already on
+the remote of the push. Fetch the PR target before the push, so that the
+remote-tracking branch holds its tip. A base of the topic, or of a commit that is
+new in this push, stops the push. The gate prints the number of commits that the
+base selects.
+
+Give `JN_CI_BASE` on the command line of the push only, and do not export it in
+the shell. The operator must verify that it is the PR target's tip; the gate
+does not validate PR acceptance. The hook supplies the pushed head, and a
+conflicting `JN_CI_HEAD` fails. Inspect the complete range with
 `git log <verified-PR-target-tip-SHA>..<topic>` before pushing. Do not select a
-topic commit as the base to omit unaccepted feature work.
+topic commit as the base to omit unaccepted feature work. Never give the
+remote-tracking branch of the topic, such as `origin/<topic>`, as the base.
 
 Without an explicit base, the hook checks the ordinary push range, from the
 remote topic's old tip to its pushed head. For a new-history push, the pre-commit

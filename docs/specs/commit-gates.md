@@ -1225,8 +1225,10 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     1. For an existing remote branch, the pre-push hook sets
        `PRE_COMMIT_FROM_REF` and `PRE_COMMIT_TO_REF`. With an explicit
        `JN_CI_BASE`, the gate resolves the supplied base and checks that it
-       is an ancestor of the pushed head. It checks the complete selected-base
-       range, retaining `PRE_COMMIT_TO_REF` as the head. A conflicting
+       is an ancestor of the pushed head. Each commit of the base must be on
+       the remote of the push already, so a base of a new commit stops the
+       push. It checks the complete selected-base range, retaining
+       `PRE_COMMIT_TO_REF` as the head. A conflicting
        `JN_CI_HEAD` fails. Without `JN_CI_BASE`, it checks the ordinary push range.
     2. When the hook supplies `PRE_COMMIT_LOCAL_BRANCH` without the two
        push refs above, it means a push of a new history. Every commit counts,
