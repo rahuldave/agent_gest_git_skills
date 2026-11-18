@@ -148,6 +148,7 @@ body.docked .sidebar-navigation {
 #TOC .nav-link {
   display: block; padding: .15rem 0 .15rem .6rem; color: var(--sd-muted);
   border-left: 1px solid var(--sd-border); text-decoration: none; line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 #TOC .nav-link:hover { color: var(--bs-link-hover-color); }
 #TOC .nav-link.active { color: var(--bs-link-color); border-left-color: var(--bs-link-color); }
@@ -408,7 +409,7 @@ code.sourceCode:is([class~="diff" i], [class~="udiff" i], [class~="patch" i]) sp
 .listing-pagination { display: flex; justify-content: center; gap: .25rem; margin-top: 1.5rem; }
 .listing-pagination:empty { display: none; }
 .quarto-listing-category-title { font-weight: 600; margin-bottom: .5rem; }
-.quarto-listing-category .category { cursor: pointer; padding: .1rem 0; color: var(--sd-muted); }
+.quarto-listing-category .category { cursor: pointer; padding: .1rem 0; color: var(--sd-muted); overflow-wrap: anywhere; }
 .quarto-listing-category .category:hover, .quarto-listing-category .category.active { color: var(--bs-link-color); }
 .quarto-listing-category.category-cloud { display: flex; flex-wrap: wrap; gap: .2rem .6rem; }
 .quarto-category-count { opacity: .7; }
@@ -549,7 +550,7 @@ main.content > #TOC, main.content > #TOC-body { margin: 0 0 1.5rem; padding: .75
 main.content > #TOC #toc-title, main.content > #TOC-body h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .5rem; border: 0; padding: 0; }
 #TOC-body ul { list-style: none; padding-left: 0; margin: 0; }
 #TOC-body ul ul { padding-left: 1rem; }
-main.content > #TOC a, #TOC-body a { text-decoration: none; }
+main.content > #TOC a, #TOC-body a { text-decoration: none; overflow-wrap: anywhere; }
 
 /* other-links and code-links, under the table of contents */
 .quarto-other-links, .quarto-code-links { margin-top: 1rem; }

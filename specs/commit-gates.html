@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.5"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Spec: Commit gates for any repository – agent_gest_git_skills</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="../site_libs/smalldocs.css"><meta name="smalldocs:offset" content="../"><script src="../site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="../site_libs/fuse/fuse.min.js"></script><script src="../site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="../index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="../index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="../TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="../g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Specs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="commit-gates.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Spec: Commit gates for any repository</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li><li><a href="#terms" id="toc-terms" class="nav-link" data-scroll-target="#terms">Terms</a></li><li><a href="#the-threat-model" id="toc-the-threat-model" class="nav-link" data-scroll-target="#the-threat-model">The threat model</a></li><li><a href="#proposed-solution" id="toc-proposed-solution" class="nav-link" data-scroll-target="#proposed-solution">Proposed Solution</a><ul><li><a href="#who-calls-what" id="toc-who-calls-what" class="nav-link" data-scroll-target="#who-calls-what">Who calls what</a></li><li><a href="#the-tools" id="toc-the-tools" class="nav-link" data-scroll-target="#the-tools">The tools</a></li><li><a href="#the-steps" id="toc-the-steps" class="nav-link" data-scroll-target="#the-steps">The steps</a></li><li><a href="#the-docs-site-and-the-api-pages" id="toc-the-docs-site-and-the-api-pages" class="nav-link" data-scroll-target="#the-docs-site-and-the-api-pages">The docs site and the API pages</a></li><li><a href="#skills-and-targets" id="toc-skills-and-targets" class="nav-link" data-scroll-target="#skills-and-targets">Skills and targets</a></li><li><a href="#the-skills" id="toc-the-skills" class="nav-link" data-scroll-target="#the-skills">The skills</a></li><li><a href="#agentic-targets" id="toc-agentic-targets" class="nav-link" data-scroll-target="#agentic-targets">Agentic targets</a></li><li><a href="#setup-questions" id="toc-setup-questions" class="nav-link" data-scroll-target="#setup-questions">Setup questions</a></li><li><a href="#records" id="toc-records" class="nav-link" data-scroll-target="#records">Records</a></li><li><a href="#the-run-log" id="toc-the-run-log" class="nav-link" data-scroll-target="#the-run-log">The run log</a></li><li><a href="#sessions-and-the-environment" id="toc-sessions-and-the-environment" class="nav-link" data-scroll-target="#sessions-and-the-environment">Sessions and the environment</a></li><li><a href="#the-worktree-tree" id="toc-the-worktree-tree" class="nav-link" data-scroll-target="#the-worktree-tree">The worktree tree</a></li><li><a href="#the-pass" id="toc-the-pass" class="nav-link" data-scroll-target="#the-pass">The pass</a></li><li><a href="#gates" id="toc-gates" class="nav-link" data-scroll-target="#gates">Gates</a></li><li><a href="#stacked-prs-with-plain-git" id="toc-stacked-prs-with-plain-git" class="nav-link" data-scroll-target="#stacked-prs-with-plain-git">Stacked PRs with plain git</a></li><li><a href="#docs-publishing" id="toc-docs-publishing" class="nav-link" data-scroll-target="#docs-publishing">Docs publishing</a></li><li><a href="#the-files-that-the-installer-writes" id="toc-the-files-that-the-installer-writes" class="nav-link" data-scroll-target="#the-files-that-the-installer-writes">The files that the installer writes</a></li><li><a href="#where-each-part-lives" id="toc-where-each-part-lives" class="nav-link" data-scroll-target="#where-each-part-lives">Where each part lives</a></li><li><a href="#delivery" id="toc-delivery" class="nav-link" data-scroll-target="#delivery">Delivery</a></li></ul></li><li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a><ul><li><a href="#in-scope" id="toc-in-scope" class="nav-link" data-scroll-target="#in-scope">In Scope</a></li><li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of Scope</a></li></ul></li><li><a href="#acceptance-criteria" id="toc-acceptance-criteria" class="nav-link" data-scroll-target="#acceptance-criteria">Acceptance Criteria</a></li><li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions">Open Questions</a></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/specs/commit-gates.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav><div class="quarto-title"><h1 class="title">Spec: Commit gates for any repository</h1></div><div class="quarto-title-meta"></div></header><section id="problem-statement" class="level2">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.12"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Spec: Commit gates for any repository – agent_gest_git_skills</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="../site_libs/smalldocs.css"><meta name="smalldocs:offset" content="../"><script src="../site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="../site_libs/fuse/fuse.min.js"></script><script src="../site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="../index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="../index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="../TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="../g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Specs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="commit-gates.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Spec: Commit gates for any repository</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li><li><a href="#terms" id="toc-terms" class="nav-link" data-scroll-target="#terms">Terms</a></li><li><a href="#the-threat-model" id="toc-the-threat-model" class="nav-link" data-scroll-target="#the-threat-model">The threat model</a></li><li><a href="#proposed-solution" id="toc-proposed-solution" class="nav-link" data-scroll-target="#proposed-solution">Proposed Solution</a><ul><li><a href="#who-calls-what" id="toc-who-calls-what" class="nav-link" data-scroll-target="#who-calls-what">Who calls what</a></li><li><a href="#the-tools" id="toc-the-tools" class="nav-link" data-scroll-target="#the-tools">The tools</a></li><li><a href="#the-steps" id="toc-the-steps" class="nav-link" data-scroll-target="#the-steps">The steps</a></li><li><a href="#the-docs-site-and-the-api-pages" id="toc-the-docs-site-and-the-api-pages" class="nav-link" data-scroll-target="#the-docs-site-and-the-api-pages">The docs site and the API pages</a></li><li><a href="#skills-and-targets" id="toc-skills-and-targets" class="nav-link" data-scroll-target="#skills-and-targets">Skills and targets</a></li><li><a href="#the-skills" id="toc-the-skills" class="nav-link" data-scroll-target="#the-skills">The skills</a></li><li><a href="#agentic-targets" id="toc-agentic-targets" class="nav-link" data-scroll-target="#agentic-targets">Agentic targets</a></li><li><a href="#setup-questions" id="toc-setup-questions" class="nav-link" data-scroll-target="#setup-questions">Setup questions</a></li><li><a href="#records" id="toc-records" class="nav-link" data-scroll-target="#records">Records</a></li><li><a href="#the-run-log" id="toc-the-run-log" class="nav-link" data-scroll-target="#the-run-log">The run log</a></li><li><a href="#sessions-and-the-environment" id="toc-sessions-and-the-environment" class="nav-link" data-scroll-target="#sessions-and-the-environment">Sessions and the environment</a></li><li><a href="#the-worktree-tree" id="toc-the-worktree-tree" class="nav-link" data-scroll-target="#the-worktree-tree">The worktree tree</a></li><li><a href="#the-pass" id="toc-the-pass" class="nav-link" data-scroll-target="#the-pass">The pass</a></li><li><a href="#gates" id="toc-gates" class="nav-link" data-scroll-target="#gates">Gates</a></li><li><a href="#stacked-prs-with-plain-git" id="toc-stacked-prs-with-plain-git" class="nav-link" data-scroll-target="#stacked-prs-with-plain-git">Stacked PRs with plain git</a></li><li><a href="#docs-publishing" id="toc-docs-publishing" class="nav-link" data-scroll-target="#docs-publishing">Docs publishing</a></li><li><a href="#the-files-that-the-installer-writes" id="toc-the-files-that-the-installer-writes" class="nav-link" data-scroll-target="#the-files-that-the-installer-writes">The files that the installer writes</a></li><li><a href="#where-each-part-lives" id="toc-where-each-part-lives" class="nav-link" data-scroll-target="#where-each-part-lives">Where each part lives</a></li><li><a href="#delivery" id="toc-delivery" class="nav-link" data-scroll-target="#delivery">Delivery</a></li></ul></li><li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a><ul><li><a href="#in-scope" id="toc-in-scope" class="nav-link" data-scroll-target="#in-scope">In Scope</a></li><li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of Scope</a></li></ul></li><li><a href="#acceptance-criteria" id="toc-acceptance-criteria" class="nav-link" data-scroll-target="#acceptance-criteria">Acceptance Criteria</a></li><li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions">Open Questions</a></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/specs/commit-gates.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav><div class="quarto-title"><h1 class="title">Spec: Commit gates for any repository</h1></div><div class="quarto-title-meta"></div></header><section id="problem-statement" class="level2">
 <h2 class="anchored" data-anchor-id="problem-statement">Problem Statement</h2>
 <p>The rules for a commit live in the global <code>CLAUDE.md</code> file and in <code>AGENTS.md</code>
 files. They say that a commit needs lint, tests, integration tests, types and
@@ -18,7 +18,8 @@ agent commits. The Codex hooks have no commit hook.</li>
 <li><strong>GitButler</strong> is in the hooks, skills and docs of agent_gest_git_skills,
 mostly for stacked PRs. The spec drops it.</li>
 <li><strong>The Python profile</strong> installs the pre-commit framework, which owns
-<code>.git/hooks/pre-commit</code> and changes files at commit time.</li>
+<code>.git/hooks/pre-commit</code> and changes files at commit time. The spec moves the
+framework to the tasker role.</li>
 <li><strong>jagt</strong> renders and checks task packets for agents. No recipe uses it for a
 review.</li>
 </ul>
@@ -124,11 +125,11 @@ review.</li>
 </tr>
 <tr>
 <td>Docments</td>
-<td>The comments beside the arguments of a Python function. smalldocs reads them for the API pages.</td>
+<td>The comments beside the arguments of a Python function. smalldocs reads them for the API pages. In TypeScript, the same comments come after each parameter.</td>
 </tr>
 <tr>
 <td>API pages</td>
-<td>The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.5 makes them for Python only.</td>
+<td>The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.12 makes them for Python, TypeScript and Rust.</td>
 </tr>
 </tbody>
 </table>
@@ -140,7 +141,7 @@ review.</li>
 or a commit with an unstaged fix. They do not stop an agent that tries to
 cheat. An agent with a shell can edit the log, remove the git hook or write a
 commit with <code>git commit-tree</code>. The spec makes these acts hard to do by
-accident.</p>
+accident. A commit that skips the gate has no trailer of the gate, so <code>just ci</code> stops it in CI.</p>
 </section>
 <section id="proposed-solution" class="level2">
 <h2 class="anchored" data-anchor-id="proposed-solution">Proposed Solution</h2>
@@ -151,7 +152,7 @@ files that the installer writes.</p>
 <p>The diagram shows each part and the parts that it calls. The gate reads the
 log and the records, and it runs no step itself.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode code-with-copy"><code class="sourceCode "> person / agent
-     │  just check                         just review | test-review | docs …
+     │  just check                         just review | update-docs …
      ▼                                          ▼
  ┌──── jnterfaces ─────────────────────┐  ┌─ agent_gest_git_skills ───────┐
  │ root Justfile + index: step names,  │  │ target recipes, base tasks    │
@@ -166,9 +167,9 @@ log and the records, and it runs no step itself.</p>
  └──────┬─────────────────┘                      ▼ (jagt-protocol rules)
         ▼                                 fresh agent → AGENT_RESULT
  ┌─ profile modules ───────────────┐             │
- │ python.just, typescript.just,   │             ▼ SubagentStop hook
- │ rust.just → ruff, ty, pytest,   │      writes the record; the jlog
- │ biome, tsc, smalldocs, cargo …  │      plugin gives the model
+ │ python.just: ruff, ty, pytest   │             ▼ SubagentStop hook
+ │ typescript.just: biome, tsc     │      writes the record; the jlog
+ │ rust.just: cargo, clippy …      │      plugin gives the model
  └─────────────────────────────────┘             │
                                                  ▼
  git commit ──► pre-commit hook ──► gate (agent_gest_git_skills)
@@ -214,8 +215,8 @@ anything. When one is missing, it stops and prints the install line.</p>
 </tr>
 <tr>
 <td><code>jagt</code></td>
-<td>Agentic targets. Version 0.3.0 or later, for the nonce.</td>
-<td><code>cargo install --git https://github.com/rahuldave/jagt</code></td>
+<td>Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree.</td>
+<td><code>cargo install --locked --git https://github.com/rahuldave/jagt jagt</code></td>
 </tr>
 <tr>
 <td><code>gest</code></td>
@@ -275,7 +276,7 @@ machine needs”.</li>
 <section id="the-steps" class="level3">
 <h3 class="anchored" data-anchor-id="the-steps">The steps</h3>
 <p>Every repository has the same steps, for any language:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">just check     fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">just check     fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
 <li>
 <p><strong>jnterfaces names the steps.</strong> It holds the list and the meaning of each
@@ -505,8 +506,9 @@ checker that is missing or that fails is a hard problem. Any exit of
 <code>.agents/just/roles/nossaifd.just</code>, with the name <code>prose-check</code>. So it
 fills the step in a project with the <code>nossaifd</code> role. Without the role,
 the step is a no-op step.</li>
-<li><strong>The API pages.</strong> The step runs <code>smalldocs api module NAME</code> for each
-changed module into a temporary file, and checks that file.</li>
+<li><strong>The API pages.</strong> The step builds the API page of each changed module or
+file into a temporary folder, and checks that page. Python uses
+<code>smalldocs api module NAME</code>, and TypeScript uses <code>smalldocs api build</code>.</li>
 <li><strong>No writes.</strong> The step writes nothing into the repository. When
 <code>prose_gate.py</code> or its checker is missing, the step fails and prints the
 install line.</li>
@@ -535,19 +537,25 @@ It adds <code>docs-publish</code> and a CI workflow that runs it. The name
 <code>docs-publish</code> matches the recipes that exist now.</li>
 <li><strong>An <code>api</code> tool in jnprofile-python.</strong> It adds the <code>api</code> settings to the
 smalldocs config. The key <code>packages</code> names the packages of the project. The
-tool adds <code>smalldocs api check</code> to <code>docs-check</code>. That command exits with 1
-when it finds a gap, as the code of smalldocs 0.5.5 shows. The step runs it
-with <code>uv run --with smalldocs==0.5.5</code>, so the package and its dependencies
-can be imported. The profile turns the tool on by default when the project
-has the <code>docs</code> tool.</li>
-<li><strong>No API pages for TypeScript or Rust yet.</strong> smalldocs 0.5.5 reads the API
-with the Python <code>ast</code> module and reads the docments with fastcore. Work is
-under way in smalldocs to read the API of Rust with rustdoc and of TypeScript
-with JSDoc. Until a release has it, a TypeScript or Rust project gets the
-<code>docs</code> tool only. After that release, jnprofile-typescript adds an <code>api</code> tool
-like the one of Python. That tool pins the new release, and it says which
-source files <code>@api</code> names. jnprofile-rust adds its <code>api</code> tool after the
-release that reads rustdoc.</li>
+tool has a recipe <code>api-check</code>, which runs <code>smalldocs api check</code>. That command
+exits with 1 when it finds a gap, as the code of smalldocs shows. The recipe
+runs it with <code>uv run --with smalldocs==0.5.12</code>, so the package and its
+dependencies can be imported. The <code>docs-check</code> of the <code>docs</code> tool runs
+<code>api-check</code> when the project has that recipe. The profile turns the <code>api</code>
+tool on by default. Without the <code>docs</code> tool, no step of <code>just check</code> runs it.</li>
+<li><strong>An <code>api</code> tool in jnprofile-typescript.</strong> smalldocs 0.5.12 reads the API
+of TypeScript with TypeDoc, and the JSDoc and the comments of each item. The tool
+pins that release, and runs it with <code>--with nodejs-wheel==24.*</code>, so the
+machine needs no node of its own. Its settings are the TypeScript sections of
+the <code>api</code> key. Without them, the entry is <code>src/index.ts</code>, or the same name
+with <code>.tsx</code>, <code>.mts</code> or <code>.cts</code>, and else each code file of <code>src/</code>.</li>
+<li><strong>An <code>api</code> tool in jnprofile-rust, later.</strong> smalldocs 0.5.12 reads the API
+of Rust from the JSON of rustdoc, which needs a nightly Rust. That tool is
+rahuldave/jnprofile-rust#8. Until it exists, a Rust project gets the <code>docs</code>
+tool only.</li>
+<li><strong>The <code>docs</code> tool pins the same release.</strong> The <code>docs</code> tool and the <code>api</code>
+tools pin smalldocs 0.5.12. Before 0.5.9, smalldocs read each <code>api</code> section
+as Python.</li>
 </ul>
 </section>
 <section id="skills-and-targets" class="level3">
@@ -564,7 +572,7 @@ target writes tests or docstrings.</li>
 tests, and the docs lens of <code>review</code> checks the docstrings.</li>
 <li><strong>A part of a skill becomes a target only when the gate needs its
 evidence.</strong> The other parts of the skills stay as they are.</li>
-<li><strong>The doc pages are the exception.</strong> <code>just docs</code> writes the pages that a
+<li><strong>The doc pages are the exception.</strong> <code>just update-docs</code> writes the pages that a
 change affects, such as the README and the guides. A fresh agent can do that
 work, because it needs the whole change and not the context of one function.</li>
 </ul>
@@ -596,7 +604,7 @@ check that a skill runs goes through a recipe, so the run log has it.</p>
 </tr>
 <tr>
 <td><code>gdo</code></td>
-<td>It asks the author for a doc on every item, and it reads the output of <code>docstring-check</code>. It holds the base tasks of <code>docs</code> and <code>visualize</code>.</td>
+<td>It asks the author for a doc on every item, and it reads the output of <code>docstring-check</code>. It holds the base tasks of <code>update-docs</code> and <code>visualize</code>.</td>
 </tr>
 <tr>
 <td><code>grv</code></td>
@@ -647,16 +655,34 @@ section “Records” lists the adapters.</li>
 <ul>
 <li><strong>The base task</strong> from the skill. For example, <code>grv</code> gives the review lenses.
 A lens is one point of view of the review, for example correctness, tests or
-safety. The file is <code>references/targets/&lt;target&gt;.md</code> in the skill.</li>
+safety. The file is <code>references/targets/&lt;target&gt;.md</code> in the skill. The
+recipe looks for that file in each installed skill, and one skill must have
+it. So the <code>nossaifd</code> skill gives the base task of <code>prose</code>, and a target
+without its skill prints no packet.</li>
 <li><strong>The language layer</strong> from <code>.agents/targets/&lt;language&gt;/&lt;target&gt;.md</code>, for
 each language in <code>.agents/stack.json</code>. Each profile ships its files, as it
-ships its <code>just</code> modules now. For example, the Python file for <code>docs</code> can say
+ships its <code>just</code> modules now. For example, the Python file for <code>update-docs</code> can say
 “write docments for each argument”. A new language needs a new file, and no
 change to any skill.</li>
 <li><strong>The repository text</strong> from <code>.agents/targets/&lt;target&gt;.md</code>, if the file
 exists. For example, <code>.agents/targets/review.md</code> can say “check each SQL
 migration for a rollback”.</li>
-<li><strong>The inputs:</strong> the diff, the input tree and the arguments of the recipe.</li>
+<li><strong>The inputs:</strong> the diff, the input tree and the arguments of the recipe.
+The diff compares the worktree with <code>HEAD</code>, and holds the files that git does
+not track yet. It is the file <code>diffs/&lt;head&gt;-&lt;tree&gt;.diff</code> in the shared log
+folder, so the same tree on another <code>HEAD</code> gets a file of its own. Before
+the recipe computes the tree, it makes <code>.agents/log/.gitignore</code> with the
+line <code>*</code> if the file is missing. So the run log of <code>jlog</code> and the diff file
+are not in the tree. The recipe stops if <code>.agents</code>, <code>.agents/log</code>, its
+<code>diffs</code> folder or this file is a link. It opens each folder through the
+folder above it, so a link that appears later moves nothing. It writes each
+diff as a new file, so a link or a hard link at its name keeps the other
+file. In the main checkout, it also stops if <code>.git</code> is a link to a folder
+elsewhere. So it writes nothing outside the repository. From a linked
+worktree, the main checkout is the folder that holds the real <code>.git</code>, as git
+names it, even when the <code>.git</code> of the main checkout is a link.</li>
+<li><strong>The allowed actions:</strong> what the fresh agent may do. A target that changes
+files names them, such as “change the docs that the change affects”.</li>
 <li><strong>The required outputs:</strong> the fields that the result must have, for example
 <code>findings</code> and <code>status</code>.</li>
 <li><strong>A nonce:</strong> a random value of 32 lowercase hex digits, whose first digit is
@@ -699,7 +725,7 @@ nonce and no file, for demos and labs.</li>
 <td>Findings, each one fixed with a test or with a reason not to fix it.</td>
 </tr>
 <tr>
-<td><code>just docs [area]</code></td>
+<td><code>just update-docs [area]</code></td>
 <td>Finds the docs that the change affects, and writes or changes them. The repository text says which docs the repository has, for example user docs, developer docs, API docs or a change log.</td>
 <td>The changed docs, and the docs it checked and left alone.</td>
 </tr>
@@ -721,13 +747,15 @@ nonce and no file, for demos and labs.</li>
 </tbody>
 </table>
 </div>
-<p>Before it writes its packet, the <code>test-review</code> recipe runs a logged line,
-<code>test-parent</code>:</p>
+<p>Before it writes its packet, the <code>test-review</code> recipe runs the recipe
+<code>test-parent</code>, through <code>.agents/skills/gcm/scripts/test_parent.py</code>:</p>
 <ul>
 <li>It makes a worktree of the parent commit in a temporary folder outside the
 repository, with <code>git worktree add --detach</code>.</li>
-<li>It copies each added or changed test file in, runs the <code>test-paths</code> recipe
-of the profile on them, and removes the worktree.</li>
+<li>It copies each added or changed test file in, runs the recipe
+<code>&lt;language&gt;::test-paths</code> of the parent on each file alone, and removes the
+worktree. A file that does not build cannot hide a file that passes. A
+parent with no such recipe gives “the runner failed”.</li>
 <li><strong>Test files.</strong> Each profile names its test files with the globs of the key
 <code>tests</code> of <code>profile.json</code>. <code>test-parent</code> copies only those files, so no
 new code reaches the parent.</li>
@@ -752,15 +780,21 @@ does not build, so <code>test-paths</code> exits with 1, not 2.</li>
 <li>1: a test failed, or a test did not build. A new test of new code often
 does not build on the parent, and that is a failure of the test.</li>
 <li>5: no test ran, as pytest exits when it collects no test. An example is
-a file whose tests are all skipped. <code>test-paths</code> with no path exits with
+a file whose tests are all skipped. An xfail test, which is expected to
+fail, does not count as a test that ran. <code>test-paths</code> with no path exits with
 5 too, and it never runs all the tests.</li>
-<li>Any other code: the runner itself failed, for example with a usage error
-or a crash.</li>
+<li>Any other code: the runner itself failed, for example with a usage error,
+a crash, or an install of the environment that fails. A test that ends
+the run, as with <code>os._exit(0)</code>, gives this code too.</li>
 </ul>
 </li>
-<li><strong>Each profile counts the tests.</strong> It reads the count from the output of
-the runner, such as the summary line of pytest or the lines “running N
-tests” of cargo. A count of 0 gives 5, even when the runner exits with 0. A
+<li><strong>One line for each test.</strong> The output of <code>test-paths</code> names each test and
+its result. In a file with a test that fails, a test that passes gives no
+case of its own, so <code>test-review</code> reads those lines.</li>
+<li><strong>Each profile counts the tests.</strong> It reads the count from a report or
+the output of the runner, such as the JUnit report of pytest or the lines
+“running N tests” of cargo. A plugin can change the terminal output of
+pytest, so the Python profile reads the report. A count of 0 gives 5, even when the runner exits with 0. A
 runner that exits with 5 for another reason, such as a fatal error of Node,
 gets 2. vitest exits with 1 when a test fails, and also when it finds no
 test file. So the profile reads its output to tell the two apart.</li>
@@ -771,11 +805,22 @@ records “no test ran on the parent”.</li>
 expected failure. 5 is “no test ran on the parent”, and <code>test-review</code>
 judges those tests from the diff. Any other code is “the runner failed”,
 which is neither a pass nor a failure.</li>
+<li><strong>Two limits of the Python profile.</strong>
+<ul>
+<li>pytest finds its config from the test files that it runs. So a
+<code>pytest.ini</code> in the folder of a test file takes the place of the config
+of the project, as it does when you run pytest on that file yourself.</li>
+<li><code>test-parent</code> stops the process group of each run. A test that leaves
+its group, as with <code>setsid</code>, can outlive the run.</li>
+</ul>
+</li>
 <li>It writes the result, with the output of the tests, to
-<code>test-parent/&lt;run&gt;.json</code> in the log folder. The result names the case. It
-exits with 0 in each case above. It exits with 1 only when <code>test-parent</code>
+<code>test-parent/&lt;tree&gt;.json</code> in the log folder. <code>&lt;tree&gt;</code> is the worktree tree,
+as the gate computes it, so the packet of <code>test-review</code> for that tree
+finds it. The result names the case. It exits with 0 in each case above. It exits with 1 only when <code>test-parent</code>
 itself fails. Examples are a worktree that git cannot make, a copy that
-fails, and a log file that it cannot write.</li>
+fails, and a log file that it cannot write. On SIGTERM, SIGHUP or Ctrl-C it
+stops the tests and removes the worktree before it exits.</li>
 <li>The packet holds the result. So the run is logged, and the agent only judges
 it.</li>
 <li>On the first commit, <code>test-parent</code> is a skip.</li>
@@ -793,6 +838,10 @@ a repository may. When jnterfaces takes the gates for itself, the recipe
 must run with no argument, as each step does.</li>
 </ul>
 <p>So <code>prose</code> is free for the agentic target.</p>
+<p>The target that writes docs is <code>update-docs</code>, not <code>docs</code>. Many repositories
+have a recipe <code>docs</code> that previews the docs site, as the <code>docs</code> tool does. A
+role file that also had <code>docs</code> would stop each Justfile that imports it,
+because <code>just</code> refuses a recipe that two files define.</p>
 <p>Other targets to consider later:</p>
 <ul>
 <li><strong><code>just security-review</code>:</strong> looks for secrets, injection and unsafe input.</li>
@@ -874,15 +923,15 @@ stopped, after its changes. A target that changes no file has the same tree
 twice.</p>
 </li>
 <li>
-<p><strong>The chain.</strong> <code>docs</code> and <code>prose</code> change files, so the gate accepts a chain:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">docs         T0 -&gt; T1
+<p><strong>The chain.</strong> <code>update-docs</code> and <code>prose</code> change files, so the gate accepts a chain:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">update-docs  T0 -&gt; T1
 prose        T1 -&gt; T2
 test-review  T2 -&gt; T2
 review       T2 -&gt; T2
 check        T2</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Each record must start at the output tree of the record before it. The last
-tree must be the commit tree. A <code>docs</code> record comes before a <code>prose</code> record,
-because <code>prose</code> checks the text that <code>docs</code> wrote. <code>test-review</code> and <code>review</code>
+tree must be the commit tree. An <code>update-docs</code> record comes before a <code>prose</code> record,
+because <code>prose</code> checks the text that <code>update-docs</code> wrote. <code>test-review</code> and <code>review</code>
 come after the last record that changes files. When a review leads to fixes, the fixes make a
 new tree, and the review runs again on it. <code>test-review</code> and <code>review</code> change
 no files, so they can run in either order on the same tree.</p>
@@ -923,6 +972,54 @@ tree in the right checkout.</p>
 <p><strong>The gate reads only records.</strong> It does not know which harness made them.</p>
 </li>
 <li>
+<p><strong>The file of a record</strong> is a JSON file in <code>records/</code>, with these keys:</p>
+<div class="sd-table">
+<table class="caption-top table">
+<thead>
+<tr>
+<th>Key</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>version</code></td>
+<td><code>1</code>.</td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td>The name of the target, for example <code>review</code>.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>The status of the result. Only <code>success</code> counts.</td>
+</tr>
+<tr>
+<td><code>input_tree</code>, <code>output_tree</code></td>
+<td>The two trees of the record.</td>
+</tr>
+<tr>
+<td><code>findings</code></td>
+<td>A list. Each finding has a <code>summary</code>, and a <code>test</code> that shows the fix or a <code>reason</code> not to fix it.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>hook</code>, <code>agent</code> for <code>just record</code>, or <code>skip</code> for <code>just record-skip</code>.</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>For a skip, the reason. A skip has the same tree twice.</td>
+</tr>
+<tr>
+<td><code>model</code>, <code>nonce</code></td>
+<td>The model of the fresh agent, and the nonce of its packet.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The gate is <code>.agents/skills/gcm/scripts/commit_gate.py</code>.</p>
+</li>
+<li>
 <p><strong>Who writes a record</strong> depends on the adapter of the harness:</p>
 <div class="sd-table">
 <table class="caption-top table">
@@ -948,13 +1045,28 @@ tree in the right checkout.</p>
 </tbody>
 </table>
 </div>
-<p>A harness with a hook that writes records stops <code>just record</code>, so its agents
-cannot write a record by hand.</p>
+<p>In Claude Code, <code>just record</code> stops, because the hook writes the records.
+The script cannot tell whether a Codex has the hook, so in Codex
+<code>just record</code> checks the result instead. An agent can clear the variables
+of its harness, so they cannot say that no harness runs.</p>
+</li>
+<li>
+<p><strong>A repository with the record hook.</strong> There, <code>just record</code> without
+<code>CODEX_THREAD_ID</code> stops. The hook can be in <code>.claude/settings.json</code>, <code>.claude/settings.local.json</code>,
+<code>.codex/hooks.json</code> or <code>.codex/config.toml</code>. The script reads them in the
+checkout where it runs and in the main checkout, and the guard protects
+both. It also reads the settings of the person in <code>~/.claude</code> and
+<code>~/.codex</code>.</p>
 </li>
 <li>
 <p><strong>The check of a <code>just record</code></strong> in Codex reads the transcript of the fresh
-agent, a JSONL file:</p>
+agent, a JSONL file in the <code>sessions</code> folder of <code>CODEX_HOME</code>, by default
+<code>~/.codex/sessions</code>. The record takes the result from the transcript, not
+from the file of the agent:</p>
 <ul>
+<li>A forked agent is not a fresh agent. Its transcript holds the turns of
+its parent, so the check refuses a transcript with <code>forked_from_id</code> or
+with more than one <code>session_meta</code> line.</li>
 <li>Its <code>session_meta</code> line names the parent thread in <code>parent_thread_id</code>. The
 parent must be the thread that ran <code>just record</code>, from <code>CODEX_THREAD_ID</code>.</li>
 <li>One fresh agent can have several turns. The nonce must be in the
@@ -968,7 +1080,64 @@ to its <code>-shm</code> file, so a read is not free of writes. A read of
 </li>
 <li>
 <p><strong>A skip with a reason.</strong> <code>just record-skip &lt;target&gt; &lt;reason&gt;</code> lets one tree
-through without that record. The agent hooks ask the person before it runs.</p>
+through without that record. The agent hooks ask the person before it runs.
+Codex has no question for a hook, so there the hook stops the command, and
+the agent asks the person to run it.</p>
+</li>
+<li>
+<p><strong>One result, one record.</strong> The record of a packet is
+<code>records/&lt;nonce&gt;.json</code>, and a second result of the same packet gives no
+record. The findings must be a list in <code>outputs.findings</code>, or the result
+gives no record.</p>
+</li>
+<li>
+<p><strong>The guard of the records.</strong> The gate guard stops these calls:</p>
+<ul>
+<li><code>record_result.py hook</code>, which only the harness runs.</li>
+<li><code>just record</code> in Claude Code. The guard finds the recipe after the
+options of just, and it reads the options from <code>just --help</code>.</li>
+<li>A record command that sets or unsets <code>CLAUDECODE</code>,
+<code>CLAUDE_CODE_SESSION_ID</code>, <code>CODEX_THREAD_ID</code> or <code>CODEX_HOME</code>, or that
+runs with <code>env</code>, <code>exec</code>, <code>unset</code> or <code>export -n</code>. Those programs can
+clear the variables without their names.</li>
+<li>A write to the <code>sessions</code> folder of Codex.</li>
+<li>A write to <code>.git/config</code>, where a <code>core.hooksPath</code> would move the hooks.</li>
+<li>A commit while git has a <code>core.hooksPath</code>. The guard asks git once, in
+the folder of the command. Then git would not run the gate.</li>
+<li>Any git line when the guard itself fails. A line without git runs.</li>
+</ul>
+</li>
+<li>
+<p><strong>The limits of the records.</strong> The guard reads the words of a line. It
+does not run the shell in its head, so a command that hides git runs:</p>
+<ul>
+<li>A program such as <code>python -c</code>, or a script, can commit or write a file
+in <code>records/</code>.</li>
+<li>A here-doc or a pipe into a shell, as in <code>bash &lt;&lt;EOF</code>, runs. So does a
+word that the shell makes, as in <code>git $(echo commit) -n</code>.</li>
+<li>A setting that a command writes first, as in <code>~/.gitconfig</code>, can give
+git a <code>core.hooksPath</code> that the guard does not see.</li>
+<li>A record hook in a setting that the script does not read, such as the
+managed settings or a plugin of Codex, does not stop <code>just record</code>.</li>
+<li>In a repository with no record hook, <code>just record</code> takes the result
+from the file of the agent.</li>
+<li>In Codex, a command that sets <code>CODEX_HOME</code> in a way the guard does not
+see can point the check at transcripts that the agent wrote.</li>
+<li>A parent can tell a fresh agent to repeat a result that the parent wrote.</li>
+<li>When the parent changes the worktree while a fresh agent runs, its
+changes are in the output tree of that record.</li>
+</ul>
+<p>A commit that went around the gate has no trailer of the gate, so <code>just ci</code>
+stops it. The section “The trailer and just ci” tells how. A record that an
+agent wrote by hand gets through. The review of the pull request is the
+check of that.</p>
+</li>
+<li>
+<p><strong>The scripts.</strong> <code>.agents/skills/gcm/scripts/record_result.py</code> writes the
+records. The hook <code>record-result.sh</code> runs it on <code>SubagentStop</code>. The recipes
+<code>record</code> and <code>record-skip</code> run it with <code>uv</code>, with pyyaml for the result
+block. The hook never stops the fresh agent. A result that gives no record
+only prints the reason.</p>
 </li>
 </ul>
 </section>
@@ -1132,6 +1301,17 @@ this spec.</p>
 starts no download, and its failure never fails the line.</li>
 <li><strong>The gate is a plain script, not a recipe.</strong> So nothing runs on its own
 inside the git hook.</li>
+<li><strong>The sandbox of Codex.</strong> In the mode <code>workspace-write</code>, Codex keeps
+<code>.agents/</code> and <code>.git/</code> read-only, also under a writable root of the folder
+above them. So <code>just check</code> cannot write its run log, the targets cannot
+write their packets, and <code>git commit</code> cannot write the git folder. The
+person approves these commands outside the sandbox. Or the person gives
+each of these folders as a <code>sandbox_workspace_write.writable_roots</code> entry.
+The folders are <code>.agents</code> and <code>.git</code> of the main checkout, and in a
+worktree also its <code>.agents</code> and its git folder, from
+<code>git rev-parse --git-dir</code>. On 2026-11-16, with Codex 0.167.2, a
+<code>codex exec</code> commit in a main checkout checked the two roots of the main
+checkout. Probes with <code>codex sandbox</code> checked the four roots of a worktree.</li>
 </ul>
 <p><strong>Which session.</strong> Each harness shows its session in a different way:</p>
 <div class="sd-table">
@@ -1230,27 +1410,45 @@ because transcripts hold secrets.</li>
 <section id="the-worktree-tree" class="level3">
 <h3 class="anchored" data-anchor-id="the-worktree-tree">The worktree tree</h3>
 <p>The gates compare trees. An agent leaves its changes unstaged, so the trees
-come from the worktree, not from the index. <code>jlog</code> computes the worktree tree
-with a temporary index:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode sh"><span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git read-tree HEAD
-<span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git add -A
-<span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt; git write-tree</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><code>GIT_INDEX_FILE</code> names the index file that git uses. With a temporary file, the
-real index does not change. Files that git ignores are not in the tree.</p>
+come from the worktree, not from the index. The gate and the agentic targets
+compute the worktree tree as below, and <code>jlog</code> and <code>jagt</code> also start from a
+copy of the index:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode sh">cp -p .git/index &lt;tmp&gt;/index                  <span class="co"># keeps the time of the index
+</span><span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt;/index git add -A
+<span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt;/index git write-tree</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul>
+<li><strong>The index file.</strong> <code>GIT_INDEX_FILE</code> names the index file that git uses.
+With a copy, the real index does not change. The copy keeps the time of the
+index, so git still checks the content of a file that changed in the same
+second as the index.</li>
+<li><strong>The files of the index.</strong> A file that the index holds is in the tree,
+also when <code>.gitignore</code> names it. Other files that git ignores are not in the
+tree.</li>
+<li><strong>Entries that git does not check.</strong> When an entry of the index is
+assume-unchanged or skip-worktree, the copy starts from <code>HEAD</code> with
+<code>git read-tree HEAD</code> instead.</li>
+<li><strong>The object store.</strong> New objects go into a temporary object store.
+<code>GIT_ALTERNATE_OBJECT_DIRECTORIES</code> names the real store, so git reads the
+old objects from it, and from the stores that the person already named
+there. Git splits that list at each <code>:</code>, so a path with <code>:</code>, <code>&quot;</code> or <code>\</code>
+goes in double quotes.</li>
+<li><strong>No shared index.</strong> The setting <code>core.splitIndex=false</code> comes from the
+environment, so a split index leaves no new shared index file.</li>
+</ul>
 <p>At commit time, the commit tree must equal the worktree tree. So all changes
 must be staged:</p>
 <ul>
 <li><strong>All changes staged.</strong> The commit tree equals the worktree tree, and the
 gates go on.</li>
 <li><strong>Part of the changes staged.</strong> The commit stops. The gate prints the fix.
-Run <code>git stash --keep-index -u</code>, then <code>just check</code>, then commit, then
-<code>git stash pop</code>.</li>
+Run <code>git stash --keep-index -u</code>, then the targets that the new tree needs
+and <code>just check</code>, then commit, then <code>git stash pop</code>.</li>
 </ul>
 </section>
 <section id="the-pass" class="level3">
 <h3 class="anchored" data-anchor-id="the-pass">The pass</h3>
 <p>The last line of <code>check</code> is <code>jlog pass</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">check: fmt-check lint typecheck test coverage-check integration docstring-check docs-check prose-check diff-check
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">check: fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check
   jlog pass</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>jlog</code> computes the worktree tree at the first line of a run, and again at
 <code>jlog pass</code>. <code>jlog pass</code> writes a pass for the tree only if all of these hold:</p>
@@ -1294,24 +1492,50 @@ tree. It knows an agent by the variables of the harnesses, for example
 <p><strong>The pre-merge-commit hook</strong> runs the same gate for <code>git merge</code>.</p>
 </li>
 <li>
-<p><strong>The pre-commit framework.</strong> The Python profile installs the pre-commit
-framework, which owns <code>.git/hooks/pre-commit</code>:</p>
+<p><strong>The pre-commit framework.</strong> The tasker role installs the framework and
+owns <code>.pre-commit-config.yaml</code>. No profile installs it, so Python,
+TypeScript and Rust repositories have the same hooks. A project without the
+tasker role has no gate and no framework.</p>
 <ul>
-<li>The gate becomes a <code>local</code> hook in <code>.pre-commit-config.yaml</code>, for the
-stages <code>pre-commit</code> and <code>pre-merge-commit</code>. The config sets
-<code>default_install_hook_types</code> to both stages, so that <code>pre-commit install</code>
-installs both hooks.</li>
-<li>The config drops the three hooks that change files. They are
-<code>ruff-format</code>, <code>trailing-whitespace</code> and <code>end-of-file-fixer</code>. <code>fmt-check</code> and <code>diff-check</code>
-cover them.</li>
-<li>The framework stashes the unstaged changes before its hooks run. So in a
-Python repository, the gate sees partial staging as a tree that does not
-match, not as unstaged changes. The message is the same.</li>
-<li>The <code>lint</code> tool runs <code>pre-commit uninstall</code> when it is removed. The spec
-changes this. When <code>lint</code> is removed, the installer writes the plain hook
-in place of the framework hook, so the gate stays.</li>
-<li>A repository without the framework gets a plain <code>.git/hooks/pre-commit</code> and
-<code>.git/hooks/pre-merge-commit</code>.</li>
+<li>The config has three <code>local</code> hooks:
+<ul>
+<li><code>commit-gate</code> runs the gate for the stages <code>pre-commit</code> and
+<code>pre-merge-commit</code>.</li>
+<li><code>commit-gate-trailer</code> runs the gate again for the stage <code>commit-msg</code>,
+and adds the trailer <code>Commit-Gate:</code> to the message.</li>
+<li><code>just-ci</code> runs <code>just ci</code> for the stage <code>pre-push</code>. So a push checks
+on your machine what CI checks, and a commit without a trailer stops
+before it reaches GitHub.</li>
+</ul>
+</li>
+<li>The config also has the checks of <code>pre-commit-hooks</code> that change no
+file, such as <code>check-yaml</code> and <code>detect-private-key</code>, for a commit only.</li>
+<li>The config has no hook that changes files, such as <code>ruff-format</code>,
+<code>trailing-whitespace</code> or <code>end-of-file-fixer</code>. <code>fmt-check</code> and
+<code>diff-check</code> cover them.</li>
+<li>The role names two programs in <code>install_extras.programs</code> of its
+<code>skill-package.json</code>. The first is pre-commit itself, which
+<code>uv tool install</code> puts in the home folder. The second is the hooks.
+<code>commit_gate.py --check-hooks</code> checks the four hooks and the hooks of
+the config, and
+<code>pre-commit install</code> with a <code>--hook-type</code> for each of <code>pre-commit</code>,
+<code>pre-merge-commit</code>, <code>commit-msg</code> and <code>pre-push</code> installs them. jnterfaces installs the programs of a role after its
+files.</li>
+<li>The framework stashes the unstaged edits of tracked files before its
+hooks run. So the gate sees them as a tree without a pass, not as
+partial staging. The framework sets <code>PRE_COMMIT=1</code> for its hooks, so then
+the stop also gives the stash fix. Untracked files stay in place, so they
+give the stop of partial staging.</li>
+<li><code>--check-hooks</code> needs the hook <code>commit-gate</code> in the stages <code>pre-commit</code>
+and <code>pre-merge-commit</code>, so that <code>git merge</code> runs the gate too.</li>
+<li>The removal of the tasker role runs <code>pre-commit uninstall</code> for the four
+hooks, because a hook without its config stops each commit.</li>
+<li>The removal of a profile tool, such as <code>lint</code>, does not touch the hooks.</li>
+<li><strong>When pre-commit cannot install.</strong> Outside a Git repository, the check
+of the hooks passes, and the first <code>just install</code> after <code>git init</code>
+installs them. With <code>core.hooksPath</code> set, as husky sets it, pre-commit
+refuses to install. The check then passes and prints the command of the
+gate, so that you can run the gate from the hooks of that folder.</li>
 </ul>
 </li>
 <li>
@@ -1319,53 +1543,112 @@ in place of the framework hook, so the gate stays.</li>
 names a target and the paths that make it required:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">review       **
 test-review  @code
-docs         @pages  @api
+update-docs  @pages  @api
 prose        @pages  @api</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
 <li><strong>The default.</strong> When the file is missing, the gate uses these lines.</li>
 <li><strong>The syntax</strong> is that of git pathspecs with <code>:(glob)</code>. So <code>*</code> does not
 match <code>/</code>, and <code>**</code> does. A deleted path counts as a changed path.</li>
-<li><strong><code>@api</code></strong> names the source files of the packages in <code>packages</code>. For a
-package <code>pkg.sub</code>, it is <code>src/pkg/sub/**</code> or <code>pkg/sub/**</code>, whichever
-exists, plus the <code>check</code> globs of the <code>api</code> settings. The <code>api</code> tool of
-each profile defines <code>@api</code> for its language. Only Python has one now.</li>
+<li><strong><code>@api</code></strong> names the source files of the API pages. Each language
+profile gives a rule for its language, in the file
+<code>.agents/just/&lt;profile&gt;/api_rule.py</code> of the project. <code>&lt;profile&gt;</code> is a
+name in the list <code>profiles</code> of <code>.agents/stack.json</code>, such as <code>python</code>.
+<ul>
+<li>The rule defines <code>is_api(path)</code>. It gets a path from the root of the
+repository, and it gives <code>True</code> for a source file of the API pages.
+The rule uses only the standard library of Python 3.9 or later, and it
+writes nothing.</li>
+<li>Python: for each package <code>pkg.sub</code> in <code>packages</code>, <code>src/pkg/sub/**</code> or
+<code>pkg/sub/**</code>, whichever exists, plus the <code>check</code> globs of the <code>api</code>
+settings.</li>
+<li>TypeScript: the entry files and the code files in their folders. Without
+an <code>api</code> section, that is the code files of <code>src/</code>.</li>
+<li>The profiles are the names in <code>profiles</code> of the parent commit and of the
+commit. So a commit that removes a profile still needs the records for
+its API.</li>
+<li>The gate reads each rule from the parent commit. So a change cannot
+loosen the rule for its own API. A profile without a rule in the parent
+adds no file. The first commit has no parent, so <code>@api</code> names no file
+in it.</li>
+<li>A changed file counts when one of the rules accepts it, and it is not in
+<code>.agents/generated.txt</code>. A deleted file counts too.</li>
+<li>Each rule runs in a Python of its own, as the page rule runs. The
+commit stops for the same failures as those of the page rule, and the
+message names the rule. The gate runs each rule, even when another rule
+already makes the records necessary. So a broken rule stops the commit
+in that case too.</li>
+</ul>
+</li>
 <li><strong><code>@pages</code></strong> names the files that <code>is_page</code> of nossaifd accepts. So
 <code>AGENTS.md</code> and <code>CHANGELOG.md</code> need no <code>prose</code> record. Without the
-<code>nossaifd</code> role, <code>@pages</code> is <code>**/*.md</code> and <code>**/*.qmd</code>.</li>
+<code>nossaifd</code> role, <code>@pages</code> is <code>**/*.md</code> and <code>**/*.qmd</code>.
+<ul>
+<li>The gate reads <code>is_page</code> from <code>.agents/skills/nossaifd/scripts/prose_gate.py</code>
+in the parent commit, as it reads <code>required.txt</code>. So a change cannot
+loosen the rule for its own pages. The first commit has no parent, so
+the globs apply to it.</li>
+<li>The rule runs in a Python of its own. It gets the changed paths and
+gives back the pages. So it cannot end the gate or change its
+environment.</li>
+<li>The commit stops when the rule does not load, has no <code>is_page</code>, fails,
+ends before it checks each path, or gives back a path that the commit
+does not change. It also stops when the rule does not finish in 120
+seconds. The message names the Python of the gate, because a
+rule can need a newer Python.</li>
+</ul>
+</li>
 <li><strong><code>@code</code></strong> names the source files of each language in <code>.agents/stack.json</code>.
 Each profile gives its globs under the key <code>code</code> of <code>profile.json</code>, for
 example <code>**/*.py</code>, <code>**/*.ts</code> or
 <code>**/*.rs</code>. The installer copies them into the key <code>code</code> of
 <code>.agents/stack.json</code>, for each profile. With no profile, <code>@code</code> is empty.</li>
-<li><strong>Which file counts.</strong> The gate reads <code>required.txt</code>, <code>.agents/stack.json</code>
-and <code>.agents/generated.txt</code> from the parent of the commit, so a commit
-cannot change the lists for itself. On the first commit of a repository,
-the gate uses the default <code>required.txt</code> and the <code>.agents/stack.json</code> of
-the commit, and <code>generated.txt</code> is empty. When the parent has no
-<code>.agents/generated.txt</code>, the list is empty too.</li>
+<li><strong>Which file counts.</strong> The gate reads <code>required.txt</code> and
+<code>.agents/generated.txt</code> from the parent of the commit, so a commit cannot
+change the lists for itself. With no parent, or a parent without the file,
+the gate uses the default <code>required.txt</code> and an empty <code>generated.txt</code>.</li>
+<li><strong>The steps come from the commit.</strong> <code>jlog pass</code> reads the steps of the
+worktree, so the gate reads them from the <code>.agents/stack.json</code> of the
+commit. A commit can then remove a tool and its step, and its review sees
+the change.</li>
+<li><strong><code>@code</code> takes both lists.</strong> It has the code globs of the commit and of
+the parent. So a commit that removes a language still needs <code>test-review</code>
+for its code.</li>
+<li><strong>An amend</strong> replaces the last commit. The gate looks for <code>--amend</code> in
+the command line of git, with <code>ps</code>. A message can hold the same word, so
+the gate then applies the rules of both HEAD and its parent, and the
+stricter rules win.</li>
+<li><strong>A bad line cannot land.</strong> The gate also reads the <code>required.txt</code> of the
+commit, and stops a line that it cannot read. A bad list in the parent,
+from before the gate, gives way to the default list.</li>
 <li><strong>Which changes count.</strong> The gate compares the commit tree with the parent
 of the commit.</li>
 <li><strong>Rules:</strong>
 <ul>
 <li>Every commit needs a <code>review</code> record.</li>
 <li>A commit that changes code needs a <code>test-review</code> record.</li>
-<li>A commit with a docs file needs a <code>docs</code> record and a <code>prose</code> record.</li>
-<li>A commit that changes a module of the API pages needs the same two
-records. Its docstrings become text on the website.</li>
+<li>A commit with a docs file needs an <code>update-docs</code> record and a <code>prose</code> record.</li>
+<li>A commit that changes a source file of the API pages needs the same two
+records, because its docstrings become text on the website. A rule of
+<code>@api</code> decides which files are source files of the API pages. Without
+a rule in the parent, such a commit needs neither record.</li>
 <li>A change to other code needs neither record.</li>
 </ul>
 </li>
 </ul>
 </li>
 <li>
-<p><strong>The agent hooks</strong> of each harness do not check records. They parse the
-hook input with <code>jq</code>, not <code>sed</code>, so a quoted message does not hide a flag. In
-Codex, a <code>PreToolUse</code> hook that exits with 2 stops the command. The hooks stop
-these commands as a best effort:</p>
+<p><strong>The agent hooks</strong> of each harness do not check records. The gate guard,
+<code>.agents/skills/gcm/scripts/gate_guard.py</code>, parses the hook input as JSON
+and splits the command into words as a shell does, so a quoted message does
+not hide a flag. In Claude Code and in Codex, a <code>PreToolUse</code> hook that exits
+with 2 stops the command. The guard stops mistakes. It is not the lock,
+because a shell has too many ways to hide a command. The lock is the
+trailer of the gate. The hooks stop these plain commands:</p>
 <ul>
 <li><code>--no-verify</code>, and <code>-n</code> with <code>commit</code>.</li>
 <li><code>core.hooksPath</code>, <code>git commit-tree</code> and <code>git update-ref</code>.</li>
-<li><code>just record</code>, in a harness with a hook that writes records.</li>
+<li><code>just record-skip</code>, until the person agrees. In Claude Code the hook asks
+the person. In Codex it stops the command.</li>
 <li>A write to a log folder, <code>.git/hooks</code>, <code>required.txt</code> or the settings of
 the hooks.</li>
 </ul>
@@ -1396,6 +1679,66 @@ the hooks.</li>
 </tbody>
 </table>
 </div>
+</li>
+<li>
+<p><strong>The trailer and just ci.</strong> The gate stamps each commit that it passes,
+and CI checks the stamps:</p>
+<ul>
+<li><strong>The trailer.</strong> The <code>commit-msg</code> hook runs the gate once more. Then it
+adds <code>Commit-Gate: patch:&lt;patch-id&gt;</code> to the message. A merge gets
+<code>Commit-Gate: tree:&lt;tree&gt;</code>.</li>
+<li><strong>The patch ID</strong> is the hash of the change, from <code>git patch-id --verbatim</code>, which keeps the spaces of each line. The diff has no lines of
+context, so a rebase with no conflict keeps the ID, and a restacked branch
+still passes. An added line that moves within one part of a file keeps
+the ID too. The trailer is a claim, so that cost is fair. A file of <code>git add -N</code>
+is not in the ID, since the commit does not hold it.</li>
+<li><strong>An amend.</strong> For what looks like an amend, the trailer names the patch
+IDs against both possible parents. When HEAD is a merge, it names the
+tree too, since the amend is a merge.</li>
+<li><strong>A skip shows.</strong> <code>git commit -n</code> skips the <code>commit-msg</code> hook too. So a
+commit that went around the gate has no trailer.</li>
+<li><strong><code>just ci</code></strong> runs <code>ci-gate</code>, then the steps in the list <code>ci</code> of
+<code>.agents/stack.json</code>. jnterfaces writes the recipe <code>ci</code>, and the tasker
+role gives <code>ci-gate</code>. Without the role, <code>ci-gate</code> only says that there
+is no gate.</li>
+<li><strong><code>ci-gate</code></strong> runs <code>commit_gate.py --trailers</code> on each commit of a
+range. Each commit needs a trailer that names its own patch ID, or its
+own tree for a merge. The range comes from the first of these that is
+there:
+<ol>
+<li><code>JN_CI_BASE</code> and <code>JN_CI_HEAD</code>, which CI sets.</li>
+<li><code>PRE_COMMIT_FROM_REF</code> and <code>PRE_COMMIT_TO_REF</code>, which the pre-push
+hook sets for a push to a branch that the remote has.</li>
+<li><code>PRE_COMMIT_LOCAL_BRANCH</code> alone, for a push of a new history. Each
+commit of the branch counts.</li>
+<li>By hand, the upstream of the branch, or else <code>origin/HEAD</code>. With
+neither, <code>ci-gate</code> fails and says to set <code>JN_CI_BASE</code>.</li>
+</ol>
+</li>
+<li><strong>Limits of the pre-push hook.</strong>
+<ul>
+<li>The framework reads only the first branch of a push. So
+<code>git push origin a b</code> checks the commits of <code>a</code>. CI checks each pull
+request.</li>
+<li>A push to a new, empty remote checks each commit of the branch. A
+repository with commits from before the gate needs
+<code>git push --no-verify</code> for that push.</li>
+</ul>
+</li>
+<li><strong>Commits that git makes without the hooks.</strong> <code>git revert --no-edit</code>
+runs no <code>commit-msg</code> hook, and a squash of <code>git rebase --autosquash</code>
+keeps the old trailer. Each one stops the push until
+<code>git commit --amend --no-edit</code> gives it a new trailer.</li>
+<li><strong>CI is a part of <code>just check</code>.</strong> A step in the list <code>ci</code> must be a step
+of <code>just check</code>. The installer leaves out any other name and says so.
+The default list is empty. Put a step in it only when a clean machine
+tells you more than your own machine, for example a test on Linux.</li>
+<li><strong>No agent runs in CI.</strong> The fresh agents run before each commit, on
+the machine of the person. CI reads only their trailers.</li>
+<li><strong>The limit.</strong> A trailer is a claim of the gate, not a proof. An agent
+can type one by hand. The review of the pull request is the check of
+that.</li>
+</ul>
 </li>
 <li>
 <p><strong>The cost.</strong> The agent runs <code>just check</code> before it commits, and the gate
@@ -1473,7 +1816,7 @@ adds to:</p>
 <tr>
 <td><code>.pre-commit-config.yaml</code></td>
 <td>The tasker role</td>
-<td>A <code>local</code> hook that runs the gate. The writer keys the entries of <code>repos</code> by <code>repo</code>, so all <code>local</code> entries share one key. <code>formats.json</code> changes to key a <code>local</code> entry by the <code>id</code> of its hook.</td>
+<td>The <code>local</code> hooks of the gate and of <code>just ci</code>, and the checks of <code>pre-commit-hooks</code> that change no file. The writer keys the entries of <code>repos</code> by <code>repo</code>. So a <code>local</code> entry of the project takes the place of the entry of the role, and <code>commit_gate.py --check-hooks</code> fails and says to copy the hooks of the role into it.</td>
 </tr>
 <tr>
 <td><code>.claude/settings.json</code></td>
@@ -1508,16 +1851,37 @@ the tasker role is installed.</p>
 installer takes a <code>seed</code> out on removal, so the job has no <code>seed</code>. The tasker
 role ships it only after jnterfaces writes the <code>check</code> recipe:</p>
 <ul>
-<li><strong>The events.</strong> It runs on each push and each pull request. It does not use
+<li><strong>The events.</strong> It runs on each pull request. It does not use
 <code>pull_request_target</code>, which would give the code of the pull request the
 secrets of the repository.</li>
-<li><strong>The history.</strong> The checkout has <code>fetch-depth: 0</code>, so <code>prose-check</code> can
-find the changed pages.</li>
+<li><strong>The history.</strong> The checkout has <code>fetch-depth: 0</code>, so <code>ci-gate</code> can read
+each commit. It checks out the head of the pull request. The merge commit
+that GitHub makes has no trailer.</li>
 <li><strong>The tools.</strong> It installs <code>just</code>, <code>uv</code>, and <code>jlog</code> at a tagged release. The
 person adds the setup of the tools of a language that the runner lacks.</li>
-<li><strong>The run.</strong> It runs <code>just check</code> on the committed files, and not
-<code>just install</code>. An install can change tracked files, and then <code>jlog pass</code>
-refuses the run, because it needs a clean worktree.</li>
+<li><strong>The run.</strong> It runs <code>just ci</code> on the committed files, and not
+<code>just install</code>. An install can change tracked files. It gives <code>ci-gate</code>
+the base of the pull request in <code>JN_CI_BASE</code>.</li>
+</ul>
+<p>The tasker role also writes the release job,
+<code>.github/workflows/release.yml</code>, as a <code>starter</code> only:</p>
+<ul>
+<li><strong>The events.</strong> It runs on each push to <code>main</code>.</li>
+<li><strong>The jobs.</strong> The job <code>check</code> runs <code>just check</code>. When it passes, the job
+<code>release</code> runs <code>just release</code>, which tags the next release <code>vX.Y.Z</code> by
+semver, pushes the tag and checks it. Only the job <code>release</code> has
+<code>contents: write</code>. No agent runs in either job.</li>
+<li><strong>The number.</strong> It comes from the conventional commits since the last tag,
+or from the version that the recipe <code>&lt;profile&gt;::version</code> of each language
+profile gives. The rules are in “Release tags” of
+<code>integration_delivery_workflow.md</code>.</li>
+<li><strong>The step <code>release-check</code>.</strong> It is a step of <code>just check</code>, from the role
+file of the tasker role, so CI runs it only through <code>just check</code>. It runs
+<code>release_tag.py --check</code>, with no network and no remote. It fails when the
+profiles give different versions, or a version lower than the last tag or
+than the bump that the commits ask for. In a shallow checkout it passes and
+says that the tags are unknown. jnterfaces puts <code>release-check</code> in the
+steps of <code>just check</code>, with a no-op step where the role is not installed.</li>
 </ul>
 <p>The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.</p>
@@ -1594,7 +1958,7 @@ in the log folders.</p>
 <td>agent_gest_git_skills</td>
 </tr>
 <tr>
-<td>The <code>api</code> tool of TypeScript, after the smalldocs release that reads JSDoc</td>
+<td>The <code>api</code> tool of TypeScript</td>
 <td>jnprofile-typescript</td>
 </tr>
 <tr>
@@ -1619,6 +1983,22 @@ in the log folders.</p>
 </tr>
 <tr>
 <td>The CI job <code>.github/workflows/check.yml</code>, a starter of the tasker role that runs <code>just check</code></td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The release job <code>.github/workflows/release.yml</code>, a starter of the tasker role, and <code>just release</code> with its script in the <code>gpa</code> skill</td>
+<td>agent_gest_git_skills</td>
+</tr>
+<tr>
+<td>The recipe <code>&lt;profile&gt;::version</code>, which prints the version of the manifest</td>
+<td>each profile</td>
+</tr>
+<tr>
+<td>The step <code>release-check</code> in the steps of <code>just check</code>, and its no-op step</td>
+<td>jnterfaces</td>
+</tr>
+<tr>
+<td>The recipe <code>release-check</code>, in the role file</td>
 <td>agent_gest_git_skills</td>
 </tr>
 <tr>
@@ -1662,7 +2042,7 @@ needs it.</p>
 <li><code>set shell</code> in the files that the installer generates.</li>
 <li>The <code>docs</code> tool and the <code>api</code> tool, and an entry for the smalldocs config in
 <code>formats.json</code>.</li>
-<li>The agentic targets <code>review</code>, <code>test-review</code>, <code>docs</code>, <code>prose</code>,
+<li>The agentic targets <code>review</code>, <code>test-review</code>, <code>update-docs</code>, <code>prose</code>,
 <code>visual-check</code> and <code>visualize</code>, with the language layer, the repository text
 and the nonce.</li>
 <li>The steps <code>coverage-check</code> and <code>docstring-check</code> in each profile.</li>
@@ -1684,8 +2064,7 @@ pre-commit framework, and the agent hooks of each adapter.</li>
 <code>docstring-check</code>, and the tools of jnprofile-rust.</li>
 <li>A model inside the git hook. A git hook cannot start an agent.</li>
 <li>A defense against an agent that tries to cheat.</li>
-<li>API pages for TypeScript, until smalldocs has a release that reads JSDoc.</li>
-<li>API pages for Rust, until smalldocs has a release that reads rustdoc.</li>
+<li>The <code>api</code> tool of Rust, which is rahuldave/jnprofile-rust#8.</li>
 <li>The targets in the list “Other targets to consider later”.</li>
 <li>Signatures for agentic targets.</li>
 <li>Adapters for harnesses other than Claude Code and Codex.</li>
@@ -1732,9 +2111,9 @@ files.</li>
 <p><strong>Records:</strong></p>
 <ul>
 <li>An agent commit with no review record for the tree stops.</li>
-<li>The chain docs, prose, test-review, review and check passes, and so does
+<li>The chain update-docs, prose, test-review, review and check passes, and so does
 the chain with <code>review</code> before <code>test-review</code>. A chain with <code>prose</code> before
-<code>docs</code> stops.</li>
+<code>update-docs</code> stops.</li>
 <li>A record with status <code>failed</code>, or with a finding that is not fixed, does not
 count.</li>
 <li>A review by a fresh agent in another worktree gives a record that the gate
@@ -1779,8 +2158,8 @@ is missing.</li>
 <li>An empty <code>required.txt</code> in the commit does not remove the review.</li>
 <li>A test suite that runs git in temporary repositories does not break the
 commit, because the gate does not run the steps.</li>
-<li>In a Python project, the gate runs as a local hook of the pre-commit
-framework, and removing the <code>lint</code> tool keeps the gate.</li>
+<li>In a Python, a TypeScript and a Rust project, the gate runs as a local hook
+of the pre-commit framework. Removing the <code>lint</code> tool keeps the gate.</li>
 </ul>
 <p><strong>The turn gate of nossaifd:</strong></p>
 <ul>
@@ -1794,9 +2173,17 @@ it, the file stays as now.</li>
 <li>A reinstall of nossaifd after the tasker role does not bring back
 <code>nossaifd-prose.yml</code>.</li>
 <li>With the tasker role, the project gets <code>.github/workflows/check.yml</code>. Its
-job checks out with <code>fetch-depth: 0</code> and runs <code>just check</code>. With the
-<code>nossaifd</code> role too, a push of a page with a hard problem fails it. A CI file
-of the person stays as it is, and the file stays after <code>just uninstall</code>.</li>
+job checks out the head of the pull request with <code>fetch-depth: 0</code> and runs
+<code>just ci</code>. A commit with no trailer of the gate fails it. A CI file of the
+person stays as it is, and the file stays after <code>just uninstall</code>.</li>
+<li>Each commit that passes the gate gets a <code>Commit-Gate</code> trailer. <code>ci-gate</code>
+passes it, also after a rebase with no conflict. It fails a commit made with
+<code>git commit -n</code>, and a commit changed after the gate passed it.</li>
+<li><code>just ci</code> runs <code>ci-gate</code> and the steps of the list <code>ci</code>. A name in the list
+that is not a step of <code>just check</code> is left out, with a message.</li>
+<li>The gate guard stops the plain forms of <code>--no-verify</code>, <code>-n</code>, <code>core.hooksPath</code>
+and a write to a protected path. It lets a command that hides git run, such
+as <code>bash &lt;&lt;EOF</code> or <code>python -c</code>. Its tests list both kinds.</li>
 <li><code>prose-check</code> and the turn gate accept the same pages, a <code>.qmd</code> file
 included. A change to <code>CHANGELOG.md</code> alone needs no <code>prose</code> record.</li>
 <li>The removal of the GitButler <code>Stop</code> hook keeps the nossaifd <code>Stop</code> hook.</li>
@@ -1852,15 +2239,16 @@ that changes only docs needs no <code>test-review</code> record.</li>
 commit, and for a new pragma with no reason.</li>
 <li>The <code>review</code> packet has the docs lens, and a stub doc such as “Returns the
 result.” gives a finding.</li>
-<li>The <code>docs</code> packet of a Python project holds the Python language layer.</li>
+<li>The <code>update-docs</code> packet of a Python project holds the Python language layer.</li>
 <li>A new Rust project gets <code>just check</code> with real steps, and no <code>api</code> step.</li>
 </ul>
 <p><strong>Docs:</strong></p>
 <ul>
 <li>A new Python project with the <code>docs</code> tool has the <code>api</code> tool, and a public
 function with no docments fails <code>just check</code>.</li>
-<li>Until the smalldocs release that reads JSDoc, a new TypeScript project with
-the <code>docs</code> tool passes <code>just check</code>, with no <code>api</code> step.</li>
+<li>A new TypeScript project with the <code>docs</code> tool has the <code>api</code> tool. An
+exported function with no JSDoc, a parameter with no comment, or a file with
+no module comment fails <code>just check</code>.</li>
 <li><code>prose-check</code> runs <code>prose_gate.py check-changed</code> on the changed pages, the files
 that <code>is_page</code> accepts, and writes nothing into the repository. A page that
 <code>.agents/nossaifd-checkers.json</code> maps to another checker gets that checker.
@@ -1870,15 +2258,17 @@ the install line.</li>
 not a no-op step. Without the role, <code>prose-check</code> is a no-op step.</li>
 <li>A change with no page passes <code>prose-check</code>, and so does the first commit of
 a repository with no page.</li>
-<li>In CI, a pull request that adds a page with a hard problem fails <code>just check</code>. So does a push of a branch whose first commit adds that page.</li>
+<li>A commit that adds a page with a hard problem does not pass the gate. With
+<code>prose-check</code> in the list <code>ci</code>, CI also runs the step on the pull request.</li>
 <li>With <code>CI=1</code> on a machine, a page with a hard problem that is not committed
 yet still fails <code>prose-check</code>.</li>
 <li>A repository with its own <code>test</code> recipe, and no
 <code>set allow-duplicate-recipes</code>, still gets the combined recipes and the
 no-op steps of the other names. Two runs of <code>just install</code> in a row write
 the same index.</li>
-<li>In a Python project with the <code>api</code> tool, <code>prose-check</code> also checks the API
-pages of each changed module, through a temporary file.</li>
+<li>In a Python or TypeScript project with the <code>api</code> tool, <code>prose-check</code> also
+checks the API page of each changed module or file, through a temporary
+folder.</li>
 <li>In CI, <code>just docs-publish</code> pushes to <code>gh-pages</code> for a public repository.</li>
 <li>It skips a private repository, and it fails in CI when <code>gh</code> has no token.</li>
 </ul>
@@ -1909,7 +2299,7 @@ outside the main checkout?</li>
 <li>jnterfaces <code>scripts/install_stack.py</code>, <code>scripts/shared_files.py</code> and
 <code>scripts/formats.json</code></li>
 <li>jnprofile-python <code>.agents/just/python/test.just</code>, with a shebang line, and
-<code>profile.json</code>, which installs the pre-commit framework</li>
+<code>profile.json</code>, which installed the pre-commit framework before the spec</li>
 <li>agent_gest_git_skills <code>.agents/skills/grv/SKILL.md</code></li>
 <li>agent_gest_git_skills <code>.claude/hooks/pre-commit-context.sh</code> and
 <code>raw-git-write-guard.sh</code></li>
@@ -1918,7 +2308,8 @@ outside the main checkout?</li>
 <li>openai/codex <code>codex-rs/protocol/src/shell_environment.rs</code></li>
 <li>The hook names in the Codex binary 0.163.0-alpha, and the format of its
 rollout files, read on 2026-11-12</li>
-<li>smalldocs 0.5.5, <code>api.py</code></li>
+<li>smalldocs 0.5.5, <code>api.py</code>, smalldocs 0.5.12 with SPEC-rust-typescript.md,
+and the commits of smalldocs 0.5.9 to 0.5.12</li>
 <li>The three adversarial reviews of 2026-11-12, and their tests with git and
 just 1.50</li>
 <li>The just changelog, entry “Remove logging” (#2305)</li>
