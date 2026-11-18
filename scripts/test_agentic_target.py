@@ -22,7 +22,7 @@ _spec = importlib.util.spec_from_file_location("agentic_target", SCRIPT)
 agentic_target = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(agentic_target)
 # The line that installs the release binary of jagt, for the hints.
-JAGT_LINE = "curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/main/scripts/install.sh | sh -s -- --tag v0.6.3"
+JAGT_LINE = "curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a/scripts/install.sh | sh -s -- --tag v0.6.3"
 
 
 def git(*args: str, cwd: Path) -> str:

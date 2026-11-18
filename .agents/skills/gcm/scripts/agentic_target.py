@@ -57,7 +57,7 @@ TARGETS: Dict[str, Tuple[str, ...]] = {
 
 STACK = ".agents/stack.json"
 # The install of jagt that the hint gives: the release binary first, the build from source second.
-JAGT_INSTALL = ("`curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/main/scripts/install.sh | sh -s -- --tag v0.6.3`, "
+JAGT_INSTALL = ("`curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a/scripts/install.sh | sh -s -- --tag v0.6.3`, "
                 "then put ~/.local/bin on PATH. To build it from source instead, run `cargo install --locked --git "
                 "https://github.com/rahuldave/jagt --tag v0.6.3 jagt`")
 

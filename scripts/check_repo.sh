@@ -386,6 +386,7 @@ done
   "${python[@]}" -m unittest scripts/test_lab_roots.py -q
   "${python[@]}" -m unittest scripts/test_skill_text.py -q
   "${python[@]}" -m unittest scripts/test_recipe_docs.py -q
+  "${python[@]}" -m unittest scripts/test_install_hints.py -q
   "${python[@]}" -m unittest scripts/test_release_tag.py -q
   uv run --no-project --quiet --with pyyaml python -m unittest scripts/test_record_result.py -q
   uv run --no-project --quiet --with pyyaml==6.0.2 python -m unittest scripts/test_ci_check.py -q
