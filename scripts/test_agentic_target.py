@@ -25,6 +25,27 @@ def git(*args: str, cwd: Path) -> str:
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
 
 
+class RequiredJagtTests(unittest.TestCase):
+    """Before jagt 0.6.3, jagt can save the review packet where commit_gate.py does not read it, in a submodule or a
+    linked worktree. So the package requires jagt 0.6.3 or later."""
+
+    def test_the_package_requires_jagt_0_6_3_with_a_local_check(self) -> None:
+        required = json.loads((ROOT / "skill-package.json").read_text())["executables"]["required"]
+        jagt = next((entry for entry in required if entry["name"] == "jagt"), None)
+        self.assertIsNotNone(jagt, "skill-package.json does not require jagt")
+        self.assertEqual(jagt["version"], ">=0.6.3")
+        # The check runs the installed program alone. A check through cargo, uvx, npx or curl could download it.
+        self.assertEqual(jagt["check"], "jagt --version")
+        self.assertTrue(jagt["install"].startswith("cargo install --locked --git https://github.com/rahuldave/jagt"))
+
+    @unittest.skipUnless(shutil.which("jagt"), "needs jagt")
+    def test_the_check_prints_a_version_that_meets_the_floor(self) -> None:
+        printed = subprocess.run(["jagt", "--version"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        self.assertEqual(printed.returncode, 0, printed.stderr)
+        version = printed.stdout.split()[-1]
+        self.assertGreaterEqual(tuple(int(part) for part in version.split(".")[:3]), (0, 6, 3), printed.stdout)
+
+
 @unittest.skipUnless(shutil.which("jagt"), "needs jagt")
 class RenderTests(unittest.TestCase):
     def setUp(self) -> None:

@@ -64,8 +64,8 @@ Identify which of these concepts apply to the project:
 2. Initialize Git or Gest only when missing and after confirming the desired
    repository root. Use `git init` and `gest init --local` for this Git-oriented
    skill family; keep jj support in a separate parallel skill repository.
-3. Check the required workflow executables, which are `git`, `gest`, `just`
-   and `uv`. Missing tools should be reported clearly without blocking skill
+3. Check the required workflow executables, which are `git`, `gest`, `jagt`
+   0.6.3 or later, `just` and `uv`. Missing tools should be reported clearly without blocking skill
    installation. Treat `direnv` as recommended unless the project contract
    requires it. Check `cx` only when the project has or wants explicit
    file-producing incremental build/pipeline stages.
@@ -165,7 +165,7 @@ Installer scripts must report every required workflow
 executable without blocking the skill copy and mention optional executables
 that unlock extra flows.
 
-Required workflow executables are `git`, `gest`, `just`, and `uv`; optional
+Required workflow executables are `git`, `gest`, `jagt` 0.6.3 or later, `just`, and `uv`; optional
 executables include `rsync`, `gh`, `ast-grep`, `direnv`, and `cx`.
 Runtime commands should re-check tools they actually need.
 
