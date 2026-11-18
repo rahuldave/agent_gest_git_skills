@@ -1,5 +1,5 @@
 setup:
-  @echo "No repository-local dependencies to install. Ensure git, gest, just, uv, rsync, and optional gh, ast-grep, direnv, cx are available."
+  @echo "No repository-local dependencies to install. Ensure git, gest, jagt, just, uv, rsync, and optional gh, ast-grep, direnv, cx are available."
 
 lint:
   scripts/check_repo.sh
@@ -130,8 +130,8 @@ install-test:
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$target/.github/workflows/check.yml" || fail "the removal took out the CI starter"
   echo "install-test: install and removal passed"
 
-# Everything a commit must pass, and each check that CI runs: the release version, the lint, the manifest, the labs, the install, the source archive and the diff
-check: release-check lint package-lint stack-rebase-lab install-test source-archive diff-check
+# Everything a commit must pass, and each check that CI runs: the release version, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
+check: release-check lint package-lint stack-rebase-lab install-test source-archive docs-check diff-check
 
 # The release tags, with release_tag.py of the skill gpa. The job release of verify.yml runs just release on each push to main.
 release_tag := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py"
@@ -170,7 +170,7 @@ diff-check:
 verify: lint test diff-check
 
 # The documentation site, from docs/, with smalldocs.
-smalldocs := "uvx --quiet smalldocs@0.5.5"
+smalldocs := "uvx --quiet smalldocs@0.5.12"
 
 docs-check:
   {{smalldocs}} check docs

@@ -39,7 +39,7 @@ jobs:
         if: steps.jlog.outputs.cache-hit != 'true'
         run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0 jlog
       # CI runs just check and no other check, so a developer finds each failure of CI with just check.
-      - name: Check the release, the lint, the manifest, the labs, the install, the source archive and the diff
+      - name: Check the release, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
         run: just check
       - uses: actions/upload-artifact@v4
         with:

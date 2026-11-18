@@ -246,7 +246,7 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
     if target not in TARGETS:
         raise Stop(f"{target} is not an agentic target; the targets are " + ", ".join(TARGETS))
     if not shutil.which("jagt"):
-        raise Stop("jagt is not on PATH: cargo install --git https://github.com/rahuldave/jagt")
+        raise Stop("jagt is not on PATH: cargo install --locked --git https://github.com/rahuldave/jagt jagt")
     text, layers = prompt(root, target)
     log, diffs_fd = prepare_log(root)
     try:
