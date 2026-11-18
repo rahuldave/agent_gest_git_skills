@@ -7,6 +7,8 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,6 +54,63 @@ class RequiredJagtTests(unittest.TestCase):
         self.assertEqual(printed.returncode, 0, printed.stderr)
         version = printed.stdout.split()[-1]
         self.assertGreaterEqual(tuple(int(part) for part in version.split(".")[:3]), (0, 6, 3), printed.stdout)
+
+
+class RequiredGestTests(unittest.TestCase):
+    """The tasker role needs the gest of the fork of rahuldave, 0.6.0 or later. Its gest --version prints the marker
+    (rahuldave), and the gest of crates.io does not, so the check of the manifest refuses that gest."""
+
+    def setUp(self) -> None:
+        required = json.loads((ROOT / "skill-package.json").read_text())["executables"]["required"]
+        self.gest = next(entry for entry in required if entry["name"] == "gest")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def fake(self, printed: str) -> Path:
+        """A folder with a fake gest that prints printed for gest --version."""
+        folder = Path(tempfile.mkdtemp(dir=self.tmp.name))
+        (folder / "gest").write_text(f"#!/bin/sh\necho '{printed}'\n")
+        (folder / "gest").chmod(0o755)
+        return folder
+
+    def passes(self, folder: Path) -> bool:
+        """The rule of tools-check of jnterfaces: the check exits 0, its output holds expect, and the first version in
+        the output meets the floor."""
+        run = subprocess.run(shlex.split(self.gest["check"]), capture_output=True, text=True,
+                             env={**os.environ, "PATH": str(folder)})
+        found = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", run.stdout)
+        floor = tuple(int(part) for part in self.gest["version"].removeprefix(">=").split("."))
+        return (run.returncode == 0 and self.gest["expect"] in run.stdout and found is not None
+                and tuple(int(part) for part in found.groups()) >= floor)
+
+    def test_the_package_requires_the_fork_at_0_6_0(self) -> None:
+        self.assertEqual(self.gest["check"], "gest --version")
+        self.assertEqual(self.gest["version"], ">=0.6.0")
+        self.assertEqual(self.gest["expect"], "(rahuldave)")
+        line = "curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0"
+        self.assertTrue(self.gest["install"].startswith(f"Run `{line}`, "), self.gest["install"])
+        self.assertLess(self.gest["install"].index(line), self.gest["install"].index("from source"))
+
+    def test_a_gest_without_the_marker_fails_and_the_fork_passes(self) -> None:
+        self.assertFalse(self.passes(self.fake("gest 0.6.0")))
+        self.assertFalse(self.passes(self.fake("gest 0.6.0 (macos-aarch64, 2026-11-17, revision 528a440)")))
+        self.assertFalse(self.passes(self.fake("gest 0.5.6 (rahuldave)")))
+        self.assertTrue(self.passes(self.fake("gest 0.6.0 (rahuldave)")))
+
+    def test_the_tools_check_of_jnterfaces_agrees(self) -> None:
+        # The real check, when a clone of jnterfaces has it. The clone that CI pins may be older and lack it.
+        clone = Path(os.environ.get("JNTERFACES_DIR") or ROOT.parent / "jnterfaces")
+        script = clone / ".agents/tools_check.py"
+        if not script.is_file():
+            self.skipTest(f"needs .agents/tools_check.py in a clone of jnterfaces, at {clone}")
+        manifest = Path(self.tmp.name) / "skill-package.json"
+        manifest.write_text(json.dumps({"repository": {"name": "agent_gest_git_skills"},
+                                        "executables": {"required": [self.gest]}}))
+        for printed, code in (("gest 0.6.0", 1), ("gest 0.6.0 (rahuldave)", 0)):
+            with self.subTest(printed=printed):
+                run = subprocess.run([sys.executable, str(script), "--manifest", str(manifest)], capture_output=True,
+                                     text=True, env={**os.environ, "PATH": f"{self.fake(printed)}{os.pathsep}/usr/bin:/bin"})
+                self.assertEqual(run.returncode, code, run.stdout + run.stderr)
 
 
 @unittest.skipUnless(shutil.which("jagt"), "needs jagt")

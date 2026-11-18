@@ -136,9 +136,10 @@
       {
         "name": "gest",
         "check": "gest --version",
-        "version": ">=0.5.6",
-        "install": "cargo install --locked --git https://github.com/rahuldave/gest gest",
-        "description": "Tracks the tasks, specs and iterations of the g* skills."
+        "version": ">=0.6.0",
+        "expect": "(rahuldave)",
+        "install": "Run `curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0`, then put ~/.local/bin on PATH. To build it from source instead, git clone https://github.com/rahuldave/gest, run git checkout v0.6.0 in the clone, then run `cargo install --locked --path .` in the clone.",
+        "description": "Tracks the tasks, specs and iterations of the g* skills. It must be the fork of rahuldave, whose gest --version prints (rahuldave). The gest of crates.io lacks the commands that the skills use."
       },
       {
         "name": "jagt",
