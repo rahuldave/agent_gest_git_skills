@@ -19,6 +19,8 @@ SCRIPT = ROOT / ".agents/skills/gcm/scripts/agentic_target.py"
 _spec = importlib.util.spec_from_file_location("agentic_target", SCRIPT)
 agentic_target = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(agentic_target)
+# The line that installs the release binary of jagt, for the hints.
+JAGT_LINE = "curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/main/scripts/install.sh | sh -s -- --tag v0.6.3"
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -36,7 +38,13 @@ class RequiredJagtTests(unittest.TestCase):
         self.assertEqual(jagt["version"], ">=0.6.3")
         # The check runs the installed program alone. A check through cargo, uvx, npx or curl could download it.
         self.assertEqual(jagt["check"], "jagt --version")
-        self.assertTrue(jagt["install"].startswith("cargo install --locked --git https://github.com/rahuldave/jagt"))
+        # The release binary first, the build from source second.
+        self.assertTrue(jagt["install"].startswith(f"Run `{JAGT_LINE}`, "), jagt["install"])
+        # The command ends at a backtick, so a copy of it never takes the comma of the sentence.
+        self.assertIn(f"`{JAGT_LINE}`", agentic_target.JAGT_INSTALL)
+        self.assertIn("build it from source", jagt["install"])
+        self.assertIn(JAGT_LINE, agentic_target.JAGT_INSTALL)
+        self.assertLess(agentic_target.JAGT_INSTALL.index(JAGT_LINE), agentic_target.JAGT_INSTALL.index("from source"))
 
     @unittest.skipUnless(shutil.which("jagt"), "needs jagt")
     def test_the_check_prints_a_version_that_meets_the_floor(self) -> None:

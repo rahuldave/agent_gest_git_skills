@@ -144,7 +144,7 @@
         "name": "jagt",
         "check": "jagt --version",
         "version": ">=0.6.3",
-        "install": "cargo install --locked --git https://github.com/rahuldave/jagt jagt",
+        "install": "Run `curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/main/scripts/install.sh | sh -s -- --tag v0.6.3`, then put ~/.local/bin on PATH. To build it from source instead, run `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.3 jagt`.",
         "description": "Renders the review packets of the tasker role and checks their results. Before 0.6.3, jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree."
       },
       {

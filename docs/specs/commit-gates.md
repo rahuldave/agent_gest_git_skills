@@ -115,8 +115,8 @@ anything. When one is missing, it stops and prints the install line.
 | `git` | Everything | The system package manager. |
 | `just` | All recipes | `cargo install just` or the system package manager. |
 | `uv` | Python, the installer, smalldocs, nossaifd, the plugins | https://docs.astral.sh/uv/ |
-| `jlog` | The run log, as the shell of each recipe | `git clone https://github.com/rahuldave/jlog`, then `just install` in the clone. |
-| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | `cargo install --locked --git https://github.com/rahuldave/jagt jagt` |
+| `jlog` | The run log, as the shell of each recipe | The release binary: run its `scripts/install.sh` with `--tag v0.3.0`, as the README of jlog shows. To build it from source instead, `git clone https://github.com/rahuldave/jlog`, then `just install` in the clone. |
+| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | The release binary: run its `scripts/install.sh` with `--tag v0.6.3`, as the README of jagt shows. To build it from source instead, `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.3 jagt`. |
 | `gest` | The task tracker, from the fork of rahuldave | `git clone https://github.com/rahuldave/gest`, then `cargo install --path gest --locked`. On 2026-11-12, `cargo install --git` of the fork failed at the checkout with "the repository is not empty". |
 | `gh` | Publishing, GitHub issues | https://cli.github.com/ |
 | `jq` | The agent hooks | The system package manager. |
@@ -124,7 +124,7 @@ anything. When one is missing, it stops and prints the install line.
 | `ast-grep` | The pass that finds code that depends on a change | `cargo install ast-grep` |
 | `node` | The TypeScript profile | Through `uv`, as the profile does now. |
 | `cargo-llvm-cov` | `coverage-check` in the Rust profile, with the rustup component `llvm-tools-preview` | `cargo install cargo-llvm-cov`, and `rustup component add llvm-tools-preview` |
-| `cargo` | The Rust profile, and the builds of `just`, `jlog`, `jagt` and `gest` | https://rustup.rs/ |
+| `cargo` | The Rust profile, the build of `gest`, and the builds of `just`, `jlog` and `jagt` from source | https://rustup.rs/ |
 
 - **The other new tools come through the profiles.** `diff-cover` and
   `interrogate` run with `uv run --with`, in any language. eslint and

@@ -28,16 +28,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v6
-      - name: Keep the build of jlog
-        id: jlog
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/jlog
-          key: jlog-v0.2.0-${{ runner.os }}
       - name: Install jlog
-        # The tag v0.2.0 of jlog is the commit 8febdf1, as in the CI of jnterfaces.
-        if: steps.jlog.outputs.cache-hit != 'true'
-        run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0 jlog
+        # The tag v0.3.0 of jlog is the commit d4b712b, as in the CI of jnterfaces. install.sh comes from the tag. It
+        # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
+        # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed download fails.
+        shell: bash
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: CI
         env:
           JN_CI_BASE: ${{ github.event.pull_request.base.sha }}

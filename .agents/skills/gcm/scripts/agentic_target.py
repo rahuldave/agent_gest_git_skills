@@ -56,6 +56,10 @@ TARGETS: Dict[str, Tuple[str, ...]] = {
 }
 
 STACK = ".agents/stack.json"
+# The install of jagt that the hint gives: the release binary first, the build from source second.
+JAGT_INSTALL = ("`curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/main/scripts/install.sh | sh -s -- --tag v0.6.3`, "
+                "then put ~/.local/bin on PATH. To build it from source instead, run `cargo install --locked --git "
+                "https://github.com/rahuldave/jagt --tag v0.6.3 jagt`")
 
 
 class Stop(Exception):
@@ -246,7 +250,7 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
     if target not in TARGETS:
         raise Stop(f"{target} is not an agentic target; the targets are " + ", ".join(TARGETS))
     if not shutil.which("jagt"):
-        raise Stop("jagt is not on PATH: cargo install --locked --git https://github.com/rahuldave/jagt jagt")
+        raise Stop(f"jagt is not on PATH. Install it with {JAGT_INSTALL}.")
     text, layers = prompt(root, target)
     log, diffs_fd = prepare_log(root)
     try:

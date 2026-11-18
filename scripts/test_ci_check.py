@@ -23,11 +23,10 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 STEPS = ["release-check", "lint", "package-lint", "stack-rebase-lab", "install-test", "source-archive", "docs-check", "diff-check"]
 # The steps of the job verify that set up a clone or a program, and the step that runs just check.
 SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs",
-         "Install jlog v0.2.0, which the jnterfaces installer needs"}
+         "Install jlog v0.3.0, which the jnterfaces installer needs"}
 CHECK = "Check the release, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff"
 # The actions of the job verify. A check in an action would be a check that just check does not run.
-VERIFY_ACTIONS = ["actions/checkout@v4", "astral-sh/setup-uv@v6", "extractions/setup-just@v3", "actions/cache@v4",
-                  "actions/upload-artifact@v4"]
+VERIFY_ACTIONS = ["actions/checkout@v4", "astral-sh/setup-uv@v6", "extractions/setup-just@v3", "actions/upload-artifact@v4"]
 # The steps of the job release, as they were before just check came: CI tags each release after verify passed.
 RELEASE_STEPS = [
     {"uses": "actions/checkout@v4", "with": {"fetch-depth": 0}},
@@ -39,7 +38,11 @@ RELEASE_STEPS = [
     {"name": "Tag the release", "run": "just release"},
 ]
 # The tag of jlog that the CI of jnterfaces pins.
-JLOG = "v0.2.0"
+JLOG = "v0.3.0"
+# The line that installs jlog in CI: install.sh from the tag, for the release of the tag.
+JLOG_INSTALL = (f"curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/{JLOG}/scripts/install.sh"
+                f" | sh -s -- --tag {JLOG}")
+GITHUB_PATH = 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
 
 
 def check_steps() -> list[str]:
@@ -69,7 +72,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(set(runs), SETUP | {CHECK})
         self.assertEqual(runs[CHECK].strip(), "just check")
         for name in SETUP:
-            self.assertNotRegex(runs[name], r"\bjust\b|scripts/\S+\.(sh|py)|git archive|sha256sum|shasum", name)
+            # A URL names a file of another repository, such as the install.sh of jlog, not a script of this one.
+            local = re.sub(r"https://\S+", "", runs[name])
+            self.assertNotRegex(local, r"\bjust\b|scripts/\S+\.(sh|py)|git archive|sha256sum|shasum", name)
 
     def test_verify_checks_out_the_pinned_jnterfaces(self) -> None:
         commit = (ROOT / "scripts/jnterfaces_commit").read_text().strip()
@@ -90,11 +95,33 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(checkout.get("with", {}).get("fetch-depth"), 0)
 
     def test_verify_pins_jlog_as_jnterfaces_does(self) -> None:
-        steps = self.jobs["verify"]["steps"]
         installs = [line for line in runs(self.jobs["verify"]) if "rahuldave/jlog" in line]
-        self.assertEqual(installs, [f"cargo install --locked --git https://github.com/rahuldave/jlog --tag {JLOG} jlog"])
-        cache = next(step for step in steps if step.get("uses", "").startswith("actions/cache@"))
-        self.assertEqual(cache["with"]["key"], f"jlog-{JLOG}-${{{{ runner.os }}}}")
+        self.assertEqual(installs, [JLOG_INSTALL])
+        step = next(step for step in self.jobs["verify"]["steps"] if JLOG_INSTALL in (step.get("run") or ""))
+        # The default shell of a run step has no pipefail, so a failed curl would still pass through sh.
+        self.assertEqual(step.get("shell"), "bash")
+        self.assertIn(GITHUB_PATH, step["run"])
+        steps = self.jobs["verify"]["steps"]
+        uv = next(i for i, each in enumerate(steps) if each.get("uses", "").startswith("astral-sh/setup-uv@"))
+        self.assertLess(uv, steps.index(step))
+
+    def test_each_starter_installs_jlog_as_ci_does(self) -> None:
+        for name in ("github-check.yml", "github-release.yml"):
+            jobs = yaml.safe_load((ROOT / ".agents/skills/gsu/assets/templates" / name).read_text())["jobs"]
+            for job in jobs.values():
+                with self.subTest(starter=name):
+                    # Each line of the job that names jlog is the one pinned install, so no second install slips in.
+                    self.assertIn([line for line in runs(job) if "rahuldave/jlog" in line], [[], [JLOG_INSTALL]])
+            steps = [step for step in next(iter(jobs.values()))["steps"] if JLOG_INSTALL in (step.get("run") or "")]
+            with self.subTest(starter=name):
+                self.assertEqual(len(steps), 1)
+                # setup-uv comes first, so install.sh finds uv and makes the environments of the plugins of jlog.
+                job_steps = next(iter(jobs.values()))["steps"]
+                uv = next(i for i, step in enumerate(job_steps) if step.get("uses", "").startswith("astral-sh/setup-uv@"))
+                self.assertLess(uv, job_steps.index(steps[0]))
+                self.assertEqual(steps[0].get("shell"), "bash")
+                self.assertIn(GITHUB_PATH, steps[0]["run"])
+                self.assertNotIn("cargo", (ROOT / ".agents/skills/gsu/assets/templates" / name).read_text())
 
     def test_verify_uploads_the_archive_of_just_check(self) -> None:
         upload = self.jobs["verify"]["steps"][-1]
@@ -111,20 +138,26 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(job["steps"], RELEASE_STEPS)
 
 
-# A line that names jlog names only the version of jlog, so each version on such a line is a pin: in a cargo install,
-# the key of a cache, the name of a step, a variable or a comment. A version may lack the v. Each must be JLOG.
+# A line that names jlog names only the version of jlog, so each version on such a line is a pin: in an install, the
+# key of a cache, the name of a step, a variable or a comment. A version may lack the v. Each must be JLOG.
 JLOG_LINE = re.compile(r"jlog", re.IGNORECASE)
 VERSION = re.compile(r"(?<![\w.])v?([0-9]+\.[0-9]+\.[0-9]+)(?![\w.])")
 INSTALL = re.compile(r"cargo (b?install)\b.*\bjlog\b")
 PINNED_INSTALL = re.compile(r"--tag v[0-9]+\.[0-9]+\.[0-9]+ jlog$")
+# The install.sh of jlog: it comes from a tag, not from a branch, and installs the release of that tag.
+INSTALLER = re.compile(r"rahuldave/jlog/\S*install\.sh")
+# A download of a release of jlog, by a URL or by gh. It must name its version.
+DOWNLOAD = re.compile(r"rahuldave/jlog/\S*releases|gh release download\b.*\bjlog\b")
+PINNED_INSTALLER = re.compile(r"rahuldave/jlog/(v[0-9]+\.[0-9]+\.[0-9]+)/scripts/install\.sh \| sh -s -- --tag \1$")
 # The commit of the tag of jlog, which the comment next to each install names.
-JLOG_COMMIT = "8febdf1"
+JLOG_COMMIT = "d4b712b"
 TAG_COMMIT = re.compile(r"\bis the commit ([0-9a-f]{7,40})\b")
 
 
 def jlog_pins(files: dict[str, str]) -> tuple[list[tuple[str, str]], list[str]]:
     """The pins of jlog in the text of each file, as pairs of a place and a version with a v, and the findings: a
-    cargo install of jlog with no pin at its end, or a comment that names another commit for the tag of jlog."""
+    cargo install of jlog with no pin at its end, an install.sh of jlog that does not come from the tag that it
+    installs, or a comment that names another commit for the tag of jlog."""
     pins, findings = [], []
     for name, text in files.items():
         for number, line in enumerate(text.splitlines(), 1):
@@ -134,6 +167,10 @@ def jlog_pins(files: dict[str, str]) -> tuple[list[tuple[str, str]], list[str]]:
             pins += [(place, f"v{version}") for version in VERSION.findall(line)]
             if INSTALL.search(line) and not PINNED_INSTALL.search(line.strip()):
                 findings.append(f"{place}: a cargo install of jlog without --tag VERSION jlog at the end")
+            if INSTALLER.search(line) and not PINNED_INSTALLER.search(line.strip()):
+                findings.append(f"{place}: an install.sh of jlog that is not from the tag of --tag VERSION at the end")
+            if DOWNLOAD.search(line) and not VERSION.search(line):
+                findings.append(f"{place}: a download of jlog that names no version")
             commit = TAG_COMMIT.search(line)
             if commit and not JLOG_COMMIT.startswith(commit.group(1)[:7]):
                 findings.append(f"{place}: the tag of jlog is the commit {JLOG_COMMIT}, not {commit.group(1)}")
@@ -172,7 +209,8 @@ class JlogPinTests(unittest.TestCase):
         for line in ("key: jlog-v0.1.1-${{ runner.os }}", "key: jlog-0.1.1-${{ runner.os }}",
                      "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.1.1 jlog",
                      "- name: Install jlog v0.1.1, which the installer needs", "JLOG_VERSION: v0.1.1",
-                     "# The tag v0.1.1 of jlog is the commit 8febdf1.", "cargo binstall jlog@0.1.1"):
+                     "# The tag v0.1.1 of jlog is the commit 8febdf1.", "cargo binstall jlog@0.1.1",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.1.1"):
             with self.subTest(line=line):
                 self.assertEqual([version for _, version in jlog_pins({"a.yml": line})[0]], ["v0.1.1"])
 
@@ -181,7 +219,15 @@ class JlogPinTests(unittest.TestCase):
                      "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0",
                      "run: cargo install --git https://github.com/rahuldave/jlog --rev 8febdf1 jlog",
                      "run: cargo install jlog --version 0.2.0",
-                     "# The tag v0.2.0 of jlog is the commit abc1234."):
+                     "# The tag v0.3.0 of jlog is the commit abc1234.",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.3.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.2.0/scripts/install.sh | sh -s -- --tag v0.3.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/d4b712b/scripts/install.sh | sh -s -- --tag v0.3.0",
+                     "curl -fsSL https://github.com/rahuldave/jlog/raw/main/scripts/install.sh | sh",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/refs/heads/main/scripts/install.sh | sh",
+                     "curl -fsSLO https://github.com/rahuldave/jlog/releases/latest/download/jlog-x86_64-unknown-linux-musl.tar.gz",
+                     "gh release download -R rahuldave/jlog"):
             with self.subTest(line=line):
                 self.assertNotEqual(jlog_pins({"a.yml": line})[1], [])
 
