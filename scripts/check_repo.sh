@@ -39,6 +39,8 @@ required_files=(
   "scripts/validate_agent_task.sh"
   "scripts/validate_agent_task_draft.sh"
   "scripts/validate_agent_result.sh"
+  "scripts/find_jnterfaces.sh"
+  "scripts/check_skill_links.sh"
   "fixtures/agent_task_draft/valid/result_pair.agent-task-draft.txt"
   "fixtures/agent_task_draft/invalid/malformed.agent-task-draft.txt"
   "fixtures/agent_task_draft/invalid/missing_approval.agent-task-draft.txt"
@@ -347,15 +349,8 @@ if [ -n "$docs_hits" ]; then
   exit 1
 fi
 
-# A link to a skill of another package needs a fallback in the same paragraph, because a target may not have
-# that skill. Each link into jnterfaces must name a path that jnterfaces ships. The checker lives in jnterfaces.
-jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
-if [ ! -f "$jnterfaces_dir/scripts/check_skill_links.py" ]; then
-  echo "The link check needs a jnterfaces clone with scripts/check_skill_links.py at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
-  exit 1
-fi
-"$repo_root/scripts/warn_jnterfaces_pin.sh" "$jnterfaces_dir"
-"${python[@]}" "$jnterfaces_dir/scripts/check_skill_links.py" --package "$repo_root" --resolve "$jnterfaces_dir" "${shipped_text[@]}"
+# Each link to a skill of another package needs a fallback, and each link into jnterfaces a path that it ships.
+"$repo_root/scripts/check_skill_links.sh" "${shipped_text[@]}"
 
 # Shipped files must not carry paths from one machine.
 path_hits="$(grep -rnE '/(Users|home)/[A-Za-z0-9._-]+/' "$repo_root/.agents/skills" "$repo_root/.claude" "$repo_root/.codex" "$repo_root/AGENTS.template.md" "$repo_root/templates")" || [ $? -eq 1 ] || exit 1

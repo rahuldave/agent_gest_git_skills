@@ -47,11 +47,7 @@ if ! allowed_root "$real_root"; then
 fi
 
 # The typescript profile of jnterfaces sets up the TypeScript tools of the lab.
-jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
-if [ ! -f "$jnterfaces_dir/scripts/install_stack.py" ]; then
-  echo "The lab needs a jnterfaces clone at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
-  exit 1
-fi
+jnterfaces_dir="$("$repo_root/scripts/find_jnterfaces.sh" scripts/install_stack.py)"
 
 require_tool() {
   local tool="$1"
