@@ -114,6 +114,109 @@ class RequiredGestTests(unittest.TestCase):
                 self.assertEqual(run.returncode, code, run.stdout + run.stderr)
 
 
+class PromptLayerTests(unittest.TestCase):
+    """The layers that the script puts in the prompt, for a jagt that adds the layers itself and for one that does
+    not. A layer that both give would be in the packet twice."""
+
+    def setUp(self) -> None:
+        scratch = tempfile.TemporaryDirectory(prefix="agentic-prompt-test-")
+        self.addCleanup(scratch.cleanup)
+        self.root = Path(scratch.name).resolve()
+        self.write(".agents/skills/grv/references/targets/review.md", "BASE TASK\n")
+        self.write(".agents/stack.json", json.dumps({"profiles": ["python", "rust"],
+                                                     "code": {"rust": ["**/*.rs"], "go": ["**/*.go"]}}))
+        for name in ("python", "rust", "go"):
+            self.write(f".agents/targets/{name}/review.md", f"{name.upper()} RULE\n")
+        self.write(".agents/targets/review.md", "REPOSITORY RULE\n")
+
+    def write(self, path: str, text: str) -> None:
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+
+    def test_with_a_jagt_that_adds_layers_the_prompt_leaves_them_out(self) -> None:
+        text, layers = agentic_target.prompt(self.root, "review", True)
+        self.assertEqual(layers, [".agents/skills/grv/references/targets/review.md", ".agents/targets/go/review.md"])
+        for rule in ("PYTHON RULE", "RUST RULE", "REPOSITORY RULE"):
+            self.assertNotIn(rule, text)
+        self.assertEqual(text.count("GO RULE"), 1)
+        # The form of the result ends the text of the script, and jagt puts its layers after it.
+        self.assertTrue(text.rstrip().endswith("<<<END_AGENT_RESULT>>>"), text)
+        self.assertIn("follow_up: []", text)
+
+    def test_with_an_older_jagt_the_prompt_has_each_layer_once(self) -> None:
+        text, layers = agentic_target.prompt(self.root, "review", False)
+        self.assertEqual(layers, [".agents/skills/grv/references/targets/review.md",
+                                  ".agents/targets/python/review.md", ".agents/targets/rust/review.md",
+                                  ".agents/targets/go/review.md", ".agents/targets/review.md"])
+        order = [text.index(rule) for rule in ("BASE TASK", "PYTHON RULE", "RUST RULE", "GO RULE", "REPOSITORY RULE",
+                                              "## The form of the result")]
+        self.assertEqual(order, sorted(order))
+        for rule in ("PYTHON RULE", "RUST RULE", "GO RULE", "REPOSITORY RULE"):
+            self.assertEqual(text.count(rule), 1)
+
+    def test_a_name_that_is_not_plain_gives_no_layer(self) -> None:
+        self.write(".agents/stack.json", json.dumps({"profiles": ["python", 3, "python"],
+                                                     "code": {"../x": [], "..": [], "python": [], "go": []}}))
+        self.assertEqual(agentic_target.languages(self.root), (["python"], ["go"]))
+        self.write(".agents/stack.json", json.dumps({"profiles": "python", "code": ["go", "go"]}))
+        self.assertEqual(agentic_target.languages(self.root), ([], ["go"]))
+        self.write(".agents/stack.json", "not json")
+        self.assertEqual(agentic_target.languages(self.root), ([], []))
+
+    def test_a_blank_layer_adds_nothing(self) -> None:
+        self.write(".agents/targets/go/review.md", "\n  \n")
+        text, layers = agentic_target.prompt(self.root, "review", True)
+        self.assertEqual(layers, [".agents/skills/grv/references/targets/review.md"])
+        self.assertNotIn("\n\n\n", text)
+
+    def test_a_layer_that_links_outside_the_targets_stops_the_render(self) -> None:
+        secret = self.root / "secret.txt"
+        secret.write_text("SECRET\n")
+        link = self.root / ".agents/targets/go/review.md"
+        link.unlink()
+        link.symlink_to(secret)
+        with self.assertRaises(agentic_target.Stop):
+            agentic_target.prompt(self.root, "review", True)
+        # A link at the folder of the targets leads outside it too, as jagt reads it.
+        link.unlink()
+        shutil.move(str(self.root / ".agents/targets"), str(self.root / "elsewhere"))
+        (self.root / ".agents/targets").symlink_to(self.root / "elsewhere")
+        with self.assertRaises(agentic_target.Stop):
+            agentic_target.prompt(self.root, "review", False)
+
+    def test_a_second_name_of_a_file_that_jagt_reads_gives_no_layer(self) -> None:
+        # A key of code that differs from a profile only in case, on a disk that ignores case, or a folder link,
+        # names the file that jagt reads for the profile. The script compares the files, so the rule is there once.
+        self.write(".agents/stack.json", json.dumps({"profiles": ["python"], "code": {"Python": [], "py": []}}))
+        (self.root / ".agents/targets/py").symlink_to("python")
+        for jagt_layers in (True, False):
+            with self.subTest(jagt_layers=jagt_layers):
+                text, layers = agentic_target.prompt(self.root, "review", jagt_layers)
+                self.assertEqual(text.count("PYTHON RULE"), 0 if jagt_layers else 1, text)
+                self.assertNotIn(".agents/targets/py/review.md", layers)
+
+    def test_a_key_of_code_with_a_mark_keeps_its_layer(self) -> None:
+        # jagt reads no key of code, so the script keeps any key that is one folder name, as it did before.
+        self.write(".agents/stack.json", json.dumps({"code": {"c++": [], "../up": [], "..": [], "a\\b": []}}))
+        self.write(".agents/targets/c++/review.md", "CPP RULE\n")
+        self.assertEqual(agentic_target.languages(self.root), ([], ["c++"]))
+        text, _ = agentic_target.prompt(self.root, "review", True)
+        self.assertEqual(text.count("CPP RULE"), 1)
+
+    def test_the_version_of_jagt_says_whether_it_adds_the_layers(self) -> None:
+        cases = [("jagt 0.6.4\n", 0, True), ("jagt 0.7.0\n", 0, True), ("jagt 1.0.0-rc1\n", 0, True),
+                 ("jagt 0.6.3\n", 0, False), ("jagt 0.6.10\n", 0, True), ("jagt 0.6.4\n", 1, False),
+                 ("something else\n", 0, False), ("", 0, False)]
+        for printed, code, adds in cases:
+            with self.subTest(printed=printed, code=code):
+                done = subprocess.CompletedProcess(["jagt"], code, stdout=printed, stderr="")
+                with unittest.mock.patch.object(agentic_target.subprocess, "run", return_value=done):
+                    self.assertEqual(agentic_target.jagt_adds_layers(), adds)
+        with unittest.mock.patch.object(agentic_target.subprocess, "run", side_effect=OSError("no jagt")):
+            self.assertFalse(agentic_target.jagt_adds_layers())
+
+
 @unittest.skipUnless(shutil.which("jagt"), "needs jagt")
 class RenderTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -192,6 +295,54 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("BASE TASK", result.stdout)
         self.assertIn("The layers of the prompt: .agents/skills/grv/references/targets/review.md\n", result.stderr)
+
+    def test_the_packet_holds_each_layer_once(self) -> None:
+        # jagt 0.6.4 and later adds the layers of profiles and the repository text itself. The script then leaves them
+        # out, and gives only the key of code that profiles does not name. An older jagt gets each layer from the
+        # script. Either way each rule is in the packet once.
+        self.write(".agents/stack.json", json.dumps({"profiles": ["python", "rust"],
+                                                     "code": {"python": ["**/*.py"], "go": ["**/*.go"]}}))
+        self.write(".agents/targets/python/review.md", "PYTHON RULE\n")
+        self.write(".agents/targets/rust/review.md", "RUST RULE\n")
+        self.write(".agents/targets/go/review.md", "GO RULE\n")
+        self.write(".agents/targets/review.md", "REPOSITORY RULE\n")
+        result = self.render("review")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        out = result.stdout
+        for text in ("BASE TASK", "PYTHON RULE", "RUST RULE", "GO RULE", "REPOSITORY RULE",
+                     "## The form of the result", "<<<AGENT_RESULT v1>>>"):
+            with self.subTest(text=text):
+                self.assertEqual(out.count(text), 1, out)
+        self.assertLess(out.index("BASE TASK"), out.index("## The form of the result"))
+        self.assertLess(out.index("PYTHON RULE"), out.index("RUST RULE"))
+        if agentic_target.jagt_adds_layers():
+            self.assertIn("    - 'language layer: .agents/targets/python/review.md'\n", out)
+            self.assertIn("    - 'repository text: .agents/targets/review.md'\n", out)
+            # The layers of jagt come after the form, which says that they add to the task.
+            self.assertLess(out.index("The result keeps this form."), out.index("PYTHON RULE"))
+            self.assertIn("jagt adds the language layers", result.stderr)
+        else:
+            self.assertLess(out.index("REPOSITORY RULE"), out.index("## The form of the result"))
+
+    def test_the_check_of_the_version_and_the_render_run_one_jagt(self) -> None:
+        # A relative folder in PATH finds one jagt in the folder of the call and another in the root, so the script
+        # finds jagt once and runs it by its full path.
+        calls = []
+        real_run = subprocess.run
+
+        def run(command, *args, **kwargs):
+            if Path(command[0]).name == "jagt":
+                calls.append(command[0])
+                return subprocess.CompletedProcess(command, 0, stdout="jagt 0.6.4\n", stderr="")
+            return real_run(command, *args, **kwargs)
+
+        with unittest.mock.patch.object(agentic_target.shutil, "which", return_value="tools/jagt"), \
+                unittest.mock.patch.object(agentic_target.subprocess, "run", side_effect=run), \
+                unittest.mock.patch.object(agentic_target, "check_tree"):
+            agentic_target.render(self.repo, "review", [])
+        self.assertEqual(len(calls), 2, calls)
+        self.assertEqual(calls[0], calls[1])
+        self.assertTrue(os.path.isabs(calls[0]), calls)
 
     def test_the_diff_holds_untracked_files_and_the_real_index_stays(self) -> None:
         self.write("a.py", "x = 1\n")

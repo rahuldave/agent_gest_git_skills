@@ -458,13 +458,19 @@ Each packet has these parts:
   it. So the `nossaifd` skill gives the base task of `prose`, and a target
   without its skill prints no packet.
 - **The language layer** from `.agents/targets/<language>/<target>.md`, for
-  each language in `.agents/stack.json`. Each profile ships its files, as it
+  each language in `.agents/stack.json`. The languages are the names in
+  `profiles`, then the keys of `code` that `profiles` does not name. Each profile ships its files, as it
   ships its `just` modules now. For example, the Python file for `update-docs` can say
   "write docments for each argument". A new language needs a new file, and no
   change to any skill.
 - **The repository text** from `.agents/targets/<target>.md`, if the file
   exists. For example, `.agents/targets/review.md` can say "check each SQL
   migration for a rollback".
+- **Each layer once.** jagt 0.6.4 and later adds the language layers of
+  `profiles` and the repository text itself, after the prompt that the
+  recipe gives. So with that jagt, the recipe gives only the base task, the
+  language layers of the other keys of `code` and the form of the result. With
+  an older jagt, the recipe gives each layer itself.
 - **The inputs:** the diff, the input tree and the arguments of the recipe.
   The diff compares the worktree with `HEAD`, and holds the files that git does
   not track yet. It is the file `diffs/<head>-<tree>.diff` in the shared log
