@@ -1093,6 +1093,11 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     `pre-commit install` with a `--hook-type` for each of `pre-commit`,
     `pre-merge-commit`, `commit-msg` and `pre-push` installs them. jnterfaces installs the programs of a role after its
     files.
+  - The program of the hooks has `"each_clone": true`, so jnterfaces 0.3.0
+    or later keeps it in `.agents/stack.json`. A fresh clone without the
+    hooks then fails `tools-check`, the first step of `just check`, and the
+    message says to run `just install`. In CI, `tools-check` skips it, as CI
+    makes no commits. The role requires jnterfaces 0.3.0 for the key.
   - The framework stashes the unstaged edits of tracked files before its
     hooks run. So the gate sees them as a tree without a pass, not as
     partial staging. The framework sets `PRE_COMMIT=1` for its hooks, so then
