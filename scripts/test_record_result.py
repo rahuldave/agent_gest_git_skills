@@ -215,6 +215,171 @@ class RecordTests(unittest.TestCase):
         self.assertIn("jagt result lint refused", run.stderr)
         self.assertEqual(self.records(), [])
 
+    def refusal(self, nonce: str) -> dict:
+        return json.loads((self.repo / f".agents/log/refusals/{nonce}.json").read_text())
+
+    def test_a_result_without_follow_up_leaves_a_refusal_that_the_gate_names(self) -> None:
+        nonce = self.render()
+        run = self.hook({"last_assistant_message": result(nonce).replace("follow_up: []\n", "")})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.records(), [])
+        refusal = self.refusal(nonce)
+        self.assertEqual((refusal["nonce"], refusal["target"]), (nonce, "review"))
+        self.assertIn("missing follow_up", refusal["reason"])
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folders = gate.log_folders(self.repo)
+        # The refusal does not count as a record.
+        self.assertEqual(gate.missing_targets(["review"], gate.load_records(folders), tree), ["review"])
+        [note] = gate.refusal_notes(folders, ["review"], tree, self.repo)
+        self.assertIn(nonce, note)
+        self.assertIn("missing follow_up", note)
+        self.assertIn("`just review`", note)
+
+    def test_the_gate_says_which_nonce_was_refused_and_why(self) -> None:
+        nonce = self.render()
+        self.hook({"last_assistant_message": result(nonce).replace("follow_up: []\n", "")})
+        gate = load("commit_gate")
+        env = dict(self.env, CLAUDE_CODE_SESSION_ID="s")
+        tree = gate.worktree_tree(self.repo)
+        with unittest.mock.patch.dict(os.environ, env, clear=True), \
+                unittest.mock.patch.object(gate, "commit_tree", return_value=tree), \
+                unittest.mock.patch.object(gate, "read_at", side_effect=lambda root, rev, path:
+                                           '{"steps": []}' if path == gate.STACK else None), \
+                unittest.mock.patch.object(gate, "parents_of_commit", return_value=[]), \
+                unittest.mock.patch.object(gate, "recipes", return_value={"check", "review"}), \
+                unittest.mock.patch.object(gate, "has_pass", return_value=True), \
+                unittest.mock.patch.object(gate, "required_against", return_value=["review"]):
+            with self.assertRaises(gate.Stop) as stopped:
+                gate.gate(self.repo)
+        message = str(stopped.exception)
+        self.assertIn("no record for this tree of `just review`", message)
+        self.assertIn(f"refused the result of `just review` with the nonce {nonce}", message)
+        self.assertIn("missing follow_up", message)
+
+    def test_a_valid_result_after_a_refusal_records_and_the_gate_passes(self) -> None:
+        nonce = self.render()
+        self.hook({"last_assistant_message": result(nonce).replace("follow_up: []\n", "")})
+        run = self.hook({"last_assistant_message": result(nonce)})
+        self.assertIn("record: wrote", run.stderr)
+        [record] = self.records()
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folders = gate.log_folders(self.repo)
+        self.assertEqual(gate.missing_targets(["review"], gate.load_records(folders), tree), [])
+        # The packet has its record, so the old refusal is no reason any more.
+        self.assertEqual(gate.refusal_notes(folders, ["review"], tree, self.repo), [])
+
+    def test_a_refusal_of_an_old_tree_is_not_named(self) -> None:
+        nonce = self.render()
+        self.hook({"last_assistant_message": result(nonce).replace("follow_up: []\n", "")})
+        self.write("a.txt", "c\n")
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        self.assertEqual(gate.refusal_notes(gate.log_folders(self.repo), ["review"], tree, self.repo), [])
+
+    def packet_text(self, target: str = "review") -> str:
+        run = subprocess.run([sys.executable, SCRIPTS / "agentic_target.py", "render", target], cwd=self.repo,
+                             capture_output=True, text=True, env=self.env)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return run.stdout
+
+    def test_a_result_after_a_quote_of_the_packet_records(self) -> None:
+        # The form of the result in the packet is indented, so it is no second block.
+        packet = self.packet_text()
+        nonce = next(line.split(":", 1)[1].strip() for line in packet.splitlines() if line.startswith("nonce:"))
+        run = self.hook({"last_assistant_message": packet + "\n" + result(nonce)})
+        self.assertIn("record: wrote", run.stderr)
+        self.assertEqual(len(self.records()), 1)
+        self.assertFalse((self.repo / f".agents/log/refusals/{nonce}.json").exists())
+
+    def test_a_quote_of_the_packet_alone_leaves_no_refusal(self) -> None:
+        packet = self.packet_text()
+        run = self.hook({"last_assistant_message": "Here is the task.\n" + packet})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.records(), [])
+        self.assertFalse((self.repo / ".agents/log/refusals").exists())
+
+    def test_a_newer_record_of_the_target_makes_a_refusal_old(self) -> None:
+        refused = self.render()
+        self.hook({"last_assistant_message": result(refused).replace("follow_up: []\n", "")})
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folders = gate.log_folders(self.repo)
+        os.utime(self.repo / f".agents/log/refusals/{refused}.json", (1, 1))
+        # A later run of the target gave a record with an open finding: that is the news, not the refusal.
+        nonce = self.render()
+        self.hook({"last_assistant_message": result(nonce, status="partial", findings="[{summary: s}]")})
+        self.assertEqual(len(self.records()), 1)
+        self.assertEqual(gate.refusal_notes(folders, ["review"], tree, self.repo), [])
+
+    def test_a_newer_record_of_another_tree_keeps_the_refusal(self) -> None:
+        # A record of the same target from another worktree, for its own tree, is no news about this refusal.
+        refused = self.render()
+        self.hook({"last_assistant_message": result(refused).replace("follow_up: []\n", "")})
+        os.utime(self.repo / f".agents/log/refusals/{refused}.json", (1, 1))
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        other = {"version": 1, "target": "review", "status": "success", "input_tree": "c" * 40,
+                 "output_tree": "c" * 40, "findings": [], "source": "skip", "reason": "r"}
+        (self.repo / ".agents/log/records").mkdir()
+        (self.repo / ".agents/log/records/other.json").write_text(json.dumps(other))
+        (self.repo / ".agents/log/records/junk.json").write_text(json.dumps({"target": "review"}))
+        [note] = gate.refusal_notes(gate.log_folders(self.repo), ["review"], tree, self.repo)
+        self.assertIn(refused, note)
+
+    def test_a_newer_changer_record_of_this_worktree_makes_an_old_tree_refusal_old(self) -> None:
+        self.write(".agents/skills/gdo/references/targets/update-docs.md", "DOCS TASK\n")
+        docs = lambda nonce: result(nonce, target="update-docs").replace("  findings: []", "  files: []\n  checked: []")
+        refused = self.render("update-docs")
+        self.hook({"last_assistant_message": docs(refused).replace("follow_up: []\n", "")})
+        os.utime(self.repo / f".agents/log/refusals/{refused}.json", (1, 1))
+        self.write("a.txt", "c\n")
+        gate = load("commit_gate")
+        folders = gate.log_folders(self.repo)
+        # The tree moved, and the refusal of this worktree is still the reason.
+        tree = gate.worktree_tree(self.repo)
+        [note] = gate.refusal_notes(folders, ["update-docs"], tree, self.repo)
+        self.assertIn(refused, note)
+        # A later update-docs of this worktree worked, then the tree moved again: the old refusal is no reason.
+        self.hook({"last_assistant_message": docs(self.render("update-docs"))})
+        self.assertEqual(len(self.records()), 1)
+        self.write("a.txt", "d\n")
+        tree = gate.worktree_tree(self.repo)
+        self.assertEqual(gate.refusal_notes(folders, ["update-docs"], tree, self.repo), [])
+
+    def test_a_bad_refusal_file_never_stops_the_gate_with_a_fault(self) -> None:
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folder = self.repo / ".agents/log/refusals"
+        folder.mkdir(parents=True)
+        bad = ["[1]", "not json", json.dumps({"version": 1, "target": ["review"], "nonce": "a", "reason": "r"}),
+               json.dumps({"version": 1, "target": "prose", "nonce": "a", "reason": "r", "input_tree": "x",
+                           "worktree": "/tmp/a\u0000b"}),
+               json.dumps({"version": 1, "target": "prose", "nonce": "a", "reason": "r", "input_tree": "x",
+                           "worktree": 7})]
+        for i, text in enumerate(bad):
+            (folder / f"{i}.json").write_text(text)
+        self.assertEqual(gate.refusal_notes(gate.log_folders(self.repo), ["review", "prose"], tree, self.repo), [])
+
+    def test_the_gate_drops_the_control_characters_of_a_reason(self) -> None:
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folder = self.repo / ".agents/log/refusals"
+        folder.mkdir(parents=True)
+        (folder / "n.json").write_text(json.dumps({"version": 1, "target": "review", "nonce": "a" * 32,
+                                                   "input_tree": tree, "reason": "bad\x1b]8;;x\x07 \x9b\u202e end"}))
+        [note] = gate.refusal_notes(gate.log_folders(self.repo), ["review"], tree, self.repo)
+        self.assertTrue(all(c.isprintable() for c in note), note)
+        self.assertIn("a" * 32, note)
+        self.assertIn("end", note)
+
+    def test_a_result_with_no_packet_leaves_no_refusal(self) -> None:
+        self.render()
+        self.hook({"last_assistant_message": result("b" * 32).replace("follow_up: []\n", "")})
+        folder = self.repo / ".agents/log/refusals"
+        self.assertEqual(list(folder.glob("*.json")) if folder.is_dir() else [], [])
+
     def test_a_record_from_a_worktree_goes_to_the_shared_log(self) -> None:
         tree = self.base / "wt"
         git("worktree", "add", "-q", "-b", "feat", str(tree), cwd=self.repo)
