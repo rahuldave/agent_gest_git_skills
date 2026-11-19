@@ -65,11 +65,15 @@ does. The hook skips the check for a merge and for an amend of a merge, since th
 commits, during a rebase, and when the Justfile has no recipe `release-check`. The check stops the commit when it runs longer than
 120 seconds.
 
-`--trailers BASE HEAD` is the check of CI, which `just ci-gate` runs. With no BASE and HEAD, it reads them from CI,
-from the pre-push hook, or from the upstream of the branch, as `ci_range` says. Each commit in BASE..HEAD must have a
-trailer that names its own patch ID, or its own tree for a merge. CI runs no step of `just check` again: the
-trailer says that the gate saw a pass of it. The trailer is a claim of the gate, not a proof: an agent could write
-one by hand, and the review of the pull request is the check of that.
+`--trailers BASE HEAD` is the check of CI, which `just ci-gate` runs. `ci-gate` is a step of `just check` too, so CI
+checks only a part of `just check`. With no BASE and HEAD, it reads them from CI, from the pre-push hook, or from
+the base branch on origin, as `ci_range` says. Each commit in BASE..HEAD must have one trailer of the gate, with one
+word, `patch:<id>`, and the ID must be the patch ID of the commit. Three kinds of commit
+are exempt, and the check names each one it skips: a merge with no change of its own, as git merge-tree makes it, a
+commit whose author is a GitHub bot, and a commit from before the gate, when no commit it reaches changed
+`.agents/stack.json`. Another merge needs one trailer `tree:<tree>` with its own tree. CI runs no other step of `just check`
+again: the trailer says that the gate saw a pass of it. The trailer is a claim of the gate, not a proof: an agent
+could write one by hand, and the review of the pull request is the check of that.
 
 Usage: commit_gate.py [--hook pre-commit|pre-merge-commit|commit-msg] [MESSAGE_FILE], or commit_gate.py --trailers
 [BASE HEAD], or commit_gate.py --check-hooks. It exits with 0 to let the commit through and with 1 to stop it.
@@ -1207,6 +1211,27 @@ def add_trailer(root: Path, message: Path) -> None:
                            errors="surrogateescape")
 
 
+class NoBase(Stop):
+    """The commits to check have no base branch."""
+
+
+def github_default_branch(env: Mapping[str, str]) -> Optional[str]:
+    """The default branch of the repository, from the event file of GitHub Actions, or None."""
+    path = env.get("GITHUB_EVENT_PATH")
+    if not path:
+        return None
+    try:
+        event = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    branch = event.get("repository", {}).get("default_branch") if isinstance(event, dict) else None
+    return branch if isinstance(branch, str) and branch else None
+
+
+def in_ci(env: Mapping[str, str]) -> bool:
+    return env.get("CI", "").lower() in ("true", "1") or env.get("GITHUB_ACTIONS") == "true"
+
+
 def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
     """The commits that `just ci-gate` checks, as BASE and HEAD. A BASE of None means all the commits of HEAD.
 
@@ -1214,8 +1239,11 @@ def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
     PRE_COMMIT_TO_REF, or only PRE_COMMIT_LOCAL_BRANCH for a push of a new history, which the remote has no commit of.
     For an existing remote branch, JN_CI_BASE selects the PR target tip as base. It must be an ancestor of the
     pushed head, and each of its commits must be on the remote. PRE_COMMIT_TO_REF remains the head; a conflicting
-    JN_CI_HEAD stops the push. Without that selection, the push range is unchanged. New-history pushes still check all commits. Outside a push, CI gives
-    JN_CI_BASE and JN_CI_HEAD; by hand the base is the upstream of the branch, or else origin/HEAD."""
+    JN_CI_HEAD stops the push. Without that selection, the push range is unchanged. New-history pushes still check all
+    commits. Outside a push, JN_CI_BASE and JN_CI_HEAD give the range. Else the base is the base branch on origin: the
+    base of the pull request in GITHUB_BASE_REF, the default branch of the event of GitHub Actions, origin/HEAD,
+    origin/main or origin/master, and last the upstream of the branch. BASE..HEAD holds the commits from the merge-base
+    to HEAD. With none of them, NoBase stops."""
     if env.get("PRE_COMMIT_FROM_REF") and env.get("PRE_COMMIT_TO_REF"):
         if env.get("JN_CI_BASE"):
             def resolve(value: str, label: str) -> str:
@@ -1249,34 +1277,108 @@ def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
     head = env.get("JN_CI_HEAD") or "HEAD"
     if env.get("JN_CI_BASE"):
         return env["JN_CI_BASE"], head
-    for name in ("@{upstream}", "origin/HEAD"):
-        if git(["rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"], root, plain_env(), check=False).strip():
+    # The full names of the refs of origin, so that a local branch named origin/main cannot take their place.
+    names = [f"refs/remotes/origin/{branch}" for branch in (env.get("GITHUB_BASE_REF"), github_default_branch(env))
+             if branch]
+    names += ["refs/remotes/origin/HEAD", "refs/remotes/origin/main", "refs/remotes/origin/master", "@{upstream}"]
+    for name in names:
+        if git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{name}^{{commit}}"], root, plain_env(),
+               check=False).strip():
             return name, head
-    raise Stop("the commits to check have no base: the branch has no upstream and there is no origin/HEAD. Give "
-               "the base in JN_CI_BASE for one command, as JN_CI_BASE=origin/main just ci")
+    raise NoBase("the commits to check have no base: there is no JN_CI_BASE, no origin/HEAD, origin/main or "
+                 "origin/master, and the branch has no upstream. Give the base in JN_CI_BASE for one command, as "
+                 "JN_CI_BASE=origin/main just ci-gate")
 
 
-def check_trailers(root: Path, base: Optional[str], head: str) -> List[str]:
-    """The problems of the commits in BASE..HEAD, or of all the commits of HEAD when BASE is None: each one needs a
-    trailer of the gate that names its change."""
+# The author of a commit by a GitHub App, such as dependabot[bot] or github-actions[bot]. GitHub gives it this e-mail.
+BOT_EMAIL = re.compile(r"(?:[0-9]+\+)?[A-Za-z0-9][A-Za-z0-9-]*\[bot\]@users\.noreply\.github\.com")
+# One word of the trailer: the patch ID of a change, `none` for an empty change, or the tree of a merge. The hashes
+# are SHA-1 or SHA-256.
+TRAILER_WORD = re.compile(r"(?:patch:(?:none|[0-9a-f]{40}|[0-9a-f]{64})|tree:(?:[0-9a-f]{40}|[0-9a-f]{64}))")
+
+# How to fix a commit that fails the check. `just check` runs ci-gate, so the fix takes the bad commit off HEAD first.
+TRAILER_FIX = ("To fix a commit, make it again through the gate. For the newest commit, run `git reset --soft HEAD~1`, "
+               "then `just check`, then `git commit -C ORIG_HEAD`. For an older commit, run `git rebase -i` on its "
+               "parent, mark the commit `edit`, do the same at the stop, then run `git rebase --continue`. The "
+               "commits that come after it keep their trailers when the rebase has no conflict. When the commits are "
+               "not yours, the base is wrong: give the base branch, as JN_CI_BASE=origin/develop")
+
+
+def ever_had_stack(root: Path, commit: str) -> bool:
+    """True when a commit that COMMIT can reach changed .agents/stack.json, so the gate was there before it. With
+    --full-history, a merge that drops the file cannot hide the commit that added it."""
+    return bool(git(["rev-list", "-1", "--full-history", commit, "--", STACK], root).strip())
+
+
+def clean_merge(root: Path, commit: str, parents: List[str]) -> bool:
+    """True when the merge COMMIT of two parents has the tree that git makes for them with no conflict, so it adds no
+    change of its own."""
+    if len(parents) != 2:
+        return False
+    run = subprocess.run(["git", "merge-tree", "--write-tree", "--no-messages", parents[0], parents[1]], cwd=root,
+                         env=plain_env(), stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    tree = run.stdout.split("\n", 1)[0].strip()
+    return run.returncode == 0 and tree == git(["rev-parse", f"{commit}^{{tree}}"], root).strip()
+
+
+def exemption(root: Path, commit: str, parents: List[str], email: str) -> Optional[str]:
+    """Why COMMIT needs no trailer, or None when it needs one."""
+    if len(parents) > 1 and clean_merge(root, commit, parents):
+        return ("a merge with no change of its own, which the check skips: GitHub makes the merge of a pull request "
+                "without the gate")
+    if BOT_EMAIL.fullmatch(email):
+        return f"its author {email} is a GitHub bot, which commits without the gate"
+    if not ever_had_stack(root, commit):
+        return f"it is from before the gate: no commit before it has {STACK}"
+    return None
+
+
+def check_trailers(root: Path, base: Optional[str], head: str, notes: Optional[List[str]] = None) -> List[str]:
+    """The problems of the commits in BASE..HEAD, or of all the commits of HEAD when BASE is None: each one needs one
+    trailer of the gate, in the right form, that names its change. The reason for each exempt commit goes in NOTES."""
+    if git(["rev-parse", "--is-shallow-repository"], root).strip() == "true":
+        raise Stop("the clone is shallow, so the check cannot read the parents of the commits. Fetch the whole "
+                   "history, as with fetch-depth: 0 in actions/checkout")
     problems = []
     span = head if base is None else f"{base}..{head}"
-    for commit in git(["rev-list", "--reverse", span], root).split():
+    for commit in git(["rev-list", "--reverse", "--end-of-options", span, "--"], root).split():
+        fields = git(["log", "-1", "--format=%P%x00%ae%x00%s", commit], root).rstrip("\n").split("\0")
+        parents, email, subject = fields[0].split(), fields[1], fields[2]
+        name = f"{commit[:12]} ({subject})"
+        why = exemption(root, commit, parents, email)
+        if why is not None:
+            if notes is not None:
+                notes.append(f"{name} is exempt: {why}")
+            continue
         values = git(["log", "-1", f"--format=%(trailers:key={TRAILER},valueonly,separator=%x00)", commit],
                      root).strip("\n").split("\0")
-        words = [value.split() for value in values if value.strip()]
-        short = commit[:12]
-        if not words:
-            problems.append(f"{short} has no {TRAILER} trailer, so it did not pass the commit gate")
+        values = [value.strip() for value in values if value.strip()]
+        if not values:
+            problems.append(f"{name} has no {TRAILER} trailer, so it did not pass the commit gate, for example a "
+                            "commit made with git commit -n, or by git revert --no-edit")
             continue
-        parents = git(["rev-list", "--parents", "-n", "1", commit], root).split()[1:]
+        if len(values) > 1:
+            problems.append(f"{name} has {len(values)} {TRAILER} trailers, and the gate writes one, for example after "
+                            "a squash of two commits")
+            continue
+        words = values[0].split()
+        odd = [word for word in words if not TRAILER_WORD.fullmatch(word)]
+        if odd:
+            problems.append(f"{name} has a {TRAILER} trailer that the gate did not write: {values[0]!r}. Each word "
+                            "must be patch:<patch ID> or tree:<tree>")
+            continue
+        if len(words) != 1:
+            problems.append(f"{name} has a {TRAILER} trailer of {len(words)} words: {values[0]!r}, and the gate "
+                            "writes one word")
+            continue
         if len(parents) > 1:
             expected, kind = git(["rev-parse", f"{commit}^{{tree}}"], root).strip(), "tree"
         else:
             expected, kind = commit_patch_id(root, commit), "patch"
-        if not any(f"{kind}:{expected}" in w for w in words):
-            problems.append(f"{short} changed after the commit gate passed it: its {kind} is {expected}. Commit it "
-                            "again through the gate, for example with git commit --amend --no-edit")
+        if words != [f"{kind}:{expected}"]:
+            problems.append(f"{name} changed after the commit gate passed it: its {kind} is {expected}, and the "
+                            f"trailer names {values[0]}, for example after a rebase with a conflict or an amend "
+                            "with git commit -n")
     return problems
 
 
@@ -1435,10 +1537,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.trailers is not None:
             if len(args.trailers) not in (0, 2):
                 parser.error("--trailers takes BASE and HEAD, or nothing")
-            base, head = args.trailers if args.trailers else ci_range(root, os.environ)
-            problems = check_trailers(root, base, head)
+            try:
+                base, head = args.trailers if args.trailers else ci_range(root, os.environ)
+            except NoBase as stop:
+                if in_ci(os.environ):
+                    raise
+                # A clone with no remote has no pull request yet, so there is no commit to compare.
+                print(f"ci-gate: skipped, {stop}", file=sys.stderr)
+                return 0
+            notes: List[str] = []
+            problems = check_trailers(root, base, head, notes)
+            for note in notes:
+                print(f"ci-gate: {note}", file=sys.stderr)
             for problem in problems:
                 print(f"gate trailers: {problem}", file=sys.stderr)
+            if problems:
+                print(f"gate trailers: {TRAILER_FIX}", file=sys.stderr)
             return 1 if problems else 0
         problems = check_hooks(root) if args.check_hooks else []
         if not args.check_hooks:

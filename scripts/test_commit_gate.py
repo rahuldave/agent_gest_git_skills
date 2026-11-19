@@ -880,13 +880,14 @@ class GateTests(unittest.TestCase):
         # A push of a new history: the remote has none of its commits, so each one counts.
         self.assertEqual(rng(JN_CI_BASE="b", PRE_COMMIT_LOCAL_BRANCH="refs/heads/main"), (None, "refs/heads/main"))
         self.assertEqual(rng(JN_CI_BASE="b", JN_CI_HEAD="h"), ("b", "h"))
-        with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_BASE"):
+        with self.assertRaisesRegex(commit_gate.NoBase, "JN_CI_BASE"):
             rng()
-        git("update-ref", "refs/remotes/origin/HEAD", "HEAD~1", cwd=self.repo)
-        self.assertEqual(rng(), ("origin/HEAD", "HEAD"))
+        # The upstream comes last: the upstream of a topic branch is the branch on origin, not its base.
         git("branch", "-q", "up", "HEAD", cwd=self.repo)
         git("branch", "-q", "--set-upstream-to", "up", cwd=self.repo)
         self.assertEqual(rng(), ("@{upstream}", "HEAD"))
+        git("update-ref", "refs/remotes/origin/HEAD", "HEAD~1", cwd=self.repo)
+        self.assertEqual(rng(), ("refs/remotes/origin/HEAD", "HEAD"))
 
     def selected_base_fixture(self):
         """A published gated feature merges accepted main, whose server merge has no gate trailer."""
@@ -919,11 +920,16 @@ class GateTests(unittest.TestCase):
         commits = git("rev-list", f"{main}..{head}", cwd=self.repo).stdout.split()
         self.assertEqual(set(commits), {feature, head})
         self.assertEqual(commit_gate.check_trailers(self.repo, main, head), [])
-        self.assertTrue(commit_gate.check_trailers(self.repo, feature, head))
+        # From the old push, the range holds the merge of the server too, which is exempt.
+        notes = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, feature, head, notes), [])
+        self.assertTrue(any(main[:12] in n and "merge with no change of its own" in n for n in notes), notes)
         run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo,
                              env=dict(self.person, **env), capture_output=True, text=True)
         self.assertEqual((run.returncode, run.stderr),
-                         (0, f"ci-gate: JN_CI_BASE {main[:12]} selects 2 commits of the push\n"))
+                         (0, f"ci-gate: JN_CI_BASE {main[:12]} selects 2 commits of the push\n"
+                             f"ci-gate: {head[:12]} (x) is exempt: a merge with no change of its own, which the check skips: GitHub "
+                             "makes the merge of a pull request without the gate\n"))
         self.assertEqual(commit_gate.ci_range(self.repo, dict(PRE_COMMIT_FROM_REF=feature,
                                                             PRE_COMMIT_TO_REF=head)), (feature, head))
         # A missing original-feature trailer must still fail in the complete PR range.
@@ -940,7 +946,10 @@ class GateTests(unittest.TestCase):
         bad_merge = git("commit-tree", f"{head}^{{tree}}", "-p", feature, "-p", main,
                         "-m", "Bad merge\n\nCommit-Gate: tree:" + "0" * 40,
                         cwd=self.repo, env=self.person).stdout.strip()
-        self.assertTrue(any("changed after" in p for p in commit_gate.check_trailers(self.repo, main, bad_merge)))
+        # A merge with no change of its own is exempt, so its trailer does not count, and the check names it.
+        notes = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, main, bad_merge, notes), [])
+        self.assertTrue(any(bad_merge[:12] in n and "merge with no change of its own" in n for n in notes), notes)
         # Hook head wins even when an ambient head names another valid commit.
         with self.assertRaisesRegex(commit_gate.Stop, "JN_CI_HEAD"):
             commit_gate.ci_range(self.repo, dict(env, JN_CI_HEAD=feature))
@@ -999,11 +1008,20 @@ class GateTests(unittest.TestCase):
         run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
                              text=True)
         self.assertEqual((run.returncode, run.stderr), (0, ""))
-        env = {k: v for k, v in self.person.items() if not k.startswith(("JN_CI_", "PRE_COMMIT_"))}
+        env = {k: v for k, v in self.person.items()
+               if not k.startswith(("JN_CI_", "PRE_COMMIT_", "GITHUB_")) and k != "CI"}
+        # With no base, a clone on a machine has no pull request, so the check passes and says why.
         run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
                              text=True)
-        self.assertEqual(run.returncode, 1)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("ci-gate: skipped", run.stderr)
         self.assertIn("Give the base in JN_CI_BASE", run.stderr)
+        # In CI, a checkout with no base, as with fetch-depth 1, fails.
+        for ci in ({"CI": "true"}, {"GITHUB_ACTIONS": "true"}):
+            run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=dict(env, **ci),
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 1, ci)
+            self.assertIn("Give the base in JN_CI_BASE", run.stderr)
         run = subprocess.run([sys.executable, SCRIPT, "--trailers", "HEAD"], cwd=self.repo, env=env,
                              capture_output=True, text=True)
         self.assertEqual(run.returncode, 2)
@@ -1073,6 +1091,243 @@ class GateTests(unittest.TestCase):
         self.assertGoes(git("commit", "-q", "-m", "m", cwd=self.repo, env=self.person, check=False))
         self.assertIn("Commit-Gate: tree:", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
         self.assertEqual(self.trailers(base + "~1", "HEAD"), [])
+
+    # The exemptions and the form of the trailer, as ci-gate checks them
+
+    def raw_commit(self, message: str, parents=("HEAD",), env=None, tree="HEAD^{tree}") -> str:
+        """A commit made outside the hooks, as GitHub or a bot makes one, from TREE with PARENTS."""
+        args = ["commit-tree", tree, "-m", message]
+        for parent in parents:
+            args += ["-p", parent]
+        return git(*args, cwd=self.repo, env=env or self.person).stdout.strip()
+
+    def tree_with(self, path: str, text: str) -> str:
+        """The tree of HEAD with PATH set to TEXT, made in a copy of the index."""
+        env = dict(self.person, GIT_INDEX_FILE=str(self.base / "spare-index"))
+        git("read-tree", "HEAD", cwd=self.repo, env=env)
+        blob = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=self.repo, input=text, text=True,
+                              capture_output=True, check=True).stdout.strip()
+        git("update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", cwd=self.repo, env=env)
+        return git("write-tree", cwd=self.repo, env=env).stdout.strip()
+
+    def gated_change(self, path: str, text: str) -> str:
+        self.change(path, text)
+        return git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+
+    def test_a_merge_commit_without_a_trailer_is_exempt_and_named(self) -> None:
+        self.first_commit()
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        side = self.gated_change("b.txt", "b\n")
+        git("reset", "-q", "--hard", base, cwd=self.repo)
+        main = self.gated_change("a.txt", "a\n")
+        tree = git("merge-tree", "--write-tree", main, side, cwd=self.repo).stdout.split()[0]
+        merge = self.raw_commit("Merge pull request #1 from someone/side", parents=(main, side), tree=tree)
+        notes = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, base, merge, notes), [])
+        self.assertEqual(len(notes), 1, notes)
+        self.assertIn(f"{merge[:12]} (Merge pull request #1 from someone/side) is exempt: a merge with no change of its own", notes[0])
+        # A merge that keeps only one side has a change of its own, so it needs a trailer.
+        one_side = self.raw_commit("Merge, keep main", parents=(main, side))
+        self.assertIn("has no Commit-Gate trailer", commit_gate.check_trailers(self.repo, base, one_side)[0])
+
+    def test_a_merge_with_a_change_of_its_own_needs_its_tree_trailer(self) -> None:
+        self.first_commit()
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        side = self.gated_change("b.txt", "b\n")
+        git("reset", "-q", "--hard", base, cwd=self.repo)
+        main = self.gated_change("a.txt", "a\n")
+        # A merge through the gate, then an amend with -n that adds a file: the old tree trailer is stale.
+        git("merge", "-q", "--no-ff", "--no-commit", side, cwd=self.repo, env=self.person, check=False)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "merge side", cwd=self.repo, env=self.person, check=False))
+        merged = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        self.assertEqual(commit_gate.check_trailers(self.repo, base, merged), [])
+        self.write("evil.txt", "evil\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(git("commit", "-q", "--amend", "-n", "--no-edit", cwd=self.repo, env=self.person,
+                             check=False).returncode, 0)
+        evil = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        problems = commit_gate.check_trailers(self.repo, base, evil)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn(f"{evil[:12]} (merge side) changed after the commit gate passed it: its tree is", problems[0])
+        # The same merge with no trailer fails, and with the trailer of its own tree it passes.
+        tree = git("rev-parse", f"{evil}^{{tree}}", cwd=self.repo).stdout.strip()
+        bare = self.raw_commit("merge side", parents=(main, side), tree=tree)
+        self.assertIn("has no Commit-Gate trailer", commit_gate.check_trailers(self.repo, base, bare)[0])
+        own = self.raw_commit(f"merge side\n\nCommit-Gate: tree:{tree}", parents=(main, side), tree=tree)
+        self.assertEqual(commit_gate.check_trailers(self.repo, base, own), [])
+
+    def test_a_merge_that_drops_the_gate_does_not_exempt_the_commits_after_it(self) -> None:
+        self.first_commit()
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        side = self.gated_change("b.txt", "b\n")
+        git("reset", "-q", "--hard", base, cwd=self.repo)
+        main = self.gated_change("a.txt", "a\n")
+        env = dict(self.person, GIT_INDEX_FILE=str(self.base / "drop-index"))
+        git("read-tree", main, cwd=self.repo, env=env)
+        git("update-index", "--force-remove", ".agents/stack.json", cwd=self.repo, env=env)
+        tree = git("write-tree", cwd=self.repo, env=env).stdout.strip()
+        dropped = self.raw_commit("merge side", parents=(main, side), tree=tree)
+        later = self.raw_commit("evil", parents=(dropped,), tree=tree)
+        problems = commit_gate.check_trailers(self.repo, base, later)
+        self.assertEqual(len(problems), 2, problems)
+        self.assertTrue(any(later[:12] in p and "has no Commit-Gate trailer" in p for p in problems))
+
+    def test_a_shallow_clone_stops_with_a_clear_message(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        shallow = self.base / "shallow"
+        git("clone", "-q", "--depth", "1", f"file://{self.repo}", str(shallow), cwd=self.base)
+        with self.assertRaisesRegex(commit_gate.Stop, "fetch-depth: 0"):
+            commit_gate.check_trailers(shallow, None, "HEAD")
+
+    def test_a_commit_by_a_github_bot_is_exempt_and_a_lookalike_is_not(self) -> None:
+        self.first_commit()
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        head = base
+        for email in ("49699333+dependabot[bot]@users.noreply.github.com",
+                      "41898282+github-actions[bot]@users.noreply.github.com",
+                      "renovate[bot]@users.noreply.github.com"):
+            env = dict(self.person, GIT_AUTHOR_EMAIL=email)
+            head = self.raw_commit(f"chore: bump by {email}", parents=(head,), env=env,
+                                   tree=self.tree_with("bump.txt", email))
+        notes = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, base, head, notes), [])
+        self.assertEqual([n.split(" is exempt: ")[1].split()[2] for n in notes],
+                         ["49699333+dependabot[bot]@users.noreply.github.com",
+                          "41898282+github-actions[bot]@users.noreply.github.com",
+                          "renovate[bot]@users.noreply.github.com"])
+        for email in ("dependabot@users.noreply.github.com", "evil[bot]@example.com",
+                      "x[bot]@users.noreply.github.com.example.com", "t@example.com"):
+            with self.subTest(email=email):
+                env = dict(self.person, GIT_AUTHOR_EMAIL=email)
+                bad = self.raw_commit("chore: no gate", parents=(base,), env=env, tree=self.tree_with("x.txt", email))
+                problems = commit_gate.check_trailers(self.repo, base, bad)
+                self.assertEqual(len(problems), 1)
+                self.assertIn(f"{bad[:12]} (chore: no gate) has no Commit-Gate trailer", problems[0])
+
+    def test_a_commit_from_before_the_gate_is_exempt_but_the_removal_of_the_gate_is_not(self) -> None:
+        # A history from before the gate: no commit has .agents/stack.json.
+        (self.repo / ".agents/stack.json").unlink()
+        self.write("old.txt", "old\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        self.write("old.txt", "older\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        notes = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, None, "HEAD", notes), [])
+        self.assertEqual(len(notes), 2)
+        self.assertTrue(all("from before the gate" in n for n in notes), notes)
+        self.assertIn("no commit before it has .agents/stack.json", notes[0])
+        # The commit that adds stack.json is the first commit of the gate, so it needs a trailer.
+        self.write(".agents/stack.json", json.dumps(STACK))
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        self.assertEqual(len(commit_gate.check_trailers(self.repo, "HEAD~1", "HEAD")), 1)
+        self.passed()
+        git("reset", "-q", "--soft", "HEAD~1", cwd=self.repo)
+        self.assertGoes(git("commit", "-q", "-C", "ORIG_HEAD", cwd=self.repo, env=self.person, check=False))
+        self.assertEqual(commit_gate.check_trailers(self.repo, "HEAD~1", "HEAD"), [])
+        # A commit that removes stack.json around the gate is not from before the gate: its parent has the file.
+        git("rm", "-q", ".agents/stack.json", cwd=self.repo)
+        self.assertEqual(self.commit("-n").returncode, 0)
+        problems = commit_gate.check_trailers(self.repo, "HEAD~1", "HEAD")
+        self.assertEqual(len(problems), 1)
+        self.assertIn("has no Commit-Gate trailer", problems[0])
+
+    def test_a_trailer_that_the_gate_did_not_write_fails(self) -> None:
+        self.first_commit()
+        base = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        good = self.gated_change("a.txt", "a\n")
+        word = git("log", "-1", f"--format=%(trailers:key=Commit-Gate,valueonly)", good, cwd=self.repo).stdout.strip()
+        self.assertRegex(word, r"^patch:[0-9a-f]{40}$")
+        tree = f"{good}^{{tree}}"
+        cases = {
+            "yes": "that the gate did not write",
+            "patch:abc": "that the gate did not write",
+            f"{word} ok": "that the gate did not write",
+            f"{word.upper()}": "that the gate did not write",
+            "patch:" + "0" * 40: "changed after the commit gate passed it",
+            "tree:" + "0" * 40: "changed after the commit gate passed it",
+            f"patch:none {word}": "of 2 words",
+            f"{word} tree:" + "0" * 40: "of 2 words",
+        }
+        for value, text in cases.items():
+            with self.subTest(value=value):
+                bad = self.raw_commit(f"x\n\nCommit-Gate: {value}", parents=(base,), tree=tree)
+                problems = commit_gate.check_trailers(self.repo, base, bad)
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn(f"{bad[:12]} (x)", problems[0])
+                self.assertIn(text, problems[0])
+        two = self.raw_commit(f"x\n\nCommit-Gate: {word}\nCommit-Gate: {word}", parents=(base,), tree=tree)
+        problems = commit_gate.check_trailers(self.repo, base, two)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("has 2 Commit-Gate trailers", problems[0])
+        # The right word, in a trailer of a new commit with the same change, passes.
+        same = self.raw_commit(f"y\n\nCommit-Gate: {word}", parents=(base,), tree=tree)
+        self.assertEqual(commit_gate.check_trailers(self.repo, base, same), [])
+
+    def test_the_check_names_each_bad_commit_and_says_how_to_fix_it(self) -> None:
+        self.first_commit()
+        git("update-ref", "refs/remotes/origin/main", "HEAD", cwd=self.repo)
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(git("commit", "-q", "-n", "-m", "feat: around the gate", cwd=self.repo, env=self.person,
+                             check=False).returncode, 0)
+        env = {k: v for k, v in self.person.items() if not k.startswith(("JN_CI_", "PRE_COMMIT_", "GITHUB_"))}
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
+                             text=True)
+        self.assertEqual(run.returncode, 1)
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        self.assertIn(f"gate trailers: {head[:12]} (feat: around the gate) has no Commit-Gate trailer", run.stderr)
+        self.assertEqual(run.stderr.count("To fix a commit"), 1)
+        self.assertIn("git reset --soft HEAD~1", run.stderr)
+        # The fix of the message: take the commit off HEAD, pass just check, and commit again with its message.
+        git("reset", "-q", "--soft", "HEAD~1", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-C", "ORIG_HEAD", cwd=self.repo, env=self.person, check=False))
+        run = subprocess.run([sys.executable, SCRIPT, "--trailers"], cwd=self.repo, env=env, capture_output=True,
+                             text=True)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).stdout.strip(), "feat: around the gate")
+
+    def test_the_base_is_the_base_branch_on_origin(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        rng = lambda **env: commit_gate.ci_range(self.repo, env)  # noqa: E731
+        git("update-ref", "refs/remotes/origin/main", "HEAD~1", cwd=self.repo)
+        self.assertEqual(rng(), ("refs/remotes/origin/main", "HEAD"))
+        git("update-ref", "refs/remotes/origin/master", "HEAD~1", cwd=self.repo)
+        self.assertEqual(rng(), ("refs/remotes/origin/main", "HEAD"))
+        # A local branch named origin/main does not take the place of the ref of origin.
+        git("branch", "-q", "origin/main", "HEAD", cwd=self.repo)
+        self.assertEqual(commit_gate.check_trailers(self.repo, *rng()), [])
+        self.assertEqual(git("rev-list", "--count", f"{rng()[0]}..HEAD", cwd=self.repo).stdout.strip(), "1")
+        # In a pull request, GitHub gives the base branch, and on a push, the event gives the default branch.
+        git("update-ref", "refs/remotes/origin/release", "HEAD~1", cwd=self.repo)
+        git("update-ref", "refs/remotes/origin/trunk", "HEAD~1", cwd=self.repo)
+        self.assertEqual(rng(GITHUB_BASE_REF="release"), ("refs/remotes/origin/release", "HEAD"))
+        event = self.base / "event.json"
+        event.write_text(json.dumps({"repository": {"default_branch": "trunk"}}))
+        self.assertEqual(rng(GITHUB_EVENT_PATH=str(event)), ("refs/remotes/origin/trunk", "HEAD"))
+        self.assertEqual(rng(GITHUB_BASE_REF="release", GITHUB_EVENT_PATH=str(event)),
+                         ("refs/remotes/origin/release", "HEAD"))
+        event.write_text("not json")
+        self.assertEqual(rng(GITHUB_EVENT_PATH=str(event)), ("refs/remotes/origin/main", "HEAD"))
+        # A base branch that origin lacks falls through to the next one.
+        self.assertEqual(rng(GITHUB_BASE_REF="gone"), ("refs/remotes/origin/main", "HEAD"))
+
+    def test_the_range_starts_at_the_merge_base_with_the_base_branch(self) -> None:
+        self.first_commit()
+        fork = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        git("switch", "-q", "-c", "topic", cwd=self.repo)
+        self.change("a.txt", "a\n")
+        # The base branch moved on with a commit that has no trailer, which is not a commit of the topic.
+        moved = self.raw_commit("on main, outside the gate", parents=(fork,), tree=self.tree_with("m.txt", "m"))
+        git("update-ref", "refs/remotes/origin/main", moved, cwd=self.repo)
+        self.assertEqual(commit_gate.check_trailers(self.repo, *commit_gate.ci_range(self.repo, {})), [])
+        self.assertEqual(len(commit_gate.check_trailers(self.repo, fork, moved)), 1)
 
     # The release check of the commit-msg hook
 

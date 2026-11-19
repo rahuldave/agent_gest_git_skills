@@ -28,6 +28,14 @@ class RecipeDocTests(unittest.TestCase):
                 self.assertFalse(lines[doc - 1].startswith("#"), "the comment above the doc goes on, so just "
                                  "--list shows only its last line; put a blank line between them")
 
+    def test_ci_gate_is_a_step_of_just_check_that_logs_its_end(self) -> None:
+        # The index of jnterfaces puts ci-gate in just check, and jlog pass needs the last line jlog step ci-gate.
+        dump = subprocess.run(["just", "--justfile", str(ROLE), "--dump", "--dump-format", "json"], check=True,
+                              capture_output=True, text=True).stdout
+        body = json.loads(dump)["recipes"]["ci-gate"]["body"]
+        self.assertEqual(["".join(part for part in body[-1] if isinstance(part, str))], ["jlog step ci-gate"])
+        self.assertIn("--trailers", json.dumps(body[0]))
+
 
 if __name__ == "__main__":
     unittest.main()

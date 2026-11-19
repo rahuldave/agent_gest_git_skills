@@ -77,11 +77,14 @@ record-skip target +reason:
 jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py"
 
 # JN_CI_BASE selects the verified PR base for an existing-topic push; the hook keeps its pushed head.
-# Without selection use the push range; new history checks all commits. Outside a push use CI, upstream or origin/HEAD.
+# Without selection use the push range; new history checks all commits. Outside a push use JN_CI_BASE, else the base
+# branch on origin. ci-gate is a step of just check and of just ci, so CI runs only steps of just check. It skips
+# merge commits, commits by GitHub bots, and commits from before the gate, and names each one.
 
-# Check that each commit since BASE has the trailer of the commit gate that names its change
+# Check that each commit since the base branch has the trailer of the commit gate that names its change
 ci-gate:
     @{{jn_gate}} --trailers
+    jlog step ci-gate
 
 # The PR of each branch has the branch below it as its base, and the bottom one has BASE. A branch with no upstream,
 # or ahead of its upstream, is pushed first, never with force.

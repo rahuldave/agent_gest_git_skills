@@ -45,7 +45,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
           curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
       # CI runs just check and no other check, so a developer finds each failure of CI with just check.
-      - name: Check the release, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
+      - name: Check the release, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
         run: just check
       - uses: actions/upload-artifact@v4
         with:
