@@ -107,11 +107,13 @@ class ReleaseBase(unittest.TestCase):
         (self.repo / "prof.just").write_text("version:\n" + body)
         (self.repo / "VERSION").write_text(version + ("\n" if version else ""))
 
-    def run_script(self, *args: str, message: Optional[Path] = None) -> subprocess.CompletedProcess:
-        env = dict(os.environ)
+    def run_script(self, *args: str, message: Optional[Path] = None, **extra: str) -> subprocess.CompletedProcess:
+        """Run the script. A hook gets GIT_EDITOR=: from git when git runs no editor, so pass GIT_EDITOR=":" for a
+        message of git commit -m."""
+        env = {k: v for k, v in os.environ.items() if not k.startswith("JN_RELEASE")}
         env.pop("GIT_DIR", None)
-        env.pop(release_tag.MESSAGE_VARIABLE, None)
-        env.pop(release_tag.AMEND_VARIABLE, None)
+        env.pop("GIT_EDITOR", None)
+        env.update(extra)
         if message is not None:
             env[release_tag.MESSAGE_VARIABLE] = str(message)
         return subprocess.run([sys.executable, str(SCRIPT), *args], cwd=self.repo, env=env, capture_output=True,
@@ -417,11 +419,11 @@ class ProfileVersionTests(ReleaseBase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("release-check: no release", result.stdout)
 
-    def check_with_message(self, message: str) -> subprocess.CompletedProcess:
+    def check_with_message(self, message: str, **extra: str) -> subprocess.CompletedProcess:
         """The check at the commit-msg hook: the message of the commit being made is in a file."""
         path = self.base / "COMMIT_EDITMSG"
         path.write_text(message)
-        return self.run_script("--check", message=path)
+        return self.run_script("--check", message=path, **extra)
 
     def test_the_check_counts_the_message_of_the_commit_being_made(self) -> None:
         self.profile("0.2.2")
@@ -461,7 +463,7 @@ class ProfileVersionTests(ReleaseBase):
         self.profile("0.2.2")
         self.commit("feat: start")
         self.tag("v0.2.2")
-        result = self.check_with_message("#12 fix login\n")
+        result = self.check_with_message("#12 fix login\n", GIT_EDITOR=":")
         self.assertEqual(result.returncode, 1)
         self.assertIn("at least 0.2.3", result.stderr)
 
@@ -508,9 +510,31 @@ class ProfileVersionTests(ReleaseBase):
         self.profile("0.2.2")
         self.commit("feat: start")
         self.tag("v0.2.2")
-        result = self.check_with_message("#12 login\n\ndocs: note\n")
+        result = self.check_with_message("#12 login\n\ndocs: note\n", GIT_EDITOR=":")
         self.assertEqual(result.returncode, 1)
         self.assertIn("at least 0.2.3", result.stderr)
+
+    def test_the_cleanup_mode_decides_which_comment_lines_count(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        message = "#12 fix\n\ndocs: g\n"
+        cases = [({"JN_RELEASE_CLEANUP": "strip", "GIT_EDITOR": ":"}, 0),
+                 ({"JN_RELEASE_CLEANUP": "scissors"}, 1),
+                 ({"JN_RELEASE_CLEANUP": "verbatim"}, 1),
+                 ({"JN_RELEASE_CLEANUP": "whitespace"}, 1),
+                 ({"JN_RELEASE_CLEANUP": "default"}, 0),
+                 ({"JN_RELEASE_CLEANUP": "default", "GIT_EDITOR": ":"}, 1),
+                 # Unknown: each mode may apply, and the biggest bump counts.
+                 ({"JN_RELEASE_CLEANUP": "unknown"}, 1)]
+        for extra, code in cases:
+            with self.subTest(extra=extra):
+                self.assertEqual(self.check_with_message(message, **extra).returncode, code)
+        # The biggest bump also when the comment lines hide it: strip gives the feat.
+        result = self.check_with_message("#12 fix\n\nfeat: g\n", JN_RELEASE_CLEANUP="unknown")
+        self.assertIn("at least 0.3.0", result.stderr)
+        git("config", "commit.cleanup", "strip", cwd=self.repo)
+        self.assertEqual(self.check_with_message(message, GIT_EDITOR=":").returncode, 0)
 
     def test_an_empty_message_counts_as_no_commit(self) -> None:
         self.profile("0.2.2")
@@ -580,6 +604,95 @@ class ProfileVersionTests(ReleaseBase):
         result = self.run_script("--dry-run")
         self.assertEqual(result.returncode, 1)
         self.assertIn("different versions", result.stderr)
+
+
+class HookTests(ReleaseBase):
+    """A plain commit-msg hook that runs the check with the message file, as the commit gate does, in real commits."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        hook = self.repo / ".git/hooks/commit-msg"
+        hook.write_text(f'#!/bin/sh\n{release_tag.MESSAGE_VARIABLE}="$1" exec "{sys.executable}" "{SCRIPT}" --check\n')
+        hook.chmod(0o755)
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+
+    def run_git(self, *args: str, **extra: str) -> subprocess.CompletedProcess:
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and not k.startswith("JN_RELEASE")}
+        env.update(extra)
+        return subprocess.run(["git", *args], cwd=self.repo, env=env, capture_output=True, text=True)
+
+    def test_a_merge_of_chores_with_the_tagged_version_goes_through(self) -> None:
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.commit("chore: b")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.commit("chore: a")
+        result = self.run_git("merge", "-q", "--no-ff", "-m", "Merge branch 'side'", "side")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(git("log", "-1", "--format=%P", cwd=self.repo).split()), 2)
+        # An amend of the merge is a merge too, and the release skips it.
+        result = self.run_git("commit", "-q", "--amend", "-m", "Merge side", **{release_tag.AMEND_VARIABLE: "1"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_maybe_amend_on_a_merge_counts_the_message(self) -> None:
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.commit("chore: b")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.commit("chore: a")
+        self.assertEqual(self.run_git("merge", "-q", "--no-ff", "-m", "Merge side", "side").returncode, 0)
+        (self.repo / "n.txt").write_text("n\n")
+        git("add", "n.txt", cwd=self.repo)
+        result = self.run_git("commit", "-q", "-m", "fix: use --amend", **{release_tag.AMEND_VARIABLE: "maybe"})
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("at least 0.2.3", result.stderr)
+
+    def test_a_merge_with_a_conflict_goes_through(self) -> None:
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        (self.repo / "c.txt").write_text("side\n")
+        git("add", "c.txt", cwd=self.repo)
+        git("commit", "-q", "--no-verify", "-m", "chore: b", cwd=self.repo)
+        git("checkout", "-q", "main", cwd=self.repo)
+        (self.repo / "c.txt").write_text("main\n")
+        git("add", "c.txt", cwd=self.repo)
+        git("commit", "-q", "--no-verify", "-m", "chore: a", cwd=self.repo)
+        self.assertNotEqual(self.run_git("merge", "-q", "side").returncode, 0)
+        (self.repo / "c.txt").write_text("both\n")
+        git("add", "c.txt", cwd=self.repo)
+        result = self.run_git("commit", "-q", "--no-edit")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_comment_char_auto_keeps_a_subject_that_git_keeps(self) -> None:
+        # With auto, git picks a character that starts no line, so it keeps "#12 tidy", which asks for a patch.
+        git("config", "core.commentChar", "auto", cwd=self.repo)
+        (self.repo / "n.txt").write_text("n\n")
+        git("add", "n.txt", cwd=self.repo)
+        result = self.run_git("commit", "-q", "-e", "-m", "#12 tidy", "-m", "docs: x", GIT_EDITOR="true")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("at least 0.2.3", result.stderr)
+        result = self.run_git("commit", "-q", "--no-verify", "-e", "-m", "#12 tidy", "-m", "docs: x", GIT_EDITOR="true")
+        self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).strip(), "#12 tidy")
+
+    def test_a_scissors_line_of_a_file_without_an_editor_is_kept(self) -> None:
+        # Without an editor and -v, git keeps the lines after a scissors line of the file, and the bullet counts.
+        (self.base / "m").write_text("docs: notes\n\n# ------------------------ >8 ------------------------\n"
+                                     "- fix: y\n")
+        (self.repo / "n.txt").write_text("n\n")
+        git("add", "n.txt", cwd=self.repo)
+        result = self.run_git("commit", "-q", "-F", str(self.base / "m"))
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("at least 0.2.3", result.stderr)
+
+    def test_an_amend_of_the_tagged_commit_stops_with_a_clear_message(self) -> None:
+        result = self.run_git("commit", "-q", "--amend", "-m", "feat: retag", **{release_tag.AMEND_VARIABLE: "1"})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("HEAD is the release v0.2.2", result.stderr)
+        self.assertEqual(git("tag", "--points-at", "HEAD", cwd=self.repo).split(), ["v0.2.2"])
+        # A new commit on the tagged HEAD is no amend, and the check counts it.
+        (self.repo / "n.txt").write_text("n\n")
+        git("add", "n.txt", cwd=self.repo)
+        result = self.run_git("commit", "-q", "-m", "docs: n")
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 class WorkflowTests(unittest.TestCase):

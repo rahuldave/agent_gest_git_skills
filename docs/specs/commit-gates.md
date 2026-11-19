@@ -1390,7 +1390,10 @@ The tasker role also writes the release job,
   the commit, not at the release after the push. For an amend, the new
   message replaces the message of HEAD. The hook skips the check for a merge,
   for an amend of a merge, during a rebase, and when the Justfile has no
-  recipe `release-check`.
+  recipe `release-check`. The check cleans up the message as git does, with
+  the option `--cleanup` that the gate passes in `JN_RELEASE_CLEANUP`, and
+  with `GIT_EDITOR`, which git sets to `:` when it runs no editor. An amend
+  of the commit with the release tag stops.
 
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
