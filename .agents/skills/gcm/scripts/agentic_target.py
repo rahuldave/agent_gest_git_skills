@@ -5,23 +5,20 @@
 the packet, with a nonce, and saves the packet file in `packets/` of the shared log folder. The record of the result
 comes later, from the `SubagentStop` hook or from `just record`.
 
-The prompt of the packet has three layers, in this order:
+The prompt of the packet has these parts, in this order:
 
 1. The base task: `references/targets/TARGET.md` in the one installed skill that has it, for example the `grv`
    skill for `review` or the `nossaifd` skill for `prose`.
-2. A language layer for each language of `.agents/stack.json`: `.agents/targets/LANGUAGE/TARGET.md`, when the
-   profile of the language ships it. The languages are the names in `profiles`, then the keys of `code` that
-   `profiles` does not name.
-3. The repository text: `.agents/targets/TARGET.md`, when the repository has it.
+2. A language layer, `.agents/targets/LANGUAGE/TARGET.md`, for each key of `code` in `.agents/stack.json` that
+   `profiles` does not name, when the file exists.
+3. The form of the result, with each field that `jagt result lint` needs, such as `follow_up`. A result without
+   one of these fields gives no record.
+4. A language layer for each name in `profiles`, when the profile of the language ships it.
+5. The repository text: `.agents/targets/TARGET.md`, when the repository has it.
 
-jagt 0.6.4 and later adds the language layers of `profiles` and the repository text itself, after the prompt that
-the script gives. So with that jagt, the script gives only the base task, the language layers of the other keys of
-`code`, and the form of the result, and each layer is in the packet once. With an older jagt, the script gives
-each layer itself.
-
-The form of the result names each field that `jagt result lint` needs, such as `follow_up`. A result without one of
-these fields gives no record. It comes after the layers that the script gives, so with jagt 0.6.4 and later the
-layers of jagt come after it.
+The script gives parts 1 to 3. jagt reads parts 4 and 5 itself and adds them after the prompt of the script, so the
+script leaves them out, and each layer is in the packet once. The script compares the layer files and not their
+names, so a second name of a file that jagt reads adds no layer.
 
 The input is the diff of the worktree against HEAD, with the files that git does not track yet and does not
 ignore. The tree of the worktree comes from a copy of the index, as in the gate, so a file that the index holds
@@ -89,8 +86,6 @@ this form, when there are any, add to the task. The result keeps this form.
 """
 
 STACK = ".agents/stack.json"
-# The first jagt that adds the language layers of `profiles` and the repository text to the prompt itself.
-JAGT_LAYERS = (0, 6, 4)
 # A plain language name, as jagt reads it: a letter or a digit, then letters, digits, `_`, `.` and `-`.
 LANGUAGE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 # The install of jagt that the hint gives: the release binary first, the build from source second.
@@ -213,13 +208,13 @@ def plain_names(names: object) -> List[str]:
 
 
 def languages(root: Path) -> Tuple[List[str], List[str]]:
-    """The languages of the project, from `.agents/stack.json`: the names in `profiles`, which jagt 0.6.4 and later
-    reads, and the keys of `code` that `profiles` does not name, which only this script reads."""
+    """The languages of the project, from `.agents/stack.json`: the names in `profiles`, which jagt reads, and the
+    keys of `code` that `profiles` does not name, which only this script reads."""
     content = stack(root)
     profiles = plain_names(content.get("profiles"))
     code = content.get("code")
-    # A key of code keeps the rule that the script had before jagt read profiles: any name that is one folder, such
-    # as c++. jagt reads no key of code, so a stricter rule would drop its layer.
+    # A key of code keeps the rule that the script had before: any name that is one folder, such as c++. jagt reads
+    # no key of code, so a stricter rule would drop its layer.
     keys = [name for name in code if isinstance(name, str) and "/" not in name and "\\" not in name
             and name not in ("", ".", "..")] if isinstance(code, dict) else plain_names(code)
     others: List[str] = []
@@ -227,19 +222,6 @@ def languages(root: Path) -> Tuple[List[str], List[str]]:
         if name not in profiles and name not in others:
             others.append(name)
     return profiles, others
-
-
-def jagt_adds_layers(jagt: str = "jagt") -> bool:
-    """True when the jagt on PATH adds the language layers of `profiles` and the repository text itself, as jagt
-    0.6.4 and later does. A version that cannot be read counts as an older jagt, so the script gives each layer and
-    drops none. jagt is the path of the program, the same path that the render runs."""
-    try:
-        printed = subprocess.run([jagt, "--version"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                                 errors="replace", timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return False
-    found = re.match(r"jagt (\d+)\.(\d+)\.(\d+)", printed.stdout.strip()) if printed.returncode == 0 else None
-    return bool(found) and tuple(int(part) for part in found.groups()) >= JAGT_LAYERS
 
 
 def layer_file(root: Path, relative: str) -> Optional[Path]:
@@ -268,25 +250,20 @@ def file_id(path: Path) -> Tuple[int, int]:
     return info.st_dev, info.st_ino
 
 
-def prompt(root: Path, target: str, jagt_layers: bool) -> Tuple[str, List[str]]:
-    """The text of the prompt, and the paths of its layers, relative to the root. jagt_layers says whether jagt adds
-    the language layers of `profiles` and the repository text itself; then the prompt leaves them out."""
+def prompt(root: Path, target: str) -> Tuple[str, List[str]]:
+    """The text of the prompt, and the paths of its layers, relative to the root. jagt adds the language layers of
+    `profiles` and the repository text itself, after this text, so the prompt leaves them out."""
     profiles, others = languages(root)
-    names = others if jagt_layers else profiles + others
-    relatives = [f".agents/targets/{name}/{target}.md" for name in names]
-    if not jagt_layers:
-        relatives.append(f".agents/targets/{target}.md")
     # The files that jagt reads itself. A name that differs only in case, on a disk that ignores case, or a link
     # can give the same file a second name, so the script compares the files and not the names.
     seen = set()
-    if jagt_layers:
-        for relative in [f".agents/targets/{name}/{target}.md" for name in profiles] + [f".agents/targets/{target}.md"]:
-            path = layer_file(root, relative)
-            if path is not None:
-                seen.add(file_id(path))
-    layers = [base_task(root, target)]
-    for relative in relatives:
+    for relative in [f".agents/targets/{name}/{target}.md" for name in profiles] + [f".agents/targets/{target}.md"]:
         path = layer_file(root, relative)
+        if path is not None:
+            seen.add(file_id(path))
+    layers = [base_task(root, target)]
+    for name in others:
+        path = layer_file(root, f".agents/targets/{name}/{target}.md")
         if path is not None and file_id(path) not in seen:
             seen.add(file_id(path))
             layers.append(path)
@@ -367,14 +344,9 @@ def write_ignore(log: Path, log_fd: int) -> None:
 def render(root: Path, target: str, args: Sequence[str]) -> int:
     if target not in TARGETS:
         raise Stop(f"{target} is not an agentic target; the targets are " + ", ".join(TARGETS))
-    found = shutil.which("jagt")
-    if not found:
+    if not shutil.which("jagt"):
         raise Stop(f"jagt is not on PATH. Install it with {JAGT_INSTALL}.")
-    # One full path for the check of the version and for the render, so a relative folder in PATH cannot find two
-    # programs, one in the folder of the call and one in the root.
-    jagt = os.path.abspath(found)
-    jagt_layers = jagt_adds_layers(jagt)
-    text, layers = prompt(root, target, jagt_layers)
+    text, layers = prompt(root, target)
     log, diffs_fd = prepare_log(root)
     try:
         head, tree, diff = worktree_diff(root)
@@ -397,7 +369,7 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
             handle.write(diff)
     except OSError as exc:
         raise Stop(f"cannot write {diff_file}: {exc.strerror}")
-    command = [jagt, "render", target, f"--prompt-text={text}", f"--input={diff_file}"]
+    command = ["jagt", "render", target, f"--prompt-text={text}", f"--input={diff_file}"]
     if target == "test-review":
         # The result of test-parent for this tree, which the recipe test-review writes first.
         parent_result = log / "test-parent" / f"{tree}.json"
@@ -411,9 +383,8 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
     command += [f"--allowed-action={action}" for action in ALLOWED[target]]
     command += [f"--required-output={output}" for output in TARGETS[target]]
     print("The layers of the prompt: " + ", ".join(layers), file=sys.stderr)
-    if jagt_layers:
-        print("jagt adds the language layers of profiles and the repository text; the provenance of the packet "
-              "names them", file=sys.stderr)
+    print("jagt adds the language layers of profiles and the repository text; the provenance of the packet names "
+          "them", file=sys.stderr)
     run = subprocess.run(command, cwd=root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, text=True,
                          errors="replace")
     sys.stdout.write(run.stdout)

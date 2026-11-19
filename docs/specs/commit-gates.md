@@ -466,11 +466,10 @@ Each packet has these parts:
 - **The repository text** from `.agents/targets/<target>.md`, if the file
   exists. For example, `.agents/targets/review.md` can say "check each SQL
   migration for a rollback".
-- **Each layer once.** jagt 0.6.4 and later adds the language layers of
-  `profiles` and the repository text itself, after the prompt that the
-  recipe gives. So with that jagt, the recipe gives only the base task, the
-  language layers of the other keys of `code` and the form of the result. With
-  an older jagt, the recipe gives each layer itself.
+- **Each layer once.** jagt adds the language layers of `profiles` and the
+  repository text itself, after the prompt that the recipe gives. So the
+  recipe gives only the base task, the language layers of the other keys of
+  `code` and the form of the result.
 - **The inputs:** the diff, the input tree and the arguments of the recipe.
   The diff compares the worktree with `HEAD`, and holds the files that git does
   not track yet. It is the file `diffs/<head>-<tree>.diff` in the shared log
