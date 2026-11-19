@@ -159,6 +159,34 @@ class RenderTests(unittest.TestCase):
         self.assertIn("The layers of the prompt: .agents/skills/grv/references/targets/review.md, "
                       ".agents/targets/python/review.md", result.stderr)
 
+    def test_the_prompt_shows_the_form_of_the_result_with_follow_up(self) -> None:
+        # jagt result lint refuses a result with no follow_up, so each packet names the field and shows its form.
+        for target in agentic_target.TARGETS:
+            with self.subTest(target=target):
+                if target != "review":
+                    self.write(f".agents/skills/s{target}/references/targets/{target}.md", "BASE TASK\n")
+                result = self.render(target)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                packet = result.stdout
+                self.assertIn("follow_up", packet)
+                self.assertIn("`follow_up` is a list", packet)
+                # The form in the prompt, with the nonce of the packet, is a result that jagt accepts.
+                lines = packet.splitlines()
+                start = next(i for i, line in enumerate(lines) if line.strip() == "<<<AGENT_RESULT v1>>>")
+                end = next(i for i, line in enumerate(lines) if line.strip() == "<<<END_AGENT_RESULT>>>")
+                block = "\n".join(line[6:] for line in lines[start:end + 1]) + "\n"
+                block = block.replace("<the nonce of this packet>", self.nonce(packet))
+                lint = subprocess.run(["jagt", "result", "lint", "--expect-count", "1", "--expect-target", target,
+                                       "--expect-nonce", self.nonce(packet), "-"], input=block, capture_output=True,
+                                      text=True)
+                self.assertEqual(lint.returncode, 0, lint.stdout + lint.stderr + block)
+                for output in agentic_target.TARGETS[target]:
+                    self.assertIn(f"  {output}: []", block)
+                # Without follow_up, the same block is refused.
+                refused = subprocess.run(["jagt", "result", "lint", "-"], input=block.replace("follow_up: []\n", ""),
+                                         capture_output=True, text=True)
+                self.assertNotEqual(refused.returncode, 0)
+
     def test_a_missing_layer_is_left_out(self) -> None:
         result = self.render("review")
         self.assertEqual(result.returncode, 0, result.stderr)

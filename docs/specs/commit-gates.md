@@ -742,6 +742,25 @@ only place for them.
   `records/<nonce>.json`, and a second result of the same packet gives no
   record. The findings must be a list in `outputs.findings`, or the result
   gives no record.
+- **The form of the result in each packet.** `jagt result lint` refuses a
+  result with no `follow_up`, and a base task can leave that field out. So
+  `agentic_target.py` adds the form of the result after the layers of the
+  prompt. The form names each field that the lint needs, and shows
+  `follow_up: []`.
+- **A refusal file.** Claude Code does not show the output of a hook. So when
+  the hook gives no record of a result whose nonce names a packet, it writes
+  the reason in `refusals/<nonce>.json` of the shared log folder. When the
+  gate finds no record, it names the nonce and the reason of the latest
+  refusal of each missing target:
+  - The refusal must be of the commit tree. For `update-docs` and `prose`, it
+    can also be of a packet of this worktree.
+  - A refusal is old when its packet has a record, or when a newer record
+    has the same target and input tree. For `update-docs` and `prose`, a
+    newer record of the same target from this worktree also makes it old.
+    The gate does not name an old refusal.
+  - The hook and the gate read a marker of a block only at the start of a
+    line, as jagt does. So the indented form in a packet is not a block.
+  - A refusal never counts as a record.
 - **The guard of the records.** The gate guard stops these calls:
   - `record_result.py hook`, which only the harness runs.
   - `just record` in Claude Code. The guard finds the recipe after the
@@ -781,7 +800,7 @@ only place for them.
   records. The hook `record-result.sh` runs it on `SubagentStop`. The recipes
   `record` and `record-skip` run it with `uv`, with pyyaml for the result
   block. The hook never stops the fresh agent. A result that gives no record
-  only prints the reason.
+  prints the reason and writes it in a refusal file.
 
 ### The run log
 
