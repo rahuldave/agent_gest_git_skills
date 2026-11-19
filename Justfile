@@ -131,8 +131,14 @@ install-test:
   cmp -s .agents/skills/gsu/assets/templates/github-check.yml "$target/.github/workflows/check.yml" || fail "the removal took out the CI starter"
   echo "install-test: install and removal passed"
 
-# Everything a commit must pass, and each check that CI runs: the release version, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
-check: release-check lint package-lint stack-rebase-lab install-test source-archive docs-check diff-check
+# Everything a commit must pass, and each check that CI runs: the release version, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
+check: release-check ci-gate lint package-lint stack-rebase-lab install-test source-archive docs-check diff-check
+
+# This repository has no .agents/stack.json, so its own commits are from before the gate, and the check names them.
+
+# Check that each commit since origin/main has the trailer of the commit gate, as the tasker role does in a project
+ci-gate:
+  uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py --trailers
 
 # The release tags, with release_tag.py of the skill gpa. The job release of verify.yml runs just release on each push to main.
 release_tag := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gpa/scripts/release_tag.py"

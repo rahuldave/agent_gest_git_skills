@@ -1268,8 +1268,12 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     role gives `ci-gate`. Without the role, `ci-gate` only says that there
     is no gate.
   - **`ci-gate`** runs `commit_gate.py --trailers` on each commit of a
-    range. Each commit needs a trailer that names its own patch ID, or its
-    own tree for a merge. Range selection follows these rules:
+    range. It is a step of `just check` too, so CI runs only steps of
+    `just check`. A valid commit has one `Commit-Gate:` trailer with one
+    word, `patch:<id>`, and the ID is the patch ID of the commit. `ci-gate`
+    computes the ID again from the commit. It needs no file of
+    `.agents/log`, which CI does not have. Range selection follows these
+    rules:
     1. For an existing remote branch, the pre-push hook sets
        `PRE_COMMIT_FROM_REF` and `PRE_COMMIT_TO_REF`. With an explicit
        `JN_CI_BASE`, the gate resolves the supplied base and checks that it
@@ -1283,15 +1287,20 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
        including when `JN_CI_BASE` is set.
     3. Outside a push, an explicit `JN_CI_BASE` selects the CI range.
        Optional `JN_CI_HEAD` selects its head, which defaults to `HEAD`.
-    4. Otherwise, the base is the branch upstream, or else `origin/HEAD`. With
-       neither, `ci-gate` fails and says to set `JN_CI_BASE`.
+    4. Otherwise, the base is the base branch on origin. The gate tries
+       `GITHUB_BASE_REF` of a pull request first. Then it tries the default
+       branch of the event of GitHub Actions. Then it tries `origin/HEAD`,
+       `origin/main`, `origin/master`, and last the upstream of the branch. `BASE..HEAD` holds the commits from
+       the merge-base to HEAD. With no base, `ci-gate` says to set
+       `JN_CI_BASE`. On your machine it then passes, since a clone with no
+       remote has no pull request. In CI it fails.
     With the tasker pre-push hook installed, verify the PR target's current
     remote tip and pin its full SHA.
     Use `JN_CI_BASE=<verified-PR-target-tip-SHA> git push origin <topic>`.
     `BASE..HEAD` contains commits reachable from the pushed head, excluding
     those reachable from the selected base. Inspect that full feature range
     first; never select a topic commit to omit unaccepted work.
-    This includes original feature commits and the gated local merge. The
+    This includes original feature commits. The
     operator must verify that the supplied base is the PR target's current
     remote tip; the gate does not establish PR acceptance.
   - **Limits of the pre-push hook.**
@@ -1303,17 +1312,49 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
       `git push --no-verify` for that push.
   - **Commits that git makes without the hooks.** `git revert --no-edit`
     runs no `commit-msg` hook, and a squash of `git rebase --autosquash`
-    keeps the old trailer. Each one stops the push until
-    `git commit --amend --no-edit` gives it a new trailer.
-  - **CI is a part of `just check`.** A step in the list `ci` must be a step
-    of `just check`. The installer leaves out any other name and says so.
+    keeps the old trailer. Each one stops the push.
+  - **The exempt commits.** `ci-gate` skips three kinds of commit, and names
+    each one with the reason:
+    - **A merge with no change of its own.** It has two parents, and its
+      tree is the tree that `git merge-tree --write-tree` makes from them.
+      GitHub makes the merge of a pull request like this, without the gate,
+      and so does the checkout of a pull request. Each change of such a
+      merge comes from a commit that `ci-gate` checks. Any other merge, such
+      as one with the fix of a conflict, needs one trailer `tree:<tree>`
+      with its own tree. So a merge amended with `git commit -n` fails.
+    - **A commit by a GitHub bot.** Its author e-mail is
+      `NAME[bot]@users.noreply.github.com`, with an optional `ID+` first.
+      Dependabot and Renovate make commits like this. The release job makes
+      only tags, so it needs no exemption.
+    - **A commit from before the gate.** No commit that it reaches changed
+      `.agents/stack.json`. The gate needs that file, so it never ran on the
+      commit. A commit that removes the file is not exempt, and neither is
+      each commit after it. `git rev-list --full-history` finds the file
+      also behind a merge that drops it.
+    - A commit made on the GitHub website, such as with its "Revert"
+      button, is not exempt.
+  - **The error.** Each bad commit has a line with its hash, its subject and
+    the problem. Then one line tells the fix. `just check` runs `ci-gate`,
+    so the fix takes the bad commit off HEAD first. For the newest commit,
+    run `git reset --soft HEAD~1`, then `just check`, then
+    `git commit -C ORIG_HEAD`. For an older commit, run `git rebase -i` on
+    its parent, and mark the commit `edit`. Do the same at the stop, then
+    run `git rebase --continue`. The later commits keep their trailers when
+    the rebase has no conflict. When the bad commits are not yours, the
+    base is wrong, for a branch that starts from `develop`. Give the base,
+    as `JN_CI_BASE=origin/develop just check`.
+  - **A shallow clone.** `ci-gate` stops in a shallow clone, since it needs
+    the parent of each commit. CI uses `fetch-depth: 0`.
+  - **CI is a part of `just check`.** `ci-gate` is a step of `just check`,
+    and a step in the list `ci` must be a step of `just check` too. The
+    installer leaves out any other name and says so.
     The default list is empty. Put a step in it only when a clean machine
     tells you more than your own machine, for example a test on Linux.
   - **No agent runs in CI.** The fresh agents run before each commit, on
     the machine of the person. CI reads only their trailers.
   - **The limit.** A trailer is a claim of the gate, not a proof. An agent
-    can type one by hand. The review of the pull request is the check of
-    that.
+    can type one by hand, or the e-mail of a bot. The review of the pull
+    request is the check of that.
 - **The cost.** The agent runs `just check` before it commits, and the gate
   only reads the pass. Integration tests stay in `just check` by default, so a
   slow suite makes each commit slow. The setup question `integration` can move
@@ -1614,6 +1655,9 @@ needs it.
   `git commit -n`, and a commit changed after the gate passed it.
 - `just ci` runs `ci-gate` and the steps of the list `ci`. A name in the list
   that is not a step of `just check` is left out, with a message.
+- `just check` runs `ci-gate` as a step. `ci-gate` fails a trailer with two
+  words or a word of another form, and two trailers. It names each exempt
+  commit that it skips.
 - The gate guard stops the plain forms of `--no-verify`, `-n`, `core.hooksPath`
   and a write to a protected path. It lets a command that hides git run, such
   as `bash <<EOF` or `python -c`. Its tests list both kinds.

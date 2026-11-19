@@ -511,6 +511,48 @@ The installer also installs the pre-commit framework and its git hooks, from
 - **pre-push** runs `just ci`, so a push checks on your machine what CI
   checks.
 
+### The check of the trailers
+
+The step `ci-gate` checks that each commit of a pull request passed the
+commit gate. It reads only git, so CI can run it with no agent.
+It is a step of `just check` and of `just ci`, so CI runs only steps of
+`just check`.
+
+- **The commits.** `ci-gate` checks the commits from the merge-base with the
+  base branch to HEAD. In CI, the base is `JN_CI_BASE`, the base of the pull
+  request. On your machine, the base is `origin/HEAD`, `origin/main` or
+  `origin/master`. A clone with no base passes with a note, but in CI a
+  missing base fails.
+- **A valid trailer.** The commit has one `Commit-Gate:` trailer with one
+  word, `patch:<id>`. The ID is the patch ID of the commit, which `ci-gate`
+  computes again from the commit. So a commit that changed after the gate
+  passed it fails.
+- **The exempt commits.** `ci-gate` skips each of these commits and names
+  it:
+  - A merge with no change of its own. Its tree is the tree that
+    `git merge-tree` makes from its two parents, as for the merge of a pull
+    request on GitHub. Another merge needs the trailer `tree:<tree>` of the
+    gate.
+  - A commit whose author is a GitHub bot, such as
+    `49699333+dependabot[bot]@users.noreply.github.com`. The release job
+    makes only tags, so it has no commit to skip.
+  - A commit from before the gate. No commit that it reaches changed
+    `.agents/stack.json`, so the gate could not run. This repository has no
+    `.agents/stack.json`, so its own commits are of this kind.
+  - A commit that you make on the GitHub website, such as with its
+    "Revert" button, is not exempt. Make it on your machine instead.
+- **The fix.** The error names each bad commit by its hash and subject. To
+  fix the newest commit, run `git reset --soft HEAD~1`, then `just check`,
+  then `git commit -C ORIG_HEAD`. For an older commit, run `git rebase -i`
+  on its parent, and mark the commit `edit`. Do the same at the stop, then
+  run `git rebase --continue`. When the bad commits are not yours, the base
+  is wrong. Give it, as `JN_CI_BASE=origin/develop just check`.
+- **A shallow clone.** The check stops in a shallow clone, since it needs
+  the parents of each commit. Use `fetch-depth: 0` in CI.
+- **The limit.** A trailer is a claim, not a proof. A person can type a
+  trailer or a bot e-mail by hand. The review of the pull request checks
+  that.
+
 The hooks need a jnterfaces installer that runs the `programs` of a role. An
 older one installs no hook and gives no error. The specification is
 [`docs/specs/commit-gates.md`](docs/specs/commit-gates.md).
@@ -526,7 +568,7 @@ canonical references and the package manifest. It builds and verifies a source a
 uploads the archive as a CI artifact.
 
 CI runs `just check` and no other check, so `just check` finds each failure of CI. It runs
-`just release-check`, `just lint`, `just package-lint`, `just stack-rebase-lab`,
+`just release-check`, `just ci-gate`, `just lint`, `just package-lint`, `just stack-rebase-lab`,
 `just install-test`, `just source-archive` and `just diff-check`. `just package-lint` clones
 skill-package-maker from GitHub, so `just check` needs the network. `just lint` and `just install-test` need a
 clone of jnterfaces, which `scripts/find_jnterfaces.sh` finds. CI tests the commit of
