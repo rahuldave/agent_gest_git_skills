@@ -23,7 +23,8 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 STEPS = ["release-check", "lint", "package-lint", "stack-rebase-lab", "install-test", "source-archive", "docs-check", "diff-check"]
 # The steps of the job verify that set up a clone or a program, and the step that runs just check.
 SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs",
-         "Install jlog v0.3.0, which the jnterfaces installer needs"}
+         "Install jlog v0.3.0, which the jnterfaces installer needs",
+         "Install gest v0.6.0 and jagt v0.6.3, which the tasker role needs at its floors"}
 CHECK = "Check the release, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff"
 # The actions of the job verify. A check in an action would be a check that just check does not run.
 VERIFY_ACTIONS = ["actions/checkout@v4", "astral-sh/setup-uv@v6", "extractions/setup-just@v3", "actions/upload-artifact@v4"]
