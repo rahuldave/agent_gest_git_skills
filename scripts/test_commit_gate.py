@@ -1370,6 +1370,285 @@ class GateTests(unittest.TestCase):
         self.assertGoes(git("commit", "-q", "--amend", "--no-edit", cwd=self.repo, env=self.person, check=False))
         self.assertEqual(self.trailers(base + "~1", "HEAD"), [])
 
+    # The trailer of the commit-msg hook: one word, and none on an empty message
+
+    def gate_values(self, commit: str = "HEAD") -> list:
+        out = git("log", "-1", "--format=%(trailers:key=Commit-Gate,valueonly,separator=%x00)", commit,
+                  cwd=self.repo).stdout.strip("\n")
+        return [value for value in out.split("\0") if value]
+
+    def test_an_amend_with_a_message_file_has_one_trailer_of_one_word(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        old = git("log", "-1", "--format=%B", cwd=self.repo).stdout
+        self.assertEqual(len(self.gate_values()), 1)
+        # The message file holds the old trailer, as git commit --amend -F takes it from git log.
+        message = self.base / "msg"
+        for text in (old, "y\n\nCommit-Gate: patch:none patch:" + "1" * 40 + "\n",
+                     "y\n\nCommit-Gate: patch:" + "2" * 40 + "\nSigned-off-by: t <t@example.com>\n"
+                     "Commit-Gate: patch:" + "3" * 40 + "\n"):
+            with self.subTest(text=text):
+                message.write_text(text)
+                self.passed()
+                self.assertGoes(git("commit", "-q", "--amend", "-F", str(message), cwd=self.repo, env=self.person,
+                                    check=False))
+                values = self.gate_values()
+                expected = commit_gate.commit_patch_id(self.repo, "HEAD")
+                self.assertEqual(values, [f"patch:{expected}"])
+                self.assertEqual(self.trailers("HEAD~1", "HEAD"), [])
+        # A line of the body that looks like the trailer is text, and it stays.
+        message.write_text("y\n\nCommit-Gate: in the body\n\nmore text\n")
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--amend", "-F", str(message), cwd=self.repo, env=self.person,
+                            check=False))
+        body = git("log", "-1", "--format=%B", cwd=self.repo).stdout
+        self.assertIn("Commit-Gate: in the body\n", body)
+        self.assertEqual(len(self.gate_values()), 1)
+
+    def test_a_commit_with_the_word_amend_in_its_message_names_its_own_parent(self) -> None:
+        self.first_commit()
+        self.change("a.txt", "a\n")
+        self.write("b.txt", "b\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "docs: explain --amend", cwd=self.repo, env=self.person,
+                            check=False))
+        self.assertEqual(self.gate_values(), [f"patch:{commit_gate.commit_patch_id(self.repo, 'HEAD')}"])
+        self.assertEqual(git("rev-list", "--count", "HEAD", cwd=self.repo).stdout.strip(), "3")
+
+    def test_a_commit_that_may_be_an_amend_stops_when_the_argv_is_not_exact(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        cwd = os.getcwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, cwd)
+        saved = commit_gate.git_argv, commit_gate.exact_git_argv
+        self.addCleanup(setattr, commit_gate, "git_argv", saved[0])
+        self.addCleanup(setattr, commit_gate, "exact_git_argv", saved[1])
+        commit_gate.git_argv = lambda: ["git", "commit", "-m", "x", "--amend"]
+        commit_gate.exact_git_argv = lambda: None
+        with self.assertRaisesRegex(commit_gate.Stop, "cannot tell whether this commit is an amend"):
+            commit_gate.trailer_value(self.repo)
+        commit_gate.exact_git_argv = lambda: ["git", "commit", "-m", "x", "--amend"]
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        # The exact argv shows the amend, and the first commit has no parent, so the change is against no tree.
+        self.assertEqual(commit_gate.trailer_value(self.repo), f"patch:{commit_gate.staged_patch_id(self.repo, None)}")
+        commit_gate.exact_git_argv = lambda: ["git", "commit", "-m", "x --amend"]
+        self.assertEqual(commit_gate.trailer_value(self.repo), f"patch:{commit_gate.staged_patch_id(self.repo, head)}")
+
+    def test_an_empty_message_gets_no_trailer_so_git_stops_the_commit(self) -> None:
+        self.first_commit()
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        message = self.base / "msg"
+        for text, options in (("", ()), ("\n  \n", ()), ("Signed-off-by: t <t@example.com>\n", ()),
+                              ("# a comment\n\n", ("--cleanup=strip",)),
+                              ("; a comment\n", ("-c", "core.commentChar=;", "--cleanup=strip"))):
+            with self.subTest(text=text, options=options):
+                message.write_text(text)
+                head_options = list(options[:2]) if options[:1] == ("-c",) else []
+                rest = list(options[len(head_options):])
+                result = git(*head_options, "commit", "-q", *rest, "-F", str(message), cwd=self.repo,
+                             env=self.person, check=False)
+                self.assertNotEqual(result.returncode, 0, "git made a commit")
+                self.assertIn("empty", result.stderr)
+                self.assertEqual(git("rev-parse", "HEAD", cwd=self.repo).stdout.strip(), head)
+        # Without the mode strip and an editor, git keeps a comment line, so the commit is made with its trailer.
+        message.write_text("# not a comment here\n")
+        result = git("commit", "-q", "-F", str(message), cwd=self.repo, env=self.person, check=False)
+        self.assertGoes(result)
+        self.assertNotIn("the message is empty", result.stderr)
+        self.assertEqual(len(self.gate_values()), 1)
+        self.write("b.txt", "b\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        # With --allow-empty-message, git makes the commit, and the trailer is its whole message. Git reads the first
+        # line as the subject, not as a trailer, so ci-gate names the commit.
+        message.write_text("")
+        self.assertGoes(git("commit", "-q", "--allow-empty-message", "-F", str(message), cwd=self.repo,
+                            env=self.person, check=False))
+        self.assertRegex(git("log", "-1", "--format=%B", cwd=self.repo).stdout, r"^Commit-Gate: patch:[0-9a-f]{40}\n")
+
+    def test_a_real_merge_and_a_real_template_through_the_hook(self) -> None:
+        self.first_commit()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.change("b.txt", "b\n")
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.change("a.txt", "a\n")
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        # A merge whose editor leaves only comment lines stops, as git merge stops without the hook.
+        editor = self.base / "comments-only.sh"
+        editor.write_text("#!/bin/sh\ngrep '^#' \"$1\" > \"$1.new\"; mv \"$1.new\" \"$1\"\n")
+        editor.chmod(0o755)
+        self.passed(git("rev-parse", "HEAD^{tree}", cwd=self.repo).stdout.strip())
+        git("merge", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person, check=False)
+        self.passed()
+        git("merge", "--abort", cwd=self.repo)
+        result = git("merge", "--no-ff", "--edit", "side", cwd=self.repo, env=dict(self.person, GIT_EDITOR=str(editor)),
+                     check=False)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(git("rev-parse", "HEAD", cwd=self.repo).stdout.strip(), head)
+        git("merge", "--abort", cwd=self.repo, check=False)
+        # A merge with a Signed-off-by message is a merge that git makes, so it gets the trailer.
+        result = git("merge", "--no-ff", "-m", "Signed-off-by: t <t@example.com>", "side", cwd=self.repo,
+                     env=self.person, check=False)
+        self.assertGoes(result)
+        self.assertEqual(len(self.gate_values()), 1)
+        # A template that the editor leaves as it is stops the commit.
+        template = self.base / "template"
+        template.write_text("tmpl line\n")
+        self.write("c.txt", "c\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
+        result = git("commit", "-q", "-t", str(template), cwd=self.repo, env=dict(self.person, GIT_EDITOR="true"),
+                     check=False)
+        self.assertNotEqual(result.returncode, 0, "git made a commit")
+        self.assertIn("did not edit", result.stderr)
+        self.assertEqual(git("rev-parse", "HEAD", cwd=self.repo).stdout.strip(), head)
+        # With -s, and with a relative path of -t from a subfolder, git stops it too.
+        sub = self.repo / "sub"
+        sub.mkdir()
+        (sub / "t").write_text("tmpl line\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        for cwd, args in ((self.repo, ["-s", "-t", str(template)]), (sub, ["-t", "t"])):
+            with self.subTest(args=args):
+                result = git("commit", "-q", *args, cwd=cwd, env=dict(self.person, GIT_EDITOR="true"), check=False)
+                self.assertNotEqual(result.returncode, 0, "git made a commit")
+                self.assertEqual(git("rev-parse", "HEAD", cwd=self.repo).stdout.strip(), head)
+        # From the subfolder, a message that the editor changed is a commit, with its trailer.
+        edit = self.base / "edit.sh"
+        edit.write_text("#!/bin/sh\necho mine >> \"$1\"\n")
+        edit.chmod(0o755)
+        result = git("commit", "-q", "-t", "t", cwd=sub, env=dict(self.person, GIT_EDITOR=str(edit)), check=False)
+        self.assertGoes(result)
+        self.assertEqual(len(self.gate_values()), 1)
+        git("reset", "-q", "--soft", "HEAD~1", cwd=self.repo)
+        git("rm", "-q", "--cached", "sub/t", cwd=self.repo)
+        (sub / "t").unlink()
+        sub.rmdir()
+        self.passed()
+        # With core.commentChar=auto, an editor that leaves only the comment lines stops the commit.
+        result = git("-c", "core.commentChar=auto", "commit", "-q", cwd=self.repo,
+                     env=dict(self.person, GIT_EDITOR=str(editor)), check=False)
+        self.assertNotEqual(result.returncode, 0, "git made a commit")
+        self.assertEqual(git("rev-parse", "HEAD", cwd=self.repo).stdout.strip(), head)
+
+    def test_with_the_argv_of_ps_readings_that_disagree_stop_the_commit(self) -> None:
+        # Ps shows -m "#12 fix" --cleanup=verbatim as words, so the mode and the editor may be any one.
+        saved = os.environ.get("GIT_EDITOR")
+        os.environ["GIT_EDITOR"] = ":"
+        self.addCleanup(lambda: os.environ.__setitem__("GIT_EDITOR", saved) if saved is not None
+                        else os.environ.pop("GIT_EDITOR", None))
+        words = ["git", "commit", "-m", "#12", "fix", "--cleanup=verbatim"]
+        with self.assertRaisesRegex(commit_gate.Stop, "cannot tell whether git finds the message empty"):
+            commit_gate.may_be_empty(self.repo, "#12 fix\n", words)
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "#12 fix\n", words, ["git", "commit", "-m", "#12 fix"]))
+        # When each reading agrees, the argv of ps is enough.
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "fix it\n", words))
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "\n", ["git", "commit", "-m", "", "x"]))
+
+    def test_a_merge_follows_the_rule_of_git_merge(self) -> None:
+        saved = os.environ.get("GIT_EDITOR")
+        self.addCleanup(lambda: os.environ.__setitem__("GIT_EDITOR", saved) if saved is not None
+                        else os.environ.pop("GIT_EDITOR", None))
+        merge = ["git", "merge", "--no-ff", "-m", "Signed-off-by: t <t@e>", "side"]
+        os.environ["GIT_EDITOR"] = ":"
+        # git merge finds a Signed-off-by line not empty, so the merge gets its trailer.
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "Signed-off-by: t <t@e>\n", merge, merge))
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "\n", merge, merge))
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "# c\n", merge, merge))
+        # After an editor, which git tells in GIT_EDITOR, the comment lines go.
+        os.environ["GIT_EDITOR"] = "vi"
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "# c\n", ["git", "merge", "--edit", "side"],
+                                                 ["git", "merge", "--edit", "side"]))
+
+    def test_a_template_that_the_editor_left_as_it_was_is_empty(self) -> None:
+        template = self.base / "template"
+        template.write_text("tmpl line\n# a hint\n")
+        argv = ["git", "commit", "-t", str(template)]
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "tmpl line\n# a hint\n", argv, argv))
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "tmpl line\nmore\n", argv, argv))
+        # With -m, git takes no template.
+        given = ["git", "commit", "-t", str(template), "-e", "-m", "tmpl line"]
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "tmpl line\n", given, given))
+        git("config", "commit.template", str(template), cwd=self.repo)
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "tmpl line\n", ["git", "commit"], ["git", "commit"]))
+        # git reads the rest after the template as rest_is_empty does, so a Signed-off-by line after it is empty.
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "tmpl line\n\nSigned-off-by: t <t@e>\n",
+                                                 ["git", "commit", "-s"], ["git", "commit", "-s"]))
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "tmpl line\nmine\n", ["git", "commit"],
+                                                  ["git", "commit"]))
+        # A template that the gate cannot read stops the commit.
+        git("config", "commit.template", str(self.base / "gone"), cwd=self.repo)
+        with self.assertRaisesRegex(commit_gate.Stop, "cannot read the template"):
+            commit_gate.may_be_empty(self.repo, "x\n", ["git", "commit"], ["git", "commit"])
+
+    def test_stripspace_as_git_does_it(self) -> None:
+        self.assertEqual(commit_gate.stripspace("\n\na  \n\n\n# c\nb\n\n", "#"), "a\n\nb\n")
+        self.assertEqual(commit_gate.stripspace("# c\n", None), "# c\n")
+        self.assertEqual(commit_gate.stripspace(" \n", None), "")
+
+    def test_the_scissors_line_and_the_auto_comment_char(self) -> None:
+        text = "# ------------------------ >8 ------------------------\nreal text\n"
+        argv = ["git", "commit", "-v", "-F", "sc"]
+        self.assertTrue(commit_gate.may_be_empty(self.repo, text, argv, argv))
+        self.assertFalse(commit_gate.may_be_empty(self.repo, text, ["git", "commit", "-F", "sc"],
+                                                  ["git", "commit", "-F", "sc"]))
+        git("config", "commit.verbose", "true", cwd=self.repo)
+        self.assertTrue(commit_gate.may_be_empty(self.repo, text, ["git", "commit", "-F", "sc"],
+                                                 ["git", "commit", "-F", "sc"]))
+        git("config", "--unset", "commit.verbose", cwd=self.repo)
+        # With core.commentChar=auto, git takes the first character of its list that starts no line.
+        git("config", "core.commentChar", "auto", cwd=self.repo)
+        # Without an editor, git takes the character from the message itself.
+        strip = ["git", "commit", "--cleanup=strip", "-m", "!wip: thing"]
+        self.assertFalse(commit_gate.may_be_empty(self.repo, "!wip: thing\n", strip, strip))
+        self.assertEqual(commit_gate.comment_strings(self.repo, "#x\n;y\n", False), ["@"])
+        # After an editor, the hint of git shows the character.
+        edit = ["git", "commit", "-e", "-m", "!wip: thing"]
+        hint = "!wip: thing\n\n# Please enter the commit message for your changes.\n"
+        self.assertFalse(commit_gate.may_be_empty(self.repo, hint, edit, edit))
+        self.assertTrue(commit_gate.may_be_empty(self.repo, "# Please enter the commit message\n# x\n", edit, edit))
+        # Without the hint, each character of the list may be the one, and the readings disagree.
+        with self.assertRaisesRegex(commit_gate.Stop, "core.commentChar is auto"):
+            commit_gate.may_be_empty(self.repo, "!wip: thing\n", edit, edit)
+
+    def test_which_messages_git_may_find_empty(self) -> None:
+        argv = ["git", "commit", "-F", "m"]
+        cases = {
+            ("", ()): True, ("\n \n", ()): True, ("# c\n", ()): False, ("# c\n", ("--cleanup=strip",)): True,
+            ("x\n", ()): False, ("# c\nx\n", ("--cleanup=strip",)): False, ("Signed-off-by: t\n\n", ()): True,
+            ("\n", ("--cleanup=verbatim",)): False, ("", ("--cleanup=verbatim",)): True,
+            ("# c\n", ("--cleanup=verbatim",)): False,
+            # After an editor, git -v cuts at the scissors line, so a diff after it is not text.
+            ("# c\n# ------------------------ >8 ------------------------\ndiff --git a/x b/x\n", ("-v", "-e")): True,
+            ("x\n# ------------------------ >8 ------------------------\ndiff --git a/x b/x\n", ("-v", "-e")): False,
+            ("", ("--allow-empty-message",)): False,
+            ("# c\n", ("-e",)): True, ("# c\n", ("--edit",)): True, ("# c\n", ("--no-edit", "-c", "H")): False,
+            ("# c\n", ("-c", "H")): True, ("# c\n", ("--cleanup", "verbatim", "-e")): False,
+        }
+        for (text, options), empty in cases.items():
+            with self.subTest(text=text, options=options):
+                words = ["git", "commit", *options, *argv[2:]]
+                env = {"GIT_EDITOR": ":"}
+                saved = os.environ.get("GIT_EDITOR")
+                if env:
+                    os.environ["GIT_EDITOR"] = ":"
+                else:
+                    os.environ.pop("GIT_EDITOR", None)
+                try:
+                    self.assertEqual(commit_gate.may_be_empty(self.repo, text, words, words), empty)
+                finally:
+                    if saved is None:
+                        os.environ.pop("GIT_EDITOR", None)
+                    else:
+                        os.environ["GIT_EDITOR"] = saved
+
     def test_a_change_of_the_spaces_of_a_line_changes_the_patch_id(self) -> None:
         self.first_commit()
         head = git("rev-parse", "HEAD", cwd=self.repo).stdout.strip()
@@ -1420,6 +1699,26 @@ class CleanupOptionTests(unittest.TestCase):
         self.assertFalse(commit_gate.is_sure_amend(("git", "commit", "-am", "--amend")))
         self.assertFalse(commit_gate.is_sure_amend(("git", "commit", "--message=a", "--amend")))
         self.assertFalse(commit_gate.is_sure_amend(()))
+
+    def test_the_exact_argv_tells_an_amend_from_a_word_of_the_message(self) -> None:
+        cases = {
+            ("git", "commit", "-m", "docs: explain --amend"): False,
+            ("git", "commit", "-m", "x", "--amend"): True,
+            ("git", "commit", "-m", "--amend"): False,
+            ("git", "commit", "-am", "--amend"): False,
+            ("git", "commit", "-mx", "--am"): True,
+            ("git", "commit", "--message", "--amend"): False,
+            ("git", "commit", "--message=--amend", "--amen"): True,
+            ("git", "commit", "-F", "f", "--", "--amend"): False,
+            ("git", "commit", "-S", "--amend"): True,
+            ("git", "commit", "--am"): True,
+            ("git", "commit", "--a"): False,
+            ("git", "-c", "a=b", "commit", "--amend"): True,
+            ("git", "status", "--amend"): False,
+        }
+        for argv, amend in cases.items():
+            with self.subTest(argv=argv):
+                self.assertEqual(commit_gate.amend_in_exact(argv), amend)
 
     def test_the_options_that_show_an_editor(self) -> None:
         cases = {("git", "commit"): True, ("git", "commit", "-v", "-q"): True, ("git", "commit", "-e", "-F", "m"): True,

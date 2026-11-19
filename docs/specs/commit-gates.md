@@ -1242,9 +1242,25 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     still passes. An added line that moves within one part of a file keeps
     the ID too. The trailer is a claim, so that cost is fair. A file of `git add -N`
     is not in the ID, since the commit does not hold it.
-  - **An amend.** For what looks like an amend, the trailer names the patch
-    IDs against both possible parents. When HEAD is a merge, it names the
-    tree too, since the amend is a merge.
+  - **One word.** The trailer has one word. For an amend, the patch ID is
+    against the parent of HEAD. When HEAD is a merge, the word is the tree,
+    since the amend is a merge.
+  - **An amend that the gate cannot see.** `ps` joins the words of each
+    argument, so a word `--amend` after the text of `-m` can be a part of the
+    message. Then the gate reads each argument whole, from `/proc` on Linux
+    or from the `sysctl` value `KERN_PROCARGS2` on macOS. When neither one
+    can tell, the gate stops the commit. Put `--amend` before `-m`, or give
+    the message with `-F FILE`.
+  - **An old trailer.** `git commit --amend -F FILE` can bring the old
+    trailer back in FILE. The gate removes each old trailer of the gate in
+    the last block of the message, so the commit has one trailer.
+  - **An empty message.** When git can find the message empty, the gate adds
+    no trailer, so git stops the commit. Git finds a message empty when each
+    line is blank or a `Signed-off-by:` line, after its cleanup removes the
+    comment lines. In the mode `verbatim`, only a message with no characters
+    is empty. With `--allow-empty-message`, the trailer is the whole message.
+    Git reads that line as the subject, not as a trailer, so `ci-gate` names
+    the commit.
   - **A skip shows.** `git commit -n` skips the `commit-msg` hook too. So a
     commit that went around the gate has no trailer.
   - **`just ci`** runs `ci-gate`, then the steps in the list `ci` of

@@ -45,8 +45,12 @@ The trailer: the commit-msg hook runs the gate once more, and when it passes, it
 `Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. A patch ID is the hash of the change,
 from `git patch-id --verbatim` on a diff with no lines of context, so a rebase with no conflict keeps it. With no
 context, a line that moves within one part of a file keeps the ID too. The trailer is a claim, so that is a fair
-price. `git commit -n` skips the commit-msg hook too, so a commit that went around the gate has no trailer. For what looks like an amend, the trailer names the patch IDs
-against both possible parents, and the tree too when HEAD is a merge.
+price. `git commit -n` skips the commit-msg hook too, so a commit that went around the gate has no trailer. The trailer
+has one word. For an amend, the patch ID is against the parent of HEAD, and an amend of a merge gets the tree. Ps
+shows the words of each argument joined, so a word `--amend` after the text of `-m` may be a part of the message.
+Then the gate reads each argument whole, from /proc on Linux or the sysctl KERN_PROCARGS2 on macOS, and it stops the
+commit when neither can tell. An old trailer of the gate in the message goes, so an amend with `-F` has one trailer.
+When git may find the message empty and stop the commit, the gate adds no trailer, so git stops it.
 
 The release check: before it adds the trailer, the commit-msg hook runs `just release-check` with the path of the
 message file in `JN_RELEASE_MESSAGE`. `just check` ran before the message was written, so it could not count it. With
@@ -187,20 +191,155 @@ def commit_tree(root: Path) -> str:
     return git(["write-tree"], root, dict(os.environ)).strip()
 
 
-def git_argv() -> List[str]:
-    """The argv of the nearest git above this process, from ps, or [] when ps cannot tell. A hook manager such as
-    pre-commit can stand between git and the gate."""
+def git_process() -> Tuple[Optional[int], List[str]]:
+    """The process ID and the argv of the nearest git above this process, from ps, or (None, []) when ps cannot
+    tell. A hook manager such as pre-commit can stand between git and the gate."""
     pid = os.getppid()
     for _ in range(6):
         run = subprocess.run(["ps", "-o", "ppid=", "-o", "args=", "-p", str(pid)], stdin=subprocess.DEVNULL,
                              capture_output=True, text=True, errors="replace")
         fields = run.stdout.split()
         if run.returncode != 0 or len(fields) < 2:
-            return []
+            return None, []
         if os.path.basename(fields[1]) == "git":
-            return fields[1:]
+            return pid, fields[1:]
         pid = int(fields[0])
-    return []
+    return None, []
+
+
+def git_argv() -> List[str]:
+    """The argv of the nearest git above this process, from ps, or [] when ps cannot tell. Ps joins the words of
+    each argument with spaces."""
+    return git_process()[1]
+
+
+def macos_argv(pid: int) -> Optional[List[str]]:
+    """The argv of process PID, one entry for each argument, from the sysctl KERN_PROCARGS2 of macOS, or None. The
+    data is argc as 4 bytes, the path of the program, padding of NUL bytes, then each argument with a NUL after it."""
+    try:
+        import ctypes
+        import ctypes.util
+
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        mib = (ctypes.c_int * 3)(1, 49, pid)  # CTL_KERN, KERN_PROCARGS2
+        size = ctypes.c_size_t(0)
+        if libc.sysctl(mib, 3, None, ctypes.byref(size), None, ctypes.c_size_t(0)) != 0 or size.value < 4:
+            return None
+        buffer = ctypes.create_string_buffer(size.value)
+        if libc.sysctl(mib, 3, buffer, ctypes.byref(size), None, ctypes.c_size_t(0)) != 0:
+            return None
+    except (OSError, AttributeError, TypeError):
+        return None
+    data = buffer.raw[:size.value]
+    count = int.from_bytes(data[:4], sys.byteorder)
+    rest = data[4:]
+    end = rest.find(b"\0")
+    if end < 0:
+        return None
+    rest = rest[end:].lstrip(b"\0")
+    words = rest.split(b"\0")
+    if count < 1 or len(words) < count:
+        return None
+    return [word.decode(errors="replace") for word in words[:count]]
+
+
+def exact_git_argv() -> Optional[List[str]]:
+    """The argv of the nearest git above this process, one entry for each argument, from /proc on Linux or from the
+    sysctl of macOS, or None when neither can tell."""
+    pid, _ = git_process()
+    if pid is None:
+        return None
+    try:
+        data = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return macos_argv(pid) if sys.platform == "darwin" else None
+    return [word.decode(errors="replace") for word in data.split(b"\0")[:-1]] or None
+
+
+def exact_options(argv: Sequence[str]) -> Dict[str, object]:
+    """The options of `git commit` in an exact argv, where the value of an option such as -m is one entry: amend,
+    editor (True when git runs the editor, None when the options do not say), gives (an option that gives the
+    message), cleanup (the mode, or None), allow_empty (--allow-empty-message), template (the value of -t, or None)
+    and verbose (-v)."""
+    found: Dict[str, object] = {"amend": False, "editor": None, "gives": False, "cleanup": None,
+                                "allow_empty": False, "template": None, "verbose": False}
+    if "commit" not in argv:
+        return found
+    words = list(argv[argv.index("commit") + 1:])
+    reedit = False
+    index = 0
+
+    def long(name: str, option: str, least: int = 3) -> bool:
+        return len(name) >= least and option.startswith(name)
+
+    def value(equals: str, rest: str) -> str:
+        nonlocal index
+        if equals:
+            return rest
+        index += 1
+        return words[index - 1] if index - 1 < len(words) else ""
+
+    while index < len(words):
+        word = words[index]
+        index += 1
+        if word == "--":
+            break
+        if not word.startswith("-") or word == "-":
+            continue
+        if word.startswith("--"):
+            name, equals, rest = word.partition("=")
+            if long(name, "--amend", 4):
+                found["amend"] = True
+            elif long(name, "--no-amend", 6):
+                found["amend"] = False
+            elif long(name, "--allow-empty-message", len("--allow-empty-m")):
+                found["allow_empty"] = True
+            elif name == "--edit" or (long(name, "--edit", 4) and name != "--e"):
+                found["editor"] = True
+            elif long(name, "--no-edit", 6):
+                found["editor"] = False
+            elif long(name, "--verbose", 4):
+                found["verbose"] = True
+            elif long(name, "--no-verbose", 6):
+                found["verbose"] = False
+            elif long(name, "--no-cleanup", 6):
+                found["cleanup"] = "default"
+            elif long(name, "--cleanup"):
+                found["cleanup"] = value(equals, rest)
+            elif long(name, "--template"):
+                found["template"] = value(equals, rest)
+            elif any(long(name, option) for option in TEXT_OPTIONS):
+                if any(long(name, option) for option in ("--message", "--file", "--reuse-message")):
+                    found["gives"] = True
+                if long(name, "--reedit-message"):
+                    found["gives"] = reedit = True
+                value(equals, rest)
+            continue
+        for at, letter in enumerate(word[1:], start=1):
+            if letter in "Su":
+                break  # -S and -u take their value in the same word only.
+            if letter == "e":
+                found["editor"] = True
+            if letter == "v":
+                found["verbose"] = True
+            if letter in TEXT_SHORT:
+                found["gives"] = found["gives"] or letter in "mFCc"
+                reedit = reedit or letter == "c"
+                # The value is the rest of the word, or the next word when the letter ends the word.
+                given = word[at + 1:] if at < len(word) - 1 else (words[index] if index < len(words) else "")
+                index += 1 if at == len(word) - 1 else 0
+                if letter == "t":
+                    found["template"] = given
+                break
+    if found["editor"] is None:
+        found["editor"] = reedit or not found["gives"]
+    return found
+
+
+def amend_in_exact(argv: Sequence[str]) -> bool:
+    """True when the exact argv of `git commit` has the option --amend, or an abbreviation of it. The value of an
+    option such as -m is one entry, so a word --amend in the message does not count."""
+    return bool(exact_options(argv)["amend"])
 
 
 def is_amend(argv: Sequence[str]) -> bool:
@@ -800,21 +939,42 @@ def commit_patch_id(root: Path, commit: str) -> str:
     return patch_id(git(["diff-tree", *DIFF_OPTIONS, base, commit], root), root)
 
 
+def amend_state() -> str:
+    """`yes` for an amend, `no` for a new commit, and `maybe` when the gate cannot tell. Ps shows the words of each
+    argument joined with spaces, so a word --amend after the text of -m may be a part of the message. /proc on Linux
+    gives each argument whole, so there the gate can always tell."""
+    argv = git_argv()
+    if not is_amend(argv):
+        return "no"
+    if is_sure_amend(argv):
+        return "yes"
+    exact = exact_git_argv()
+    if exact is not None:
+        return "yes" if amend_in_exact(exact) else "no"
+    return "maybe"
+
+
+def is_merge_commit(root: Path, commit: str) -> bool:
+    return len(git(["rev-list", "--parents", "-n", "1", commit], root, plain_env()).split()) > 2
+
+
 def trailer_value(root: Path) -> str:
-    """The words of the trailer: tree:<tree> for a merge, and patch:<id> for each parent that the commit may have.
-    An amend of a merge is a merge too."""
+    """The one word of the trailer: tree:<tree> for a merge, and else patch:<id> of the change against the parent of
+    the commit. An amend replaces HEAD, so its parent is the parent of HEAD, and an amend of a merge is a merge. When
+    the gate cannot tell an amend, it stops, since the one word needs the parent."""
     if resolve(root, "MERGE_HEAD") is not None:
         return f"tree:{commit_tree(root)}"
-    words = []
-    for parent in parents_of_commit(root):
-        word = f"patch:{staged_patch_id(root, parent)}"
-        if word not in words:
-            words.append(word)
     head = resolve(root, "HEAD")
-    if head is not None and is_amend(git_argv()) and len(git(["rev-list", "--parents", "-n", "1", head], root,
-                                                             plain_env()).split()) > 2:
-        words.append(f"tree:{commit_tree(root)}")
-    return " ".join(words)
+    state = amend_state() if head is not None else "no"
+    if state == "maybe":
+        raise Stop("the gate cannot tell whether this commit is an amend, since a word of the command after the text "
+                   "of the message looks like --amend, and the trailer needs the parent of the commit. Put --amend "
+                   "before -m, or give the message with -F FILE")
+    if state == "no":
+        return f"patch:{staged_patch_id(root, head)}"
+    if is_merge_commit(root, head):
+        return f"tree:{commit_tree(root)}"
+    return f"patch:{staged_patch_id(root, resolve(root, 'HEAD^'))}"
 
 
 RELEASE_CHECK = "release-check"
@@ -866,10 +1026,185 @@ def release_check(root: Path, message: Path) -> None:
         raise Stop(f"`just {RELEASE_CHECK}` fails with the message of this commit: {reason}")
 
 
+# The cleanup modes of git commit, for an empty message.
+CLEANUP_MODES = ("default", "strip", "whitespace", "verbatim", "scissors")
+# The characters that git picks from for core.commentChar=auto, in its order.
+AUTO_COMMENT_CHARS = "#;@!$%^&|:"
+# The scissors line of git, after the comment string.
+SCISSORS = " ------------------------ >8 ------------------------"
+
+
+def config(root: Path, key: str) -> str:
+    return git(["config", "--get", key], root, plain_env(), check=False).strip()
+
+
+def comment_strings(root: Path, text: str, editor: bool) -> List[str]:
+    """The comment strings that git may use: core.commentString or core.commentChar, `#` by default. For `auto`,
+    git takes the first character of its list that starts no line of the message that it gives the editor. Without
+    an editor, that is TEXT. After an editor, git's own lines, such as its hint "Please enter the commit message",
+    show the character. Without them, each character of the list may be the one."""
+    for key in ("core.commentString", "core.commentChar"):
+        value = config(root, key)
+        if value and value != "auto":
+            return [value]
+        if value == "auto":
+            if not editor:
+                starts = {line[:1] for line in text.splitlines()}
+                return [next((char for char in AUTO_COMMENT_CHARS if char not in starts), "#")]
+            for line in text.splitlines():
+                if line[:1] in AUTO_COMMENT_CHARS and (line[1:] == SCISSORS or " Please enter the " in line):
+                    return [line[:1]]
+            return list(AUTO_COMMENT_CHARS)
+    return ["#"]
+
+
+def config_true(root: Path, key: str) -> bool:
+    value = config(root, key).lower()
+    return value not in ("", "false", "no", "off", "0")
+
+
+def stripspace(text: str, comment: Optional[str]) -> str:
+    """The text as strbuf_stripspace of git leaves it: each comment line out when COMMENT is given, the spaces at
+    the end of each line out, one blank line for each run of them, none at the start or the end."""
+    out: List[str] = []
+    for line in text.splitlines():
+        if comment is not None and line.startswith(comment):
+            continue
+        line = line.rstrip()
+        if not line and (not out or not out[-1]):
+            continue
+        out.append(line)
+    while out and not out[-1]:
+        out.pop()
+    return "".join(line + "\n" for line in out)
+
+
+def rest_is_empty(text: str) -> bool:
+    """True when each line of TEXT is blank or a Signed-off-by line, as rest_is_empty of git commit reads it."""
+    return all(not line.strip() or line.startswith("Signed-off-by: ") for line in text.splitlines())
+
+
+def message_is_empty(text: str, mode: str, editor: bool, verbose: bool, commit: bool, comment: str,
+                     template: Optional[str]) -> bool:
+    """True when git stops the commit for the message TEXT, with the comment string COMMENT. git commit cuts the
+    message at the scissors line for -v and for the mode scissors, then cleans it up. Then it reads the message as
+    empty when each line is blank or a Signed-off-by line, and git merge when each line is blank. In the mode
+    verbatim, only a message of no characters is empty. A message that starts with the cleaned TEMPLATE, with
+    only such lines after it, is a template that the editor left as it was."""
+    lines = text.splitlines()
+    scissors = comment + SCISSORS
+    if (verbose or (mode == "scissors" and editor)) and scissors in lines:
+        text = "".join(line + "\n" for line in lines[:lines.index(scissors)])
+    if mode == "verbatim":
+        return not text
+    strip = comment if mode == "strip" or (mode == "default" and editor) else None
+    message = stripspace(text, strip)
+    if not commit:
+        return not message.strip()
+    if rest_is_empty(message):
+        return True
+    if template is not None and editor:
+        model = stripspace(template, strip)
+        if model and message.startswith(model):
+            return rest_is_empty(message[len(model):])
+    return False
+
+
+def read_template(root: Path, name: str, prefix: str) -> str:
+    """The text of the template NAME. Git reads a relative path of -t from the folder where git ran, which it gives
+    the hook in GIT_PREFIX as PREFIX, and a relative path of commit.template from the top of the repository, with a
+    PREFIX of "". When the gate cannot read it, it stops the commit, since it cannot tell whether git stops it."""
+    path = Path(name).expanduser()
+    if not path.is_absolute():
+        path = root / prefix / path
+    try:
+        return path.read_text(errors="replace")
+    except OSError as error:
+        raise Stop(f"the gate cannot read the template {name} ({error}), so it cannot tell whether git stops the "
+                   "commit for a message that is the template. Give the template as an absolute path") from None
+
+
+def may_be_empty(root: Path, text: str, argv: Sequence[str], exact: Optional[Sequence[str]] = None) -> bool:
+    """True when git finds the message TEXT empty and stops the commit, as git does after this hook. The rules are
+    in message_is_empty. With --allow-empty-message, no message is empty.
+
+    EXACT is the argv with each argument whole, when the system can give it. git merge and the commands that are not
+    git commit tell the editor in GIT_EDITOR, which git sets to `:` when it runs none. ARGV, from ps, may hide an
+    option after the text of the message. When the readings that may apply disagree, the gate stops the commit."""
+    words = exact if exact is not None else argv
+    commit = "commit" in words
+    verbose_config = config_true(root, "commit.verbose")
+    template_name, prefix = None, ""
+    if commit and exact is not None:
+        options = exact_options(exact)
+        if options["allow_empty"]:
+            return False
+        readings = [(options["cleanup"], bool(options["editor"]))]
+        verbose = bool(options["verbose"]) or verbose_config
+        if not (options["gives"] or options["amend"]):
+            if options["template"]:
+                template_name, prefix = str(options["template"]), os.environ.get("GIT_PREFIX", "")
+            elif config(root, "commit.template"):
+                template_name, prefix = config(root, "commit.template"), ""
+    elif commit:
+        sure, complete = option_words(argv)
+        if any(len(word) >= len("--allow-empty-m") and "--allow-empty-message".startswith(word) for word in sure):
+            return False
+        given = cleanup_of(argv)
+        if os.environ.get("GIT_EDITOR") != ":" or runs_editor(argv):
+            editors = [True]
+        else:
+            editors = [False] if complete else [False, True]
+        readings = [(given, editor) for editor in editors]
+        verbose = verbose_config or any(word in ("-v", "--verbose") for word in sure)
+    else:
+        # git merge, or git commit run by another command of git: GIT_EDITOR tells the editor.
+        given = None
+        for index, word in enumerate(words):
+            name, equals, rest = word.partition("=")
+            if len(name) >= 3 and "--cleanup".startswith(name):
+                given = rest if equals else (words[index + 1] if index + 1 < len(words) else "")
+        readings = [(given, os.environ.get("GIT_EDITOR") != ":")]
+        verbose = False
+    template = read_template(root, template_name, prefix) if template_name is not None else None
+    answers = set()
+    for given, editor in readings:
+        if given is None:
+            given = config(root, "commit.cleanup") or "default"
+        modes = [given] if given in CLEANUP_MODES else list(CLEANUP_MODES)
+        for mode in modes:
+            for comment in comment_strings(root, text, editor):
+                answers.add(message_is_empty(text, mode, editor, verbose, commit, comment, template))
+    if len(answers) > 1:
+        raise Stop("the gate cannot tell whether git finds the message empty, so it cannot tell whether to add the "
+                   "trailer. Either ps joins the words of each argument and an option may hide in the text of -m, "
+                   "or core.commentChar is auto and the editor removed the hint of git. Give the message with "
+                   "-F FILE and the options before it, or set core.commentChar")
+    return answers == {True}
+
+
 def add_trailer(root: Path, message: Path) -> None:
+    """Put the one trailer of the gate at the end of the message. Each old trailer of the gate goes first, so an
+    amend of a commit with a trailer has the new one alone."""
+    value = trailer_value(root)
     # With --no-divider, a line --- in the message is text, so the trailer goes at the end, where git log reads it.
     git(["interpret-trailers", "--in-place", "--no-divider", "--if-exists", "replace", "--trailer",
-         f"{TRAILER}: {trailer_value(root)}", str(message)], root, plain_env())
+         f"{TRAILER}: {value}", str(message)], root, plain_env())
+    text = message.read_text(errors="surrogateescape")
+    lines = text.splitlines(keepends=True)
+    key = re.compile(rf"^{TRAILER}\s*:", re.IGNORECASE)
+    marks = [index for index, line in enumerate(lines) if key.match(line)]
+    if not marks:
+        return
+    # `--if-exists replace` replaces one old trailer only. The new one is the last, and each other trailer of the
+    # gate in its block goes. A line above the block is text of the message, which git log does not read.
+    keep = start = marks[-1]
+    while start > 0 and lines[start - 1].strip():
+        start -= 1
+    drop = [index for index in marks if start <= index < keep]
+    if drop:
+        message.write_text("".join(line for index, line in enumerate(lines) if index not in drop),
+                           errors="surrogateescape")
 
 
 def ci_range(root: Path, env: Mapping[str, str]) -> Tuple[Optional[str], str]:
@@ -1111,6 +1446,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if args.hook == "commit-msg":
                 if args.message is None:
                     raise Stop("the commit-msg hook needs the message file")
+                text = Path(args.message).read_text(errors="replace")
+                if may_be_empty(root, text, git_argv(), exact_git_argv()):
+                    # git stops a commit with an empty message after this hook, unless the trailer fills it.
+                    print("commit gate: the message is empty, so git stops the commit, and the gate adds no trailer. "
+                          "A commit that git makes anyway has no trailer, and just ci-gate names it", file=sys.stderr)
+                    return 0
                 release_check(root, Path(args.message))
                 add_trailer(root, Path(args.message))
     except Stop as stop:
