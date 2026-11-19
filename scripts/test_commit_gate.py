@@ -1074,6 +1074,99 @@ class GateTests(unittest.TestCase):
         self.assertIn("Commit-Gate: tree:", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
         self.assertEqual(self.trailers(base + "~1", "HEAD"), [])
 
+    # The release check of the commit-msg hook
+
+    def release_setup(self, version: str = "0.2.2") -> None:
+        """A Justfile with the real release-check and a stub profile py, a first commit, and the tag v0.2.2."""
+        script = ROOT / ".agents/skills/gpa/scripts/release_tag.py"
+        (self.repo / "Justfile").write_text(JUSTFILE + f"mod py 'prof.just'\nrelease-check:\n    @\"{sys.executable}\" "
+                                            f"\"{script}\" --check\n")
+        self.write("prof.just", "version:\n    @cat VERSION\n")
+        self.write("VERSION", version + "\n")
+        self.write(".agents/stack.json", json.dumps(dict(STACK, profiles=["py"])))
+        self.first_commit()
+        git("tag", "v0.2.2", cwd=self.repo)
+
+    def commit_with(self, message: str, path: str = "a.txt", text: str = "a\n") -> subprocess.CompletedProcess:
+        self.write(path, text)
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        return git("commit", "-q", "-m", message, cwd=self.repo, env=self.person, check=False)
+
+    def test_a_fix_with_the_tagged_version_stops_at_the_commit_msg_hook(self) -> None:
+        self.release_setup()
+        result = self.commit_with("fix: a bug")
+        self.assertStops(result, "the version must be at least 0.2.3, but the profile py gives 0.2.2")
+        self.assertIn("release-check", result.stderr)
+        self.assertGoes(self.commit_with("fix: a bug", "VERSION", "0.2.3\n"))
+
+    def test_a_chore_with_the_tagged_version_goes_through(self) -> None:
+        self.release_setup()
+        self.assertGoes(self.commit_with("chore: a"))
+        self.assertIn("Commit-Gate: patch:", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+
+    def test_a_subject_with_an_issue_number_stops_at_the_commit_msg_hook(self) -> None:
+        self.release_setup()
+        self.assertStops(self.commit_with("#12 fix login"), "at least 0.2.3")
+
+    def test_an_amend_can_change_the_type(self) -> None:
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        self.assertGoes(self.commit_with("fix: q", "VERSION", "0.2.3\n"))
+        self.write("VERSION", "0.2.2\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--amend", "-m", "chore: q", cwd=self.repo, env=self.person,
+                            check=False))
+        self.write("b.txt", "b\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(git("commit", "-q", "--amend", "-m", "fix: q", cwd=self.repo, env=self.person,
+                             check=False), "at least 0.2.3")
+
+    def test_no_recipe_release_check_skips_the_check(self) -> None:
+        self.release_setup()
+        (self.repo / "Justfile").write_text(JUSTFILE + "mod py 'prof.just'\n")
+        self.assertGoes(self.commit_with("fix: a bug"))
+
+    def test_a_template_with_comment_lines_first_goes_through_the_editor(self) -> None:
+        self.release_setup()
+        self.write("tmpl", "# <type>(<scope>): <subject>\n# types: feat fix\n\n")
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        editor = "sh -c 'printf \"docs: a note\\n\" >> \"$1\"' --"
+        env = dict(self.person, GIT_EDITOR=editor)
+        self.assertGoes(git("-c", f"commit.template={self.repo / 'tmpl'}", "commit", "-q", cwd=self.repo, env=env,
+                            check=False))
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.repo).stdout.splitlines()[0], "docs: a note")
+
+    def test_a_reword_in_a_rebase_skips_the_release_check(self) -> None:
+        self.release_setup()
+        self.assertGoes(self.commit_with("chore: a"))
+        self.assertGoes(self.commit_with("fix: b", "VERSION", "0.2.3\n"))
+        # Reword the chore to a fix: the version raise of the later commit is not in HEAD during the replay.
+        sequence = "sh -c 'sed -i.bak \"1s/^pick/reword/\" \"$1\"' --"
+        editor = "sh -c 'printf \"fix: a\\n\" > \"$1\"' --"
+        env = dict(self.person, GIT_SEQUENCE_EDITOR=sequence, GIT_EDITOR=editor)
+        result = git("rebase", "-q", "-i", "HEAD~2", cwd=self.repo, env=env, check=False)
+        self.assertGoes(result)
+        self.assertEqual(git("log", "-1", "--format=%s", "HEAD~1", cwd=self.repo).stdout.strip(), "fix: a")
+
+    def test_a_merge_skips_the_release_check(self) -> None:
+        self.release_setup()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: b", "b.txt", "b\n"))
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: a"))
+        git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person, check=False)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "Merge branch side", cwd=self.repo, env=self.person, check=False))
+        # An amend of the merge is a merge too, and the release skips it.
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--amend", "-m", "Merge side", cwd=self.repo, env=self.person,
+                            check=False))
+
     def test_a_rebase_past_a_change_next_to_the_change_keeps_the_trailer(self) -> None:
         # A diff with context would hold the line that main changed, and the patch ID would change.
         self.write("a.txt", "".join(f"line {n}\n" for n in range(20)))

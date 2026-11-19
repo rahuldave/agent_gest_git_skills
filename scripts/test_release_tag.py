@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,7 +76,7 @@ class ReleaseBase(unittest.TestCase):
     def setUp(self) -> None:
         scratch = tempfile.TemporaryDirectory(prefix="release-tag-")
         self.addCleanup(scratch.cleanup)
-        base = Path(scratch.name).resolve()
+        self.base = base = Path(scratch.name).resolve()
         self.origin, self.repo = base / "origin.git", base / "repo"
         git("init", "-q", "--bare", str(self.origin), cwd=base)
         self.repo.mkdir()
@@ -106,9 +107,13 @@ class ReleaseBase(unittest.TestCase):
         (self.repo / "prof.just").write_text("version:\n" + body)
         (self.repo / "VERSION").write_text(version + ("\n" if version else ""))
 
-    def run_script(self, *args: str) -> subprocess.CompletedProcess:
+    def run_script(self, *args: str, message: Optional[Path] = None) -> subprocess.CompletedProcess:
         env = dict(os.environ)
         env.pop("GIT_DIR", None)
+        env.pop(release_tag.MESSAGE_VARIABLE, None)
+        env.pop(release_tag.AMEND_VARIABLE, None)
+        if message is not None:
+            env[release_tag.MESSAGE_VARIABLE] = str(message)
         return subprocess.run([sys.executable, str(SCRIPT), *args], cwd=self.repo, env=env, capture_output=True,
                               text=True)
 
@@ -387,6 +392,150 @@ class ProfileVersionTests(ReleaseBase):
         result = self.run_script("--check")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("release-check: the next tag is v1.1.0", result.stdout)
+
+    def test_the_check_fails_on_a_fix_with_the_tagged_version(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        self.commit("fix: a bug")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("must be at least 0.2.3, but the profile py gives 0.2.2", result.stderr)
+        (self.repo / "VERSION").write_text("0.2.3\n")
+        self.commit("chore: raise the version to 0.2.3")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: the next tag is v0.2.3", result.stdout)
+
+    def test_the_check_passes_chores_with_the_tagged_version(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        self.commit("chore: a")
+        self.commit("docs: b")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: no release", result.stdout)
+
+    def check_with_message(self, message: str) -> subprocess.CompletedProcess:
+        """The check at the commit-msg hook: the message of the commit being made is in a file."""
+        path = self.base / "COMMIT_EDITMSG"
+        path.write_text(message)
+        return self.run_script("--check", message=path)
+
+    def test_the_check_counts_the_message_of_the_commit_being_made(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        self.commit("chore: a")
+        result = self.check_with_message("fix: a bug\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("1 commit(s) since v0.2.2 and the commit being made ask for patch, so the version must be at "
+                      "least 0.2.3, but the profile py gives 0.2.2", result.stderr)
+        (self.repo / "VERSION").write_text("0.2.3\n")
+        result = self.check_with_message("fix: a bug\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release-check: the next tag is v0.2.3", result.stdout)
+
+    def test_the_check_passes_a_chore_message_with_the_tagged_version(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.check_with_message("chore: a\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("and the commit being made ask for none", result.stdout)
+
+    def test_the_message_leaves_out_comments_and_the_diff_of_verbose(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        message = ("chore: a\n\n# Please enter the commit message\n# BREAKING CHANGE: a comment\n"
+                   "# ------------------------ >8 ------------------------\n"
+                   "diff --git a/CHANGELOG.md b/CHANGELOG.md\n - feat!: an old line of the file\n")
+        result = self.check_with_message(message)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ask for none", result.stdout)
+
+    def test_a_subject_that_starts_with_a_comment_character_counts(self) -> None:
+        # git commit -m keeps the line, so the commit is not conventional and asks for a patch.
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.check_with_message("#12 fix login\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("at least 0.2.3", result.stderr)
+
+    def test_a_custom_comment_character_cuts_the_diff_of_verbose(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        git("config", "core.commentChar", ";", cwd=self.repo)
+        message = ("chore: a\n\n; Please enter the commit message\n"
+                   "; ------------------------ >8 ------------------------\n"
+                   "diff --git a/N.md b/N.md\n BREAKING CHANGE: an old line\n - feat: another\n")
+        result = self.check_with_message(message)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ask for none", result.stdout)
+
+    def test_an_amend_replaces_the_message_of_head(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        self.commit("fix: q")
+        path = self.base / "COMMIT_EDITMSG"
+        path.write_text("chore: q\n")
+        env = dict(os.environ, **{release_tag.MESSAGE_VARIABLE: str(path), release_tag.AMEND_VARIABLE: "1"})
+        env.pop("GIT_DIR", None)
+        result = subprocess.run([sys.executable, str(SCRIPT), "--check"], cwd=self.repo, env=env,
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("0 commit(s) since v0.2.2 and the commit being made ask for none", result.stdout)
+        # Without the amend, HEAD counts too.
+        self.assertEqual(self.check_with_message("chore: q\n").returncode, 1)
+
+    def test_comment_lines_before_the_subject_do_not_count(self) -> None:
+        # A commit template puts comment lines first, and git strips them after the editor.
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.check_with_message("# <type>(<scope>): <subject>\n# types: feat fix\n\ndocs: a note\n"
+                                         "# Please enter the commit message for your changes.\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ask for none", result.stdout)
+
+    def test_a_comment_subject_without_an_editor_counts(self) -> None:
+        # git commit -m "#12 login" -m "docs: note" keeps the first line, which is not conventional.
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.check_with_message("#12 login\n\ndocs: note\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("at least 0.2.3", result.stderr)
+
+    def test_an_empty_message_counts_as_no_commit(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.check_with_message("\n  \n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("0 commit(s) since v0.2.2 ask for none", result.stdout)
+
+    def test_a_message_file_that_is_missing_fails(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        result = self.run_script("--check", message=self.base / "missing")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("cannot be read", result.stderr)
+
+    def test_the_release_ignores_the_message_variable(self) -> None:
+        self.profile("0.2.2")
+        self.commit("feat: start")
+        self.tag("v0.2.2")
+        self.commit("chore: a")
+        result = self.run_script("--dry-run", message=self.base / "missing")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release", result.stdout)
 
     def test_the_check_passes_a_chore_with_labelled_bullets(self) -> None:
         self.profile("1.0.0")
