@@ -72,7 +72,8 @@ files that the installer writes.
 ### Who calls what
 
 The diagram shows each part and the parts that it calls. The gate reads the
-log and the records, and it runs no step itself.
+log and the records. The only step that it runs is `release-check`, at the
+`commit-msg` hook, with the message of the commit.
 
 ```
  person / agent
@@ -99,7 +100,7 @@ log and the records, and it runs no step itself.
  git commit ──► pre-commit hook ──► gate (agent_gest_git_skills)
                                       reads: the pass + the chain of records
                                       checks: commit tree = worktree tree
-                                      never runs a step itself
+                                      runs no step but release-check
 ```
 
 Each profile provides one module, for example `python.just`, `typescript.just`
@@ -1059,7 +1060,7 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
   gate does these checks:
   1. It checks that the steps and the required targets exist.
   2. It checks that the commit tree equals the worktree tree.
-  3. It looks for a pass for the tree. It never runs the steps itself. A commit
+  3. It looks for a pass for the tree. It does not run the steps of the pass. A commit
      gives the hook a `GIT_INDEX_FILE`, and tests that run git can write into
      it and break the commit. If there is no pass, the gate stops and says
      "run `just check`".
@@ -1382,6 +1383,14 @@ The tasker role also writes the release job,
   than the bump that the commits ask for. In a shallow checkout it passes and
   says that the tags are unknown. jnterfaces puts `release-check` in the
   steps of `just check`, with a no-op step where the role is not installed.
+- **The release check at the commit.** `just check` runs before the commit,
+  so it cannot count the message of the commit. The `commit-msg` hook of the
+  gate runs `just release-check` again, with the path of the message file in
+  `JN_RELEASE_MESSAGE`. So a `fix:` commit with the tagged version stops at
+  the commit, not at the release after the push. For an amend, the new
+  message replaces the message of HEAD. The hook skips the check for a merge,
+  for an amend of a merge, during a rebase, and when the Justfile has no
+  recipe `release-check`.
 
 The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.
