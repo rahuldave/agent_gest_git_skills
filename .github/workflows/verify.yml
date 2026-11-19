@@ -36,14 +36,14 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install gest v0.6.0 and jagt v0.6.3, which the tasker role needs at its floors
+      - name: Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs
         # jnterfaces 0.3.0 stops an install when a required program of a package is not on PATH, so install-test needs
-        # them. install.sh of gest comes from its tag v0.6.0. The tag v0.6.3 of jagt has no install.sh, so install.sh
-        # comes from the commit 7ea80a9 of jagt, which adds it, as in the CI of jnterfaces. Each one checks the SHA-256.
+        # them. install.sh of gest comes from its tag v0.6.0, and install.sh of jagt from its tag
+        # v0.6.4, as in the CI of jnterfaces. Each one checks the SHA-256.
         shell: bash
         run: |
           curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a/scripts/install.sh | sh -s -- --tag v0.6.3
+          curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
       # CI runs just check and no other check, so a developer finds each failure of CI with just check.
       - name: Check the release, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
         run: just check
