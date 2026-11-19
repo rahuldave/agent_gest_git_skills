@@ -117,7 +117,7 @@ anything. When one is missing, it stops and prints the install line.
 | `just` | All recipes | `cargo install just` or the system package manager. |
 | `uv` | Python, the installer, smalldocs, nossaifd, the plugins | https://docs.astral.sh/uv/ |
 | `jlog` | The run log, as the shell of each recipe | The release binary, from the install line of jlog under this table. To build it from source instead, `git clone https://github.com/rahuldave/jlog`, then `just install` in the clone. |
-| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | The release binary, from the install line of jagt under this table. To build it from source instead, `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.3 jagt`. |
+| `jagt` | Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree. | The release binary, from the install line of jagt under this table. To build it from source instead, `cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.4 jagt`. |
 | `gest` | The task tracker, from the fork of rahuldave. Version 0.6.0 or later, and `gest --version` must print `(rahuldave)`. | The release binary, from the install line of gest under this table. To build it from source instead, `git clone https://github.com/rahuldave/gest`, `git checkout v0.6.0`, then `cargo install --locked --path .` in the clone. |
 | `gh` | Publishing, GitHub issues | https://cli.github.com/ |
 | `jq` | The agent hooks | The system package manager. |
@@ -128,11 +128,11 @@ anything. When one is missing, it stops and prints the install line.
 | `cargo` | The Rust profile, and the builds of `just`, `jlog`, `jagt` and `gest` from source | https://rustup.rs/ |
 
 The install lines of jlog, jagt and gest put the release binary in `~/.local/bin`.
-The tag v0.6.3 of jagt lacks the script, so its line takes it from the commit of jagt that adds it.
+Each line takes the script from the tag of its release.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
-curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a/scripts/install.sh | sh -s -- --tag v0.6.3
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
 curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
 ```
 
@@ -1081,8 +1081,9 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
   - The config has three `local` hooks:
     - `commit-gate` runs the gate for the stages `pre-commit` and
       `pre-merge-commit`.
-    - `commit-gate-trailer` runs the gate again for the stage `commit-msg`,
-      and adds the trailer `Commit-Gate:` to the message.
+    - `commit-gate-trailer` runs the gate again for the stage `commit-msg`.
+      Then it runs `just release-check` on the message, and adds the
+      trailer `Commit-Gate:` to the message.
     - `just-ci` runs `just ci` for the stage `pre-push`. So a push checks
       on your machine what CI checks, and a commit without a trailer stops
       before it reaches GitHub.
@@ -1231,8 +1232,9 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
 
 - **The trailer and just ci.** The gate stamps each commit that it passes,
   and CI checks the stamps:
-  - **The trailer.** The `commit-msg` hook runs the gate once more. Then it
-    adds `Commit-Gate: patch:<patch-id>` to the message. A merge gets
+  - **The trailer.** The `commit-msg` hook runs the gate once more, and then
+    `just release-check` on the message. Then it adds
+    `Commit-Gate: patch:<patch-id>` to the message. A merge gets
     `Commit-Gate: tree:<tree>`.
   - **The patch ID** is the hash of the change, from `git patch-id
     --verbatim`, which keeps the spaces of each line. The diff has no lines of

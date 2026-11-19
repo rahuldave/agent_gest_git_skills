@@ -1,8 +1,7 @@
 """Each install.sh of jlog, jagt and gest comes from the ref of its release, never from a branch.
 
 A hint that takes install.sh from main runs a later install.sh than the release that --tag names. The refs are the
-same as in jnterfaces: the tag of the release, or for jagt the commit that adds install.sh, because the tag v0.6.3 of
-jagt has no install.sh.
+same as in jnterfaces: the tag of the release.
 """
 
 from __future__ import annotations
@@ -16,13 +15,13 @@ ROOT = Path(__file__).resolve().parents[1]
 # The release that each install line names with --tag.
 RELEASES = {
     "jlog": "v0.3.0",
-    "jagt": "v0.6.3",
+    "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
 # The ref of install.sh for each program.
 REFS = {
     "jlog": "v0.3.0",
-    "jagt": "7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a",
+    "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
 URL = "curl -fsSL https://raw.githubusercontent.com/rahuldave/{name}/{ref}/scripts/install.sh"
@@ -111,8 +110,8 @@ class InstallHintTests(unittest.TestCase):
     def test_the_pin_check_catches_each_unpinned_line(self):
         good = HINT.format(name="jlog", ref="v0.3.0", tag="v0.3.0")
         self.assertEqual(pin_problems(f"Run `{good}`, then put ~/.local/bin on PATH."), ([], {"jlog"}))
-        jagt = HINT.format(name="jagt", ref=REFS["jagt"], tag="v0.6.3")
-        self.assertEqual(pin_problems(f"Run `{jagt}`. To build it, run `cargo install --tag v0.6.3 jagt`."),
+        jagt = HINT.format(name="jagt", ref=REFS["jagt"], tag="v0.6.4")
+        self.assertEqual(pin_problems(f"Run `{jagt}`. To build it, run `cargo install --tag v0.6.4 jagt`."),
                          ([], {"jagt"}))
         for bad in (good.replace("/v0.3.0/", "/main/"),
                     good.replace("/v0.3.0/", "/refs/heads/main/"),
@@ -122,7 +121,8 @@ class InstallHintTests(unittest.TestCase):
                     good + "-rc1",
                     good + " --tag v0.2.0",
                     good.replace("--tag v0.3.0", "--tag v0.2.0"),
-                    jagt.replace(REFS["jagt"], "v0.6.3"),
+                    jagt.replace(REFS["jagt"], "7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a"),
+                    jagt.replace("--tag v0.6.4", "--tag v0.6.3"),
                     jagt.replace(REFS["jagt"], "main"),
                     good + ".1",
                     f"{good} or {good.replace('/v0.3.0/', '/main/')}",

@@ -501,8 +501,13 @@ The installer also installs the pre-commit framework and its git hooks, from
 - **pre-commit and pre-merge-commit** run the commit gate. The gate stops a
   commit without a pass of `just check` for its tree, and an agent commit
   without the records of its required targets.
-- **commit-msg** runs the gate again and adds the trailer `Commit-Gate:` to
-  the message. CI checks the trailer of each commit.
+- **commit-msg** runs the gate again. Then it runs `just release-check` on the
+  message of the commit, since v0.3.5. A commit whose type asks for a
+  release, such as `fix:`, stops when the version of the manifest is lower
+  than that release. The hook skips this check for a merge, for an amend of
+  a merge, during a rebase, and when the Justfile has no recipe
+  `release-check`. When both checks pass, the hook adds the trailer
+  `Commit-Gate:` to the message. CI checks the trailer of each commit.
 - **pre-push** runs `just ci`, so a push checks on your machine what CI
   checks.
 
