@@ -1167,6 +1167,168 @@ class GateTests(unittest.TestCase):
         self.assertGoes(git("commit", "-q", "--amend", "-m", "Merge side", cwd=self.repo, env=self.person,
                             check=False))
 
+    def test_a_merge_of_chores_with_the_tagged_version_goes_through(self) -> None:
+        # git merge makes the commit itself and runs the commit-msg hook. "Merge branch 'side'" is not a
+        # conventional subject, but the release skips merge commits.
+        self.release_setup()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: b", "b.txt", "b\n"))
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: a"))
+        git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person)
+        self.passed()
+        git("merge", "--abort", cwd=self.repo)
+        self.assertGoes(git("merge", "-q", "--no-ff", "-m", "Merge branch 'side'", "side", cwd=self.repo,
+                            env=self.person, check=False))
+        self.assertEqual(len(git("log", "-1", "--format=%P", cwd=self.repo).stdout.split()), 2)
+
+    def editor_commit(self, text: str, *args: str, env=None) -> subprocess.CompletedProcess:
+        """Commit a.txt through an editor that puts TEXT before what git wrote in the message file."""
+        self.write("a.txt", "a\n")
+        (self.base / "msg").write_text(text)
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        msg = self.base / "msg"
+        editor = f"sh -c 'cat \"{msg}\" \"$1\" > \"$1.new\" && mv \"$1.new\" \"$1\"' --"
+        return git("commit", "-q", *args, cwd=self.repo, env=dict(env or self.person, GIT_EDITOR=editor),
+                   check=False)
+
+    def test_cleanup_strip_drops_a_comment_subject_given_with_m(self) -> None:
+        # git keeps "docs: g" only, which asks for no release.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "--cleanup=strip", "-m", "#12 fix", "-m", "docs: g", cwd=self.repo,
+                            env=self.person, check=False))
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.repo).stdout.splitlines()[0], "docs: g")
+
+    def test_commit_cleanup_strip_in_the_config_drops_a_comment_subject(self) -> None:
+        self.release_setup()
+        git("config", "commit.cleanup", "strip", cwd=self.repo)
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "#12 fix", "-m", "docs: g", cwd=self.repo, env=self.person,
+                            check=False))
+
+    def test_cleanup_scissors_keeps_a_comment_subject_from_the_editor(self) -> None:
+        # With --cleanup=scissors, git keeps the comment lines above the scissors line, so "#12 tidy" is the
+        # subject, which is not conventional and asks for a patch.
+        self.release_setup()
+        result = self.editor_commit("#12 tidy\n", "--cleanup", "scissors")
+        self.assertStops(result, "at least 0.2.3")
+        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=scissors", "-v"), "at least 0.2.3")
+
+    def test_cleanup_verbatim_keeps_a_comment_subject_from_the_editor(self) -> None:
+        self.release_setup()
+        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=verbatim"), "at least 0.2.3")
+
+    def test_the_editor_strips_comments_in_a_localised_git(self) -> None:
+        # A German git writes its help line in German. The comment lines first still do not count.
+        env = dict(self.person, LANG="de_DE.UTF-8", LC_ALL="de_DE.UTF-8", LANGUAGE="de")
+        self.release_setup()
+        result = self.editor_commit("# <type>: <subject>\ndocs: a note\n", env=env)
+        self.assertGoes(result)
+        self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).stdout.strip(), "docs: a note")
+
+    def test_the_editor_strips_comments_without_a_help_line(self) -> None:
+        # An editor that removes the help line of git: the comment lines are still stripped.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        editor = "sh -c 'printf \"# <type>: <subject>\\ndocs: a note\\n\" > \"$1\"' --"
+        self.assertGoes(git("commit", "-q", cwd=self.repo, env=dict(self.person, GIT_EDITOR=editor), check=False))
+        self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).stdout.strip(), "docs: a note")
+
+    def test_an_amend_of_the_tagged_commit_stops_with_a_clear_message(self) -> None:
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        result = git("commit", "-q", "--amend", "-m", "feat: retag", cwd=self.repo, env=self.person, check=False)
+        self.assertStops(result, "HEAD is the release v0.2.2")
+        self.assertEqual(git("tag", "--points-at", "HEAD", cwd=self.repo).stdout.split(), ["v0.2.2"])
+
+    def test_the_word_amend_in_a_message_is_no_amend(self) -> None:
+        # Ps shows -m "docs: explain --amend" as words, so the gate cannot be sure of an amend. HEAD counts too.
+        self.release_setup()
+        self.assertGoes(self.commit_with("docs: a"))
+        self.assertGoes(self.commit_with("docs: explain --amend", "b.txt", "b\n"))
+        self.assertEqual(len(git("log", "--format=%H", cwd=self.repo).stdout.split()), 3)
+        self.assertStops(self.commit_with("fix: drop --amend", "c.txt", "c\n"), "at least 0.2.3")
+
+    def test_the_word_amend_in_a_message_on_a_merge_is_checked(self) -> None:
+        # HEAD is a merge, as main after a PR. The word --amend of the message makes no amend of the merge.
+        self.release_setup()
+        git("checkout", "-q", "-b", "side", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: b", "b.txt", "b\n"))
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.assertGoes(self.commit_with("chore: a"))
+        git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-m", "Merge side", cwd=self.repo, env=self.person, check=False))
+        self.assertStops(self.commit_with("fix: say when to use --amend", "c.txt", "c\n"), "at least 0.2.3")
+
+    def test_a_maybe_amend_of_the_tagged_commit_stops_with_a_clear_message(self) -> None:
+        # git commit -m "docs: x" --amend is an amend that the gate cannot tell from a word of the message.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        result = git("commit", "-q", "-m", "docs: x", "--amend", cwd=self.repo, env=self.person, check=False)
+        self.assertStops(result, "HEAD is the release v0.2.2, and the git command has the word --amend")
+        self.assertStops(self.commit_with("docs: explain --amend"), "give the message with -F")
+        (self.base / "m").write_text("docs: explain --amend\n")
+        self.assertGoes(git("commit", "-q", "-F", str(self.base / "m"), cwd=self.repo, env=self.person,
+                            check=False))
+
+    def test_a_scissors_line_of_the_editor_without_v_keeps_the_lines_after_it(self) -> None:
+        # Without -v and the mode scissors, git keeps the lines after the scissors line, and the bullet counts.
+        self.release_setup()
+        text = "docs: x\n\n# ------------------------ >8 ------------------------\n- fix: y\n"
+        self.assertStops(self.editor_commit(text), "at least 0.2.3")
+        self.assertStops(self.editor_commit(text, "--cleanup=verbatim"), "at least 0.2.3")
+        # With -v, git writes the diff after the line and cuts there.
+        self.write("CHANGELOG.md", "- feat: an old line\n")
+        git("add", "CHANGELOG.md", cwd=self.repo)
+        self.passed()
+        git("commit", "-q", "-m", "docs: log", cwd=self.repo, env=self.person)
+        self.write("CHANGELOG.md", "new\n")
+        self.assertGoes(self.editor_commit("docs: y\n", "-a", "-v"))
+
+    def test_an_editor_option_after_the_message_file_counts(self) -> None:
+        # GIT_EDITOR=: of a person with -e after -F: git runs the editor ":" and strips the comment lines.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        (self.base / "m").write_text("# note\nfeat: y\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        result = git("commit", "-q", "-F", str(self.base / "m"), "-e", cwd=self.repo,
+                     env=dict(self.person, GIT_EDITOR=":"), check=False)
+        self.assertStops(result, "at least 0.3.0")
+
+    def test_the_word_cleanup_in_a_message_is_no_option(self) -> None:
+        # Git keeps "# --cleanup=strip" as the subject, which asks for a patch.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        self.assertStops(git("commit", "-q", "-m", "# --cleanup=strip", "-m", "docs: x", cwd=self.repo,
+                             env=self.person, check=False), "at least 0.2.3")
+
+    def test_an_editor_of_a_person_set_to_a_colon_still_strips_comments(self) -> None:
+        # GIT_EDITOR=: with -e runs the editor ":", so git strips the comment lines.
+        self.release_setup()
+        self.write("a.txt", "a\n")
+        (self.base / "m").write_text("# note\ndocs: x\n")
+        git("add", "a.txt", cwd=self.repo)
+        self.passed()
+        self.assertGoes(git("commit", "-q", "-e", "-F", str(self.base / "m"), cwd=self.repo,
+                            env=dict(self.person, GIT_EDITOR=":"), check=False))
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.repo).stdout.splitlines()[0], "docs: x")
+
     def test_a_rebase_past_a_change_next_to_the_change_keeps_the_trailer(self) -> None:
         # A diff with context would hold the line that main changed, and the patch ID would change.
         self.write("a.txt", "".join(f"line {n}\n" for n in range(20)))
@@ -1229,6 +1391,45 @@ def pre_commit_python():
         return None
     python = first[2:].strip() if first.startswith("#!") else ""
     return python if python and os.access(python, os.X_OK) else None
+
+
+class CleanupOptionTests(unittest.TestCase):
+    def test_the_cleanup_of_the_command_of_git(self) -> None:
+        cases = {
+            ("git", "commit", "-m", "x"): None,
+            ("git", "commit", "--cleanup=strip", "-m", "x"): "strip",
+            ("git", "commit", "--cleanup", "scissors"): "scissors",
+            ("git", "commit", "--cl=verbatim"): "verbatim",
+            ("git", "commit", "--c=strip"): "strip",
+            ("git", "commit", "--no-cleanup"): "default",
+            ("git", "commit", "--cleanup=strip", "-m", "drop", "--cleanup=verbatim"): "unknown",
+            ("git", "commit", "--cached"): None,
+            (): "unknown",
+        }
+        for argv, cleanup in cases.items():
+            with self.subTest(argv=argv):
+                self.assertEqual(commit_gate.cleanup_of(argv), cleanup)
+
+    def test_a_word_of_the_message_is_no_option(self) -> None:
+        # Ps shows -m "docs: drop --amend" as the words -m docs: drop --amend.
+        self.assertEqual(commit_gate.cleanup_of(("git", "commit", "-m", "#", "--cleanup=strip")), "unknown")
+        self.assertEqual(commit_gate.cleanup_of(("git", "commit", "--cleanup=verbatim", "-m", "x")), "verbatim")
+        self.assertTrue(commit_gate.is_sure_amend(("git", "commit", "-q", "--amend", "-m", "x")))
+        self.assertTrue(commit_gate.is_sure_amend(("git", "-c", "a=b", "commit", "--am", "--no-edit")))
+        self.assertFalse(commit_gate.is_sure_amend(("git", "commit", "-m", "docs:", "explain", "--amend")))
+        self.assertFalse(commit_gate.is_sure_amend(("git", "commit", "-am", "--amend")))
+        self.assertFalse(commit_gate.is_sure_amend(("git", "commit", "--message=a", "--amend")))
+        self.assertFalse(commit_gate.is_sure_amend(()))
+
+    def test_the_options_that_show_an_editor(self) -> None:
+        cases = {("git", "commit"): True, ("git", "commit", "-v", "-q"): True, ("git", "commit", "-e", "-F", "m"): True,
+                 ("git", "commit", "-ae"): True, ("git", "commit", "--edit", "-m", "x"): True,
+                 ("git", "commit", "-m", "x"): False, ("git", "commit", "-F", "m"): False,
+                 ("git", "commit", "--amend", "--no-edit"): False, ("git", "commit", "-Skey"): True,
+                 ("git", "commit", "-Se", "-m", "x"): False, ("git", "commit", "-m", "x", "-e"): False, (): False}
+        for argv, editor in cases.items():
+            with self.subTest(argv=argv):
+                self.assertEqual(commit_gate.runs_editor(argv), editor)
 
 
 @unittest.skipUnless(pre_commit_python(), "needs pre-commit on PATH")
