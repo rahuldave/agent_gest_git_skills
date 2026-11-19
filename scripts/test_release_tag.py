@@ -46,6 +46,19 @@ class CommitLevelTests(unittest.TestCase):
             "docs: notes (#3)\n\n* docs: a\n* test: b": "none",
             "docs: notes\n\n- update the readme": "none",
             "Add stuff (#12)\n\n* BREAKING CHANGE: gone": "major",
+            "chore: tidy\n\n- Removed: the old copies": "none",
+            "chore: tidy\n\n- Added: a page\n* Fixed(cli)!: a crash\n- Note: none": "none",
+            "chore: tidy\n\n- Fix: a crash\n- FEAT: a page": "none",
+            "chore: tidy\n\n- fixes: a crash\n- features: a page": "none",
+            "chore: tidy (#4)\n\n* fix: stop a crash": "patch",
+            "chore: tidy (#4)\n\n- fix(cli): stop a crash": "patch",
+            "chore: tidy (#4)\n\n  * build: pin uv\n  * revert: undo a page": "patch",
+            "chore: tidy (#4)\n\n* feat!: drop the api": "major",
+            "chore: tidy (#4)\n\n* refactor(core)!: drop the api": "major",
+            "docs: notes (#5)\n\n* feat(ui): add a page": "minor",
+            "chore: x\n\n* fix(a\nb): c": "none",
+            "chore: x\n\n* fix(a\n* feat: b): c": "minor",
+            "docs: notes (#5)\n\n- Removed: a page\n- BREAKING CHANGE: the page is gone": "major",
         }
         for message, level in cases.items():
             with self.subTest(message=message):
@@ -374,6 +387,15 @@ class ProfileVersionTests(ReleaseBase):
         result = self.run_script("--check")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("release-check: the next tag is v1.1.0", result.stdout)
+
+    def test_the_check_passes_a_chore_with_labelled_bullets(self) -> None:
+        self.profile("1.0.0")
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("chore: drop the old copies\n\n- Removed: the old copies\n- Kept: the new copy")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ask for none", result.stdout)
 
     def test_the_check_passes_a_tagged_version_with_docs_only(self) -> None:
         self.profile("1.0.0")
