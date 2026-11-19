@@ -99,10 +99,11 @@ class RequiredGestTests(unittest.TestCase):
 
     def test_the_tools_check_of_jnterfaces_agrees(self) -> None:
         # The real check, when a clone of jnterfaces has it. The clone that CI pins may be older and lack it.
-        clone = Path(os.environ.get("JNTERFACES_DIR") or ROOT.parent / "jnterfaces")
-        script = clone / ".agents/tools_check.py"
-        if not script.is_file():
-            self.skipTest(f"needs .agents/tools_check.py in a clone of jnterfaces, at {clone}")
+        found = subprocess.run([str(ROOT / "scripts/find_jnterfaces.sh"), ".agents/tools_check.py"],
+                               capture_output=True, text=True)
+        if found.returncode != 0:
+            self.skipTest(f"needs .agents/tools_check.py in a clone of jnterfaces: {found.stderr.strip()}")
+        script = Path(found.stdout.strip()) / ".agents/tools_check.py"
         manifest = Path(self.tmp.name) / "skill-package.json"
         manifest.write_text(json.dumps({"repository": {"name": "agent_gest_git_skills"},
                                         "executables": {"required": [self.gest]}}))

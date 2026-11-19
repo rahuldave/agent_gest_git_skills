@@ -436,8 +436,9 @@ Local fixture:
 ```
 
 If you run the tutorial from this repository of reusable skills, one command does the whole
-step. The script needs a clone of jnterfaces next to this repository, or a `JNTERFACES_DIR`
-that names the clone:
+step. The script needs a clone of jnterfaces. It uses `JNTERFACES_DIR`, the clone next to
+this repository, the installed copy in `~/.local/share/skill-packages`, or a clone of
+the commit that CI tests, in that order:
 
 ```bash
 scripts/run_tag_dependency_typescript_lab.sh \
@@ -484,7 +485,7 @@ Set up the project with the typescript profile of jnterfaces. The profile
 writes package.json, tsconfig.json and the Justfile. Then check the types:
 
 ```bash
-uv run "$JNTERFACES_DIR/scripts/install_stack.py" \
+uv run ~/.local/share/skill-packages/jnterfaces/scripts/install_stack.py \
   --target /tmp/agent-gest-git-tutorial/tag-ast-grep-live \
   --profile typescript \
   --defaults \

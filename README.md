@@ -445,15 +445,27 @@ optional:
 Each link from a `g*` skill to another package has a fallback in its
 paragraph. So the `g*` skills still work when a linked skill is not installed.
 The link checker of jnterfaces, `scripts/check_skill_links.py`, checks this
-rule. `just lint` runs it, and it needs a jnterfaces clone next to this clone
-or in `JNTERFACES_DIR`.
+rule. `just lint` runs it, and it needs a jnterfaces clone. See below for how
+the checks find the clone.
 
 Install the packages with `just install`, the recipe of jnterfaces. It always
 installs `just`, and it asks about the other roles. It saves the choices in the
 target, so a later run installs them again. See the README of jnterfaces.
 
-`just lint` fails when it finds no jnterfaces clone. Clone jnterfaces next to
-this clone, or set `JNTERFACES_DIR`.
+The checks and labs find the jnterfaces clone with
+`scripts/find_jnterfaces.sh`. They use the first of these folders:
+
+1. `JNTERFACES_DIR`, when you set it. Then they use no other folder.
+2. The folder `jnterfaces` next to this clone.
+3. The installed copy, `~/.local/share/skill-packages/jnterfaces`. Set
+   `SKILL_PACKAGES_DIR` to use another folder than `~/.local/share/skill-packages`.
+4. A clone of the commit that CI tests, in
+   `~/.cache/agent_gest_git_skills`. The first check without another clone
+   makes this clone from GitHub, so it needs the network once.
+
+So `just check` also works in a clone outside the folder of your projects. Each
+check uses the first clone that it finds, and fails when that clone does not have
+the file that it needs.
 
 A new install removes the skill files that an older install left and that the
 source no longer ships, if nobody edited them. For example, it removes the old
@@ -511,11 +523,12 @@ uploads the archive as a CI artifact.
 CI runs `just check` and no other check, so `just check` finds each failure of CI. It runs
 `just release-check`, `just lint`, `just package-lint`, `just stack-rebase-lab`,
 `just install-test`, `just source-archive` and `just diff-check`. `just package-lint` clones
-skill-package-maker from GitHub, so `just check` needs the network. `just install-test` needs a
-clone of jnterfaces next to this repository, or at `JNTERFACES_DIR`. CI tests the commit of
+skill-package-maker from GitHub, so `just check` needs the network. `just lint` and `just install-test` need a
+clone of jnterfaces, which `scripts/find_jnterfaces.sh` finds. CI tests the commit of
 jnterfaces in `scripts/jnterfaces_commit`, and `just lint` and `just install-test` warn when the clone
-is at another commit or has changes that are not committed. `just verify`
-also runs the broader labs for languages and protocols, with the prerequisites that their docs
+is at another commit or has changes that are not committed.
+
+`just verify` also runs the broader labs for languages and protocols, with the prerequisites that their docs
 give. The automatic CI does not claim that these extra local labs ran.
 
 A merge integrates the source. A release with a version or a tag is a separate request. It

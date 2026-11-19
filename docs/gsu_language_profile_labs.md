@@ -29,7 +29,9 @@ none. So the labs start in two ways:
   `packages` of the workspace. So the result follows the main branch of each
   profile on GitHub, and the labs need the network. There are two exceptions:
   - agent_gest_git_skills is this checkout, with its uncommitted changes.
-  - jnterfaces is the clone in `JNTERFACES_DIR`.
+  - jnterfaces is the clone that `scripts/find_jnterfaces.sh` finds. It is
+    `JNTERFACES_DIR`, the clone next to this repository, or the installed copy
+    in `~/.local/share/skill-packages`.
 - **The Go lab** starts Git and a local Gest. It joins the `.gitignore`,
   `.envrc` and `Justfile` snippets of this repository, then runs `just verify`.
 
@@ -46,11 +48,13 @@ Each lab must show these results:
 ## Python, TypeScript and Rust
 
 Each of these labs runs the steps of
-[Start a Python, TypeScript or Rust project](https://rahuldave.github.io/jnterfaces/new-project.html):
+[Start a Python, TypeScript or Rust project](https://rahuldave.github.io/jnterfaces/new-project.html).
+In the commands, `$jnterfaces` is the clone that `scripts/find_jnterfaces.sh`
+finds:
 
 ```bash
 git init
-uv run "$JNTERFACES_DIR/scripts/install_stack.py" --profile python --defaults typecheck
+uv run "$jnterfaces/scripts/install_stack.py" --profile python --defaults typecheck
 just fmt
 just verify
 ```

@@ -45,11 +45,12 @@ agent-result-recursive-live-lab TRANSCRIPT_DIR:
 
 protocol-flow-labs: agentic-target-lab agent-result-lab agent-task-draft-lab
 
-# Install this package into a scratch repository with the installer of a jnterfaces clone, and check the result
+# Install this package into a scratch repository with the installer of a jnterfaces clone, and check the result.
+# scripts/find_jnterfaces.sh finds the clone
 install-test:
   #!/usr/bin/env bash
   set -euo pipefail
-  jnterfaces="${JNTERFACES_DIR:-$PWD/../jnterfaces}"
+  jnterfaces="$(scripts/find_jnterfaces.sh scripts/install_stack.py)"
   scripts/warn_jnterfaces_pin.sh "$jnterfaces"
   target="$(mktemp -d)"; trap 'rm -rf -- "$target"' EXIT
   git -C "$target" init -q

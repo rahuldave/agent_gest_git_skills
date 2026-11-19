@@ -274,5 +274,191 @@ class PinWarningTests(unittest.TestCase):
         self.assertIn("is not at", run.stderr)
 
 
+def bare_env(**extra: str) -> dict[str, str]:
+    """The environment without JNTERFACES_DIR and SKILL_PACKAGES_DIR, plus EXTRA. JNTERFACES_REPO names no repository
+    unless EXTRA gives one, so no test clones jnterfaces from GitHub."""
+    env = {k: v for k, v in os.environ.items() if k not in ("JNTERFACES_DIR", "SKILL_PACKAGES_DIR", "JNTERFACES_REPO")}
+    return {**env, "JNTERFACES_REPO": "/nonexistent/jnterfaces", **extra}
+
+
+def copy_checkout(dest: Path) -> None:
+    """Copy the files of this checkout, committed or not, to DEST, as a fresh clone with the changes of the work."""
+    files = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                           check=True, capture_output=True).stdout.decode().split("\0")
+    for name in filter(None, files):
+        source = ROOT / name
+        if source.is_file():
+            (dest / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, dest / name)
+
+
+class FindJnterfacesTests(unittest.TestCase):
+    """find_jnterfaces.sh takes JNTERFACES_DIR alone, else the sibling clone, the installed copy or a pinned clone."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name).resolve() / "a b"
+        self.repo = base / "work" / "agent_gest_git_skills"
+        (self.repo / "scripts").mkdir(parents=True)
+        shutil.copy2(ROOT / "scripts/find_jnterfaces.sh", self.repo / "scripts")
+        self.sibling = base / "work" / "jnterfaces"
+        self.packages = base / "packages"
+        self.installed = self.packages / "jnterfaces"
+        self.home = base / "home"
+        self.explicit = base / "mine"
+        self.cache_home = base / "cache"
+        # The upstream that a pinned clone comes from, with one commit that is the pin.
+        self.upstream = self.fake(base / "upstream")
+        git = ["git", "-C", str(self.upstream), "-c", "user.name=t", "-c", "user.email=t@example.com"]
+        env = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"}
+        for args in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "start"]):
+            subprocess.run(git + args, check=True, capture_output=True, env=env)
+        self.pin = subprocess.run(git + ["rev-parse", "HEAD"], check=True, capture_output=True, text=True,
+                                  env=env).stdout.strip()
+        (self.repo / "scripts/jnterfaces_commit").write_text(self.pin + "\n")
+        self.cache = self.cache_home / "agent_gest_git_skills" / self.pin / "jnterfaces"
+
+    def fake(self, folder: Path, link_check: bool = True) -> Path:
+        (folder / "scripts").mkdir(parents=True)
+        (folder / "scripts/install_stack.py").write_text("")
+        if link_check:
+            (folder / "scripts/check_skill_links.py").write_text("")
+        return folder
+
+    def find(self, cwd: Path | None = None, **env: str) -> subprocess.CompletedProcess[str]:
+        defaults = {"HOME": str(self.home), "XDG_CACHE_HOME": str(self.cache_home),
+                    "JNTERFACES_REPO": str(self.upstream)}
+        return subprocess.run([str(self.repo / "scripts/find_jnterfaces.sh"), "scripts/check_skill_links.py"],
+                              capture_output=True, text=True, cwd=cwd, env=bare_env(**{**defaults, **env}))
+
+    def found(self, **env: str) -> Path:
+        run = self.find(**env)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(run.stdout.splitlines()), 1, run.stdout)
+        return Path(run.stdout.strip())
+
+    def test_jnterfaces_dir_wins(self) -> None:
+        self.fake(self.sibling)
+        self.assertEqual(self.found(JNTERFACES_DIR=str(self.fake(self.explicit))), self.explicit)
+
+    def test_a_wrong_jnterfaces_dir_fails_and_tries_no_other_folder(self) -> None:
+        self.fake(self.sibling)
+        run = self.find(JNTERFACES_DIR=str(self.explicit))
+        self.assertEqual(run.returncode, 1)
+        self.assertIn(str(self.explicit), run.stderr)
+        self.assertNotIn(str(self.sibling), run.stderr)
+        self.assertFalse(self.cache.exists())
+
+    def test_the_sibling_comes_before_the_installed_copy(self) -> None:
+        self.fake(self.sibling)
+        self.fake(self.installed)
+        self.assertEqual(self.found(SKILL_PACKAGES_DIR=str(self.packages)), self.sibling)
+
+    def test_a_sibling_without_the_file_fails_and_tries_no_other_clone(self) -> None:
+        self.fake(self.sibling, link_check=False)
+        self.fake(self.installed)
+        run = self.find(SKILL_PACKAGES_DIR=str(self.packages))
+        self.assertEqual(run.returncode, 1)
+        self.assertIn(f"{self.sibling} has no scripts/check_skill_links.py", run.stderr)
+        self.assertEqual(run.stdout, "")
+
+    def test_without_a_sibling_the_installed_copy_is_found(self) -> None:
+        self.fake(self.installed)
+        self.assertEqual(self.found(SKILL_PACKAGES_DIR=str(self.packages)), self.installed)
+
+    def test_the_installed_copy_is_in_the_home_folder_by_default(self) -> None:
+        copy = self.fake(self.home / ".local/share/skill-packages/jnterfaces")
+        self.assertEqual(self.found(), copy)
+
+    def test_without_any_clone_the_pinned_commit_is_cloned_once(self) -> None:
+        self.assertEqual(self.found(SKILL_PACKAGES_DIR=str(self.packages)), self.cache)
+        head = subprocess.run(["git", "-C", str(self.cache), "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        self.assertEqual(head, self.pin)
+        shutil.rmtree(self.upstream)
+        self.assertEqual(self.found(SKILL_PACKAGES_DIR=str(self.packages)), self.cache)
+        self.assertEqual([p.name for p in self.cache.parent.iterdir()], ["jnterfaces"])
+
+    def test_a_failed_clone_fails_and_leaves_nothing(self) -> None:
+        run = self.find(SKILL_PACKAGES_DIR=str(self.packages), JNTERFACES_REPO=str(self.home / "none"))
+        self.assertEqual(run.returncode, 1)
+        self.assertEqual(run.stdout, "")
+        self.assertIn("Could not clone", run.stderr)
+        self.assertIn("JNTERFACES_DIR", run.stderr)
+        self.assertEqual(list(self.cache.parent.iterdir()), [])
+
+    def test_a_cache_folder_that_is_no_clone_fails(self) -> None:
+        self.cache.mkdir(parents=True)
+        run = self.find(SKILL_PACKAGES_DIR=str(self.packages))
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("Remove it", run.stderr)
+        self.assertEqual(list(self.cache.iterdir()), [])
+
+    def test_cdpath_does_not_change_the_output(self) -> None:
+        self.fake(self.explicit)
+        run = self.find(cwd=self.explicit.parent, JNTERFACES_DIR="mine", CDPATH=".")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"{self.explicit}\n")
+        # Called by a relative path, as the Justfile calls it, so the folder of the repository comes from CDPATH too.
+        self.fake(self.sibling)
+        run = subprocess.run(["scripts/find_jnterfaces.sh", "scripts/check_skill_links.py"], capture_output=True,
+                             text=True, cwd=self.repo, env=bare_env(HOME=str(self.home), CDPATH="."))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"{self.sibling}\n")
+
+    def test_an_unset_home_fails_with_a_message(self) -> None:
+        env = {k: v for k, v in bare_env().items() if k not in ("HOME", "XDG_CACHE_HOME")}
+        run = subprocess.run([str(self.repo / "scripts/find_jnterfaces.sh"), "scripts/check_skill_links.py"],
+                             capture_output=True, text=True, env=env)
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("HOME is not set", run.stderr)
+
+    def test_a_clone_never_asks_for_a_user_name(self) -> None:
+        trace = self.home / "env"
+        bin_dir = self.home / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "git").write_text(f'#!/bin/sh\nprintf "%s" "$GIT_TERMINAL_PROMPT" > "{trace}"\nexit 128\n')
+        (bin_dir / "git").chmod(0o755)
+        run = self.find(SKILL_PACKAGES_DIR=str(self.packages), PATH=f"{bin_dir}:{os.environ['PATH']}")
+        self.assertEqual(run.returncode, 1)
+        self.assertEqual(trace.read_text(), "0")
+
+    def test_a_failed_rename_fails_with_a_message(self) -> None:
+        bin_dir = self.home / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "uv").write_text("#!/bin/sh\nexit 1\n")
+        (bin_dir / "uv").chmod(0o755)
+        run = self.find(SKILL_PACKAGES_DIR=str(self.packages), PATH=f"{bin_dir}:{os.environ['PATH']}")
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("Could not rename", run.stderr)
+        self.assertEqual(list(self.cache.parent.iterdir()), [])
+
+
+class OutsideProjectsTests(unittest.TestCase):
+    """The link check of just lint passes in a clone with no sibling jnterfaces, and JNTERFACES_DIR unset."""
+
+    def test_the_link_check_finds_the_installed_copy(self) -> None:
+        found = subprocess.run([str(ROOT / "scripts/find_jnterfaces.sh"), "scripts/check_skill_links.py"],
+                               capture_output=True, text=True, check=True).stdout.strip()
+        with tempfile.TemporaryDirectory() as tmp:
+            clone = Path(tmp) / "elsewhere" / "agent_gest_git_skills"
+            copy_checkout(clone)
+            self.assertFalse((clone.parent / "jnterfaces").exists())
+            packages = Path(tmp) / "packages"
+            packages.mkdir()
+            (packages / "jnterfaces").symlink_to(found)
+            files = [str(clone / "AGENTS.template.md"), str(clone / ".agents/skills/gtw/SKILL.md")]
+            run = subprocess.run([str(clone / "scripts/check_skill_links.sh"), *files], capture_output=True,
+                                 text=True, cwd=clone, env=bare_env(SKILL_PACKAGES_DIR=str(packages)))
+            self.assertEqual(run.returncode, 0, run.stderr)
+            run = subprocess.run([str(clone / "scripts/check_skill_links.sh"), *files], capture_output=True,
+                                 text=True, cwd=clone, env=bare_env(SKILL_PACKAGES_DIR=str(Path(tmp) / "none"),
+                                                                    XDG_CACHE_HOME=str(Path(tmp) / "cache"),
+                                                                    JNTERFACES_REPO=str(Path(tmp) / "no-repo")))
+            self.assertEqual(run.returncode, 1)
+            self.assertIn("Could not clone", run.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

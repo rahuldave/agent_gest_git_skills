@@ -3,12 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The Justfile templates are in the just skill of jnterfaces.
-jnterfaces_dir="${JNTERFACES_DIR:-$repo_root/../jnterfaces}"
+jnterfaces_dir="$("$repo_root/scripts/find_jnterfaces.sh" .agents/skills/just/assets/templates)"
 templates="$jnterfaces_dir/.agents/skills/just/assets/templates"
-if [ ! -d "$templates" ]; then
-  echo "The labs need a jnterfaces clone at $jnterfaces_dir. Clone https://github.com/rahuldave/jnterfaces there, or set JNTERFACES_DIR." >&2
-  exit 1
-fi
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/agent-gest-language-labs.XXXXXX")"
 
 if [ "${AGENT_GEST_KEEP_LANGUAGE_LABS:-0}" != "1" ]; then
@@ -61,8 +57,8 @@ init_lab() {
 
 # A lab with a profile of jnterfaces: the profile writes the manifest, the tool configs and the Justfile, as in a
 # real project. TOOLS adds the tools that the profile leaves off by default. The packages are fresh clones in the
-# workspace, except two: agent_gest_git_skills is the working files of this checkout, and jnterfaces is
-# $JNTERFACES_DIR.
+# workspace, except two: agent_gest_git_skills is the working files of this checkout, and jnterfaces is the clone
+# that scripts/find_jnterfaces.sh found.
 install_lab() {
   local dir="$1"
   local profile="$2"
