@@ -343,8 +343,9 @@ dependency:</p>
 <p>Local fixture:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">/tmp/agent-gest-git-tutorial/tag-ast-grep-live</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you run the tutorial from this repository of reusable skills, one command does the whole
-step. The script needs a clone of jnterfaces next to this repository, or a <code>JNTERFACES_DIR</code>
-that names the clone:</p>
+step. The script needs a clone of jnterfaces. It uses <code>JNTERFACES_DIR</code>, the clone next to
+this repository, the installed copy in <code>~/.local/share/skill-packages</code>, or a clone of
+the commit that CI tests, in that order:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">scripts/run_tag_dependency_typescript_lab.sh <span class="sc">\
 </span>  /tmp/agent-gest-git-tutorial/tag-ast-grep-live <span class="sc">\
 </span>  /tmp/agent-gest-git-tutorial/logs/05-tag-ast-grep.log</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -385,7 +386,7 @@ Set up the project with the typescript profile of jnterfaces. The profile
 writes package.json, tsconfig.json and the Justfile. Then check the types:
 
 ```bash
-uv run &quot;$JNTERFACES_DIR/scripts/install_stack.py&quot; \
+uv run ~/.local/share/skill-packages/jnterfaces/scripts/install_stack.py \
   --target /tmp/agent-gest-git-tutorial/tag-ast-grep-live \
   --profile typescript \
   --defaults \

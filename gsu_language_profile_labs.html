@@ -22,7 +22,9 @@ and <code>just verify</code>.</li>
 profile on GitHub, and the labs need the network. There are two exceptions:
 <ul>
 <li>agent_gest_git_skills is this checkout, with its uncommitted changes.</li>
-<li>jnterfaces is the clone in <code>JNTERFACES_DIR</code>.</li>
+<li>jnterfaces is the clone that <code>scripts/find_jnterfaces.sh</code> finds. It is
+<code>JNTERFACES_DIR</code>, the clone next to this repository, or the installed copy
+in <code>~/.local/share/skill-packages</code>.</li>
 </ul>
 </li>
 <li><strong>The Go lab</strong> starts Git and a local Gest. It joins the <code>.gitignore</code>,
@@ -40,9 +42,11 @@ request.</p>
 <section id="python-typescript-and-rust" class="level2">
 <h2 class="anchored" data-anchor-id="python-typescript-and-rust">Python, TypeScript and Rust</h2>
 <p>Each of these labs runs the steps of
-<a href="https://rahuldave.github.io/jnterfaces/new-project.html">Start a Python, TypeScript or Rust project</a>:</p>
+<a href="https://rahuldave.github.io/jnterfaces/new-project.html">Start a Python, TypeScript or Rust project</a>.
+In the commands, <code>$jnterfaces</code> is the clone that <code>scripts/find_jnterfaces.sh</code>
+finds:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">git init
-uv run <span class="st">&quot;</span><span class="va">$JNTERFACES_DIR</span><span class="st">/scripts/install_stack.py</span><span class="st">&quot;</span> --profile python --defaults typecheck
+uv run <span class="st">&quot;</span><span class="va">$jnterfaces</span><span class="st">/scripts/install_stack.py</span><span class="st">&quot;</span> --profile python --defaults typecheck
 just fmt
 just verify</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Then each of these labs checks the commit gate of the tasker role:</p>

@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.12"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Spec: Commit gates for any repository – agent_gest_git_skills</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="../site_libs/smalldocs.css"><meta name="smalldocs:offset" content="../"><script src="../site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="../site_libs/fuse/fuse.min.js"></script><script src="../site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="../index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="../index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="../TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="../g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Specs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="commit-gates.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Spec: Commit gates for any repository</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li><li><a href="#terms" id="toc-terms" class="nav-link" data-scroll-target="#terms">Terms</a></li><li><a href="#the-threat-model" id="toc-the-threat-model" class="nav-link" data-scroll-target="#the-threat-model">The threat model</a></li><li><a href="#proposed-solution" id="toc-proposed-solution" class="nav-link" data-scroll-target="#proposed-solution">Proposed Solution</a><ul><li><a href="#who-calls-what" id="toc-who-calls-what" class="nav-link" data-scroll-target="#who-calls-what">Who calls what</a></li><li><a href="#the-tools" id="toc-the-tools" class="nav-link" data-scroll-target="#the-tools">The tools</a></li><li><a href="#the-steps" id="toc-the-steps" class="nav-link" data-scroll-target="#the-steps">The steps</a></li><li><a href="#the-docs-site-and-the-api-pages" id="toc-the-docs-site-and-the-api-pages" class="nav-link" data-scroll-target="#the-docs-site-and-the-api-pages">The docs site and the API pages</a></li><li><a href="#skills-and-targets" id="toc-skills-and-targets" class="nav-link" data-scroll-target="#skills-and-targets">Skills and targets</a></li><li><a href="#the-skills" id="toc-the-skills" class="nav-link" data-scroll-target="#the-skills">The skills</a></li><li><a href="#agentic-targets" id="toc-agentic-targets" class="nav-link" data-scroll-target="#agentic-targets">Agentic targets</a></li><li><a href="#setup-questions" id="toc-setup-questions" class="nav-link" data-scroll-target="#setup-questions">Setup questions</a></li><li><a href="#records" id="toc-records" class="nav-link" data-scroll-target="#records">Records</a></li><li><a href="#the-run-log" id="toc-the-run-log" class="nav-link" data-scroll-target="#the-run-log">The run log</a></li><li><a href="#sessions-and-the-environment" id="toc-sessions-and-the-environment" class="nav-link" data-scroll-target="#sessions-and-the-environment">Sessions and the environment</a></li><li><a href="#the-worktree-tree" id="toc-the-worktree-tree" class="nav-link" data-scroll-target="#the-worktree-tree">The worktree tree</a></li><li><a href="#the-pass" id="toc-the-pass" class="nav-link" data-scroll-target="#the-pass">The pass</a></li><li><a href="#gates" id="toc-gates" class="nav-link" data-scroll-target="#gates">Gates</a></li><li><a href="#stacked-prs-with-plain-git" id="toc-stacked-prs-with-plain-git" class="nav-link" data-scroll-target="#stacked-prs-with-plain-git">Stacked PRs with plain git</a></li><li><a href="#docs-publishing" id="toc-docs-publishing" class="nav-link" data-scroll-target="#docs-publishing">Docs publishing</a></li><li><a href="#the-files-that-the-installer-writes" id="toc-the-files-that-the-installer-writes" class="nav-link" data-scroll-target="#the-files-that-the-installer-writes">The files that the installer writes</a></li><li><a href="#where-each-part-lives" id="toc-where-each-part-lives" class="nav-link" data-scroll-target="#where-each-part-lives">Where each part lives</a></li><li><a href="#delivery" id="toc-delivery" class="nav-link" data-scroll-target="#delivery">Delivery</a></li></ul></li><li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a><ul><li><a href="#in-scope" id="toc-in-scope" class="nav-link" data-scroll-target="#in-scope">In Scope</a></li><li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of Scope</a></li></ul></li><li><a href="#acceptance-criteria" id="toc-acceptance-criteria" class="nav-link" data-scroll-target="#acceptance-criteria">Acceptance Criteria</a></li><li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions">Open Questions</a></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/specs/commit-gates.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav><div class="quarto-title"><h1 class="title">Spec: Commit gates for any repository</h1></div><div class="quarto-title-meta"></div></header><section id="problem-statement" class="level2">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="generator" content="smalldocs-0.5.12"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><title>Spec: Commit gates for any repository – agent_gest_git_skills</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier.css" data-mode="light" class="quarto-color-scheme" id="quarto-bootstrap-light" media="not all and (prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/themes/atelier/atelier-dark.css" data-mode="dark" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap-dark" media="(prefers-color-scheme: dark)"><link rel="stylesheet" href="../site_libs/bootstrap-icons/bootstrap-icons.min.css"><link rel="stylesheet" href="../site_libs/smalldocs.css"><meta name="smalldocs:offset" content="../"><script src="../site_libs/bootstrap/bootstrap.bundle.min.js"></script><script src="../site_libs/fuse/fuse.min.js"></script><script src="../site_libs/smalldocs.js" defer></script><script>(function(){var d=document.documentElement,s=null;try{s=localStorage.getItem('smalldocs-scheme')}catch(e){}var alt=s?s==='alternate':!!(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var ls=document.querySelectorAll('link.quarto-color-scheme');if(alt)d.dataset.scheme='alternate';if(s)ls.forEach(function(l){var on=l.classList.contains('quarto-color-alternate')===alt;if(on)l.setAttribute('blocking','render');l.media=on?'all':'not all'});var on=ls[alt?1:0];if(on&&on.dataset.mode==='dark')d.classList.add('quarto-dark')})();</script></head><body class="nav-sidebar floating nav-fixed"><header id="quarto-header" class="headroom sticky-top"><nav class="navbar navbar-expand-lg sd-navbar-default"><div class="navbar-container container-fluid"><div class="navbar-brand-container mx-auto"><a class="navbar-brand" href="../index.html"><span class="navbar-title">agent_gest_git_skills</span></a></div><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarCollapse"><ul class="navbar-nav navbar-nav-scroll me-auto"><li class="nav-item"><a class="nav-link" href="../index.html"><span class="menu-text">Home</span></a></li><li class="nav-item"><a class="nav-link" href="../TUTORIAL.html"><span class="menu-text">Tutorial</span></a></li><li class="nav-item"><a class="nav-link" href="../g_commands_cheatsheet.html"><span class="menu-text">Cheat sheet</span></a></li></ul><ul class="navbar-nav navbar-nav-scroll ms-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="nav-menu-1" role="link" data-bs-toggle="dropdown" aria-expanded="false"><span class="menu-text">Projects</span></a><ul class="dropdown-menu" aria-labelledby="nav-menu-1"><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnterfaces/"><span class="menu-text">jnterfaces</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-python/"><span class="menu-text">jnprofile-python</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/jnprofile-typescript/"><span class="menu-text">jnprofile-typescript</span></a></li><li class=""><a class="dropdown-item" href="https://rahuldave.github.io/agent_gest_git_skills/"><span class="menu-text">agent_gest_git_skills</span></a></li></ul></li><li class="nav-item compact"><a class="nav-link" href="https://github.com/rahuldave/agent_gest_git_skills" aria-label="github"><i class="bi bi-github" role="img"></i></a></li><li class="nav-item compact"><a class="quarto-color-scheme-toggle nav-link" href="" title="Toggle dark mode" onclick="window.smalldocsToggleScheme(); return false;"><i class="bi"></i></a></li></ul><div class="quarto-navbar-tools"><div class="smalldocs-search" id="quarto-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" class="form-control form-control-sm" placeholder="Search" aria-label="Search" autocomplete="off"><div class="smalldocs-search-results dropdown-menu"></div></div></div></div></div></nav><nav class="quarto-secondary-nav"><div class="container-fluid d-flex"><button type="button" class="quarto-btn-toggle btn" aria-controls="quarto-sidebar" aria-label="Toggle sidebar navigation"><i class="bi bi-layout-text-sidebar-reverse"></i></button><nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav></div></nav></header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article has-sidebar has-margin"><nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto"><div class="sidebar-menu-container"><ul class="list-unstyled mt-1"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../index.html" class="sidebar-item-text sidebar-link"><span class="menu-text">agent_gest_git_skills</span></a></div></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true"><span class="menu-text">Start</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../TUTORIAL.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Git tutorial</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../g_commands_cheatsheet.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest g-commands cheat sheet</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true"><span class="menu-text">Specs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="commit-gates.html" class="sidebar-item-text sidebar-link active" aria-current="page"><span class="menu-text">Spec: Commit gates for any repository</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true"><span class="menu-text">Workflows</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../integration_delivery_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Integration branches, review, and delivery</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gest_codex_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Gest-Codex workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../tag_dependency_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Tag classification and dependency impact workflow</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../agent_task_draft_workflow.html" class="sidebar-item-text sidebar-link"><span class="menu-text">AGENT_TASK_DRAFT v1 workflow</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true"><span class="menu-text">Protocol labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../protocol_flows.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Protocol Flow Labs</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../live_agent_result_recursive_lab.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Live AGENT_RESULT Recursive Lab</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true"><span class="menu-text">Setup labs</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_typescript_hello_world.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU TypeScript hello world lab</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../gsu_language_profile_labs.html" class="sidebar-item-text sidebar-link"><span class="menu-text">GSU language profile labs</span></a></div></li></ul></li><li class="sidebar-item sidebar-item-section"><div class="sidebar-item-container"><a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true"><span class="menu-text">Moved</span></a><a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section"><i class="bi bi-chevron-right ms-2"></i></a></div><ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show"><li class="sidebar-item"><div class="sidebar-item-container"><a href="../just_command_contract.html" class="sidebar-item-text sidebar-link"><span class="menu-text">Just command contract</span></a></div></li><li class="sidebar-item"><div class="sidebar-item-container"><a href="../cx_incremental_pipelines.html" class="sidebar-item-text sidebar-link"><span class="menu-text">cx incremental builds and pipelines</span></a></div></li></ul></li></ul></div></nav><div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item"></div><div id="quarto-margin-sidebar" class="sidebar margin-sidebar"><nav id="TOC" role="doc-toc" class="toc-active"><h2 id="toc-title">On this page</h2><ul><li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement">Problem Statement</a></li><li><a href="#terms" id="toc-terms" class="nav-link" data-scroll-target="#terms">Terms</a></li><li><a href="#the-threat-model" id="toc-the-threat-model" class="nav-link" data-scroll-target="#the-threat-model">The threat model</a></li><li><a href="#proposed-solution" id="toc-proposed-solution" class="nav-link" data-scroll-target="#proposed-solution">Proposed Solution</a><ul><li><a href="#who-calls-what" id="toc-who-calls-what" class="nav-link" data-scroll-target="#who-calls-what">Who calls what</a></li><li><a href="#the-tools" id="toc-the-tools" class="nav-link" data-scroll-target="#the-tools">The tools</a></li><li><a href="#the-steps" id="toc-the-steps" class="nav-link" data-scroll-target="#the-steps">The steps</a></li><li><a href="#the-docs-site-and-the-api-pages" id="toc-the-docs-site-and-the-api-pages" class="nav-link" data-scroll-target="#the-docs-site-and-the-api-pages">The docs site and the API pages</a></li><li><a href="#skills-and-targets" id="toc-skills-and-targets" class="nav-link" data-scroll-target="#skills-and-targets">Skills and targets</a></li><li><a href="#the-skills" id="toc-the-skills" class="nav-link" data-scroll-target="#the-skills">The skills</a></li><li><a href="#agentic-targets" id="toc-agentic-targets" class="nav-link" data-scroll-target="#agentic-targets">Agentic targets</a></li><li><a href="#setup-questions" id="toc-setup-questions" class="nav-link" data-scroll-target="#setup-questions">Setup questions</a></li><li><a href="#records" id="toc-records" class="nav-link" data-scroll-target="#records">Records</a></li><li><a href="#the-run-log" id="toc-the-run-log" class="nav-link" data-scroll-target="#the-run-log">The run log</a></li><li><a href="#sessions-and-the-environment" id="toc-sessions-and-the-environment" class="nav-link" data-scroll-target="#sessions-and-the-environment">Sessions and the environment</a></li><li><a href="#the-worktree-tree" id="toc-the-worktree-tree" class="nav-link" data-scroll-target="#the-worktree-tree">The worktree tree</a></li><li><a href="#the-pass" id="toc-the-pass" class="nav-link" data-scroll-target="#the-pass">The pass</a></li><li><a href="#gates" id="toc-gates" class="nav-link" data-scroll-target="#gates">Gates</a></li><li><a href="#stacked-prs-with-plain-git" id="toc-stacked-prs-with-plain-git" class="nav-link" data-scroll-target="#stacked-prs-with-plain-git">Stacked PRs with plain git</a></li><li><a href="#docs-publishing" id="toc-docs-publishing" class="nav-link" data-scroll-target="#docs-publishing">Docs publishing</a></li><li><a href="#the-files-that-the-installer-writes" id="toc-the-files-that-the-installer-writes" class="nav-link" data-scroll-target="#the-files-that-the-installer-writes">The files that the installer writes</a></li><li><a href="#where-each-part-lives" id="toc-where-each-part-lives" class="nav-link" data-scroll-target="#where-each-part-lives">Where each part lives</a></li><li><a href="#delivery" id="toc-delivery" class="nav-link" data-scroll-target="#delivery">Delivery</a></li></ul></li><li><a href="#scope" id="toc-scope" class="nav-link" data-scroll-target="#scope">Scope</a><ul><li><a href="#in-scope" id="toc-in-scope" class="nav-link" data-scroll-target="#in-scope">In Scope</a></li><li><a href="#out-of-scope" id="toc-out-of-scope" class="nav-link" data-scroll-target="#out-of-scope">Out of Scope</a></li></ul></li><li><a href="#acceptance-criteria" id="toc-acceptance-criteria" class="nav-link" data-scroll-target="#acceptance-criteria">Acceptance Criteria</a></li><li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions">Open Questions</a></li><li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li><li><a href="#recommendations" id="toc-recommendations" class="nav-link" data-scroll-target="#recommendations">Recommendations</a></li></ul></nav><div class="toc-actions"><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/blob/main/docs/specs/commit-gates.md" class="toc-action"><i class="bi bi-code"></i> View source</a></div><div class="action-links"><a href="https://github.com/rahuldave/agent_gest_git_skills/issues/new" class="toc-action"><i class="bi bi-chat-right"></i> Report an issue</a></div></div></div><main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="commit-gates.html">Specs</a></li><li class="breadcrumb-item"><a href="commit-gates.html">Spec: Commit gates for any repository</a></li></ol></nav><div class="quarto-title"><h1 class="title">Spec: Commit gates for any repository</h1></div><div class="quarto-title-meta"></div></header><section id="problem-statement" class="level2">
 <h2 class="anchored" data-anchor-id="problem-statement">Problem Statement</h2>
 <p>The rules for a commit live in the global <code>CLAUDE.md</code> file and in <code>AGENTS.md</code>
 files. They say that a commit needs lint, tests, integration tests, types and
@@ -150,7 +150,8 @@ files that the installer writes.</p>
 <section id="who-calls-what" class="level3">
 <h3 class="anchored" data-anchor-id="who-calls-what">Who calls what</h3>
 <p>The diagram shows each part and the parts that it calls. The gate reads the
-log and the records, and it runs no step itself.</p>
+log and the records. The only step that it runs is <code>release-check</code>, at the
+<code>commit-msg</code> hook, with the message of the commit.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode code-with-copy"><code class="sourceCode "> person / agent
      │  just check                         just review | update-docs …
      ▼                                          ▼
@@ -175,7 +176,7 @@ log and the records, and it runs no step itself.</p>
  git commit ──► pre-commit hook ──► gate (agent_gest_git_skills)
                                       reads: the pass + the chain of records
                                       checks: commit tree = worktree tree
-                                      never runs a step itself</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+                                      runs no step but release-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Each profile provides one module, for example <code>python.just</code>, <code>typescript.just</code>
 or <code>rust.just</code>, and one language layer of the packet text.</p>
 </section>
@@ -211,17 +212,17 @@ anything. When one is missing, it stops and prints the install line.</p>
 <tr>
 <td><code>jlog</code></td>
 <td>The run log, as the shell of each recipe</td>
-<td><code>git clone https://github.com/rahuldave/jlog</code>, then <code>just install</code> in the clone.</td>
+<td>The release binary, from the install line of jlog under this table. To build it from source instead, <code>git clone https://github.com/rahuldave/jlog</code>, then <code>just install</code> in the clone.</td>
 </tr>
 <tr>
 <td><code>jagt</code></td>
 <td>Agentic targets and their review records. Version 0.6.3 or later. An older jagt can save the review packet where the commit gate does not read it, in a submodule or a linked worktree.</td>
-<td><code>cargo install --locked --git https://github.com/rahuldave/jagt jagt</code></td>
+<td>The release binary, from the install line of jagt under this table. To build it from source instead, <code>cargo install --locked --git https://github.com/rahuldave/jagt --tag v0.6.4 jagt</code>.</td>
 </tr>
 <tr>
 <td><code>gest</code></td>
-<td>The task tracker, from the fork of rahuldave</td>
-<td><code>git clone https://github.com/rahuldave/gest</code>, then <code>cargo install --path gest --locked</code>. On 2026-11-12, <code>cargo install --git</code> of the fork failed at the checkout with “the repository is not empty”.</td>
+<td>The task tracker, from the fork of rahuldave. Version 0.6.0 or later, and <code>gest --version</code> must print <code>(rahuldave)</code>.</td>
+<td>The release binary, from the install line of gest under this table. To build it from source instead, <code>git clone https://github.com/rahuldave/gest</code>, <code>git checkout v0.6.0</code>, then <code>cargo install --locked --path .</code> in the clone.</td>
 </tr>
 <tr>
 <td><code>gh</code></td>
@@ -255,12 +256,17 @@ anything. When one is missing, it stops and prints the install line.</p>
 </tr>
 <tr>
 <td><code>cargo</code></td>
-<td>The Rust profile, and the builds of <code>just</code>, <code>jlog</code>, <code>jagt</code> and <code>gest</code></td>
+<td>The Rust profile, and the builds of <code>just</code>, <code>jlog</code>, <code>jagt</code> and <code>gest</code> from source</td>
 <td>https://rustup.rs/</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>The install lines of jlog, jagt and gest put the release binary in <code>~/.local/bin</code>.
+Each line takes the script from the tag of its release.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
+curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
 <li><strong>The other new tools come through the profiles.</strong> <code>diff-cover</code> and
 <code>interrogate</code> run with <code>uv run --with</code>, in any language. eslint and
@@ -276,13 +282,13 @@ machine needs”.</li>
 <section id="the-steps" class="level3">
 <h3 class="anchored" data-anchor-id="the-steps">The steps</h3>
 <p>Every repository has the same steps, for any language:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">just check     fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">just check     fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
 <li>
 <p><strong>jnterfaces names the steps.</strong> It holds the list and the meaning of each
 step. The installer writes a no-op step for each name that no installed
 profile and no installed role file defines:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">typecheck:
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">typecheck:
   jlog skip typecheck &quot;no type checker in this repository&quot;</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </li>
 <li>
@@ -660,13 +666,18 @@ recipe looks for that file in each installed skill, and one skill must have
 it. So the <code>nossaifd</code> skill gives the base task of <code>prose</code>, and a target
 without its skill prints no packet.</li>
 <li><strong>The language layer</strong> from <code>.agents/targets/&lt;language&gt;/&lt;target&gt;.md</code>, for
-each language in <code>.agents/stack.json</code>. Each profile ships its files, as it
+each language in <code>.agents/stack.json</code>. The languages are the names in
+<code>profiles</code>, then the keys of <code>code</code> that <code>profiles</code> does not name. Each profile ships its files, as it
 ships its <code>just</code> modules now. For example, the Python file for <code>update-docs</code> can say
 “write docments for each argument”. A new language needs a new file, and no
 change to any skill.</li>
 <li><strong>The repository text</strong> from <code>.agents/targets/&lt;target&gt;.md</code>, if the file
 exists. For example, <code>.agents/targets/review.md</code> can say “check each SQL
 migration for a rollback”.</li>
+<li><strong>Each layer once.</strong> jagt adds the language layers of <code>profiles</code> and the
+repository text itself, after the prompt that the recipe gives. So the
+recipe gives only the base task, the language layers of the other keys of
+<code>code</code> and the form of the result.</li>
 <li><strong>The inputs:</strong> the diff, the input tree and the arguments of the recipe.
 The diff compares the worktree with <code>HEAD</code>, and holds the files that git does
 not track yet. It is the file <code>diffs/&lt;head&gt;-&lt;tree&gt;.diff</code> in the shared log
@@ -924,7 +935,7 @@ twice.</p>
 </li>
 <li>
 <p><strong>The chain.</strong> <code>update-docs</code> and <code>prose</code> change files, so the gate accepts a chain:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">update-docs  T0 -&gt; T1
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">update-docs  T0 -&gt; T1
 prose        T1 -&gt; T2
 test-review  T2 -&gt; T2
 review       T2 -&gt; T2
@@ -1091,6 +1102,31 @@ record. The findings must be a list in <code>outputs.findings</code>, or the res
 gives no record.</p>
 </li>
 <li>
+<p><strong>The form of the result in each packet.</strong> <code>jagt result lint</code> refuses a
+result with no <code>follow_up</code>, and a base task can leave that field out. So
+<code>agentic_target.py</code> adds the form of the result after the layers of the
+prompt. The form names each field that the lint needs, and shows
+<code>follow_up: []</code>.</p>
+</li>
+<li>
+<p><strong>A refusal file.</strong> Claude Code does not show the output of a hook. So when
+the hook gives no record of a result whose nonce names a packet, it writes
+the reason in <code>refusals/&lt;nonce&gt;.json</code> of the shared log folder. When the
+gate finds no record, it names the nonce and the reason of the latest
+refusal of each missing target:</p>
+<ul>
+<li>The refusal must be of the commit tree. For <code>update-docs</code> and <code>prose</code>, it
+can also be of a packet of this worktree.</li>
+<li>A refusal is old when its packet has a record, or when a newer record
+has the same target and input tree. For <code>update-docs</code> and <code>prose</code>, a
+newer record of the same target from this worktree also makes it old.
+The gate does not name an old refusal.</li>
+<li>The hook and the gate read a marker of a block only at the start of a
+line, as jagt does. So the indented form in a packet is not a block.</li>
+<li>A refusal never counts as a record.</li>
+</ul>
+</li>
+<li>
 <p><strong>The guard of the records.</strong> The gate guard stops these calls:</p>
 <ul>
 <li><code>record_result.py hook</code>, which only the harness runs.</li>
@@ -1137,7 +1173,7 @@ check of that.</p>
 records. The hook <code>record-result.sh</code> runs it on <code>SubagentStop</code>. The recipes
 <code>record</code> and <code>record-skip</code> run it with <code>uv</code>, with pyyaml for the result
 block. The hook never stops the fresh agent. A result that gives no record
-only prints the reason.</p>
+prints the reason and writes it in a refusal file.</p>
 </li>
 </ul>
 </section>
@@ -1146,11 +1182,11 @@ only prints the reason.</p>
 <p>just has no log of its own. Its options <code>--timestamp</code>, <code>--verbose</code> and
 <code>--explain</code> print to the terminal, and its changelog shows that its internal
 logging was removed. So each Justfile sets <code>jlog</code> as its shell:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">set shell := [&quot;jlog&quot;, &quot;sh&quot;, &quot;-cu&quot;]</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">set shell := [&quot;jlog&quot;, &quot;sh&quot;, &quot;-cu&quot;]</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>jlog</code> takes the real shell as its first argument, here <code>sh -cu</code>. It runs each
 line with that shell and the positional arguments of the recipe. Then it adds
 one JSON line to the run log:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;run&quot;</span>: <span class="st">&quot;48213-1731405600&quot;</span>, <span class="kw">&quot;argv&quot;</span>: [<span class="st">&quot;just&quot;</span>, <span class="st">&quot;check&quot;</span>],
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;run&quot;</span>: <span class="st">&quot;48213-1731405600&quot;</span>, <span class="kw">&quot;argv&quot;</span>: [<span class="st">&quot;just&quot;</span>, <span class="st">&quot;check&quot;</span>],
  <span class="kw">&quot;line&quot;</span>: <span class="st">&quot;uv run ruff check .&quot;</span>, <span class="kw">&quot;exit&quot;</span>: <span class="dv">0</span>,
  <span class="kw">&quot;start&quot;</span>: <span class="st">&quot;2026-11-12T10:00:00Z&quot;</span>, <span class="kw">&quot;end&quot;</span>: <span class="st">&quot;2026-11-12T10:00:04Z&quot;</span>}</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
@@ -1344,7 +1380,7 @@ checkout. Probes with <code>codex sandbox</code> checked the four roots of a wor
 </div>
 <p><strong>The plugins.</strong> The repository of <code>jlog</code> has a folder <code>plugins/</code>, with one
 folder for each harness:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">plugins/
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">plugins/
   claude/   pyproject.toml  uv.lock  session.py
   codex/    pyproject.toml  uv.lock  session.py</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
@@ -1377,7 +1413,7 @@ the harness.</li>
 agent_gest_git_skills. <code>jlog</code> and the gate do not change.</li>
 </ul>
 <p>Each plugin reads the environment and prints one JSON object:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;harness&quot;</span>: <span class="st">&quot;codex&quot;</span>, <span class="kw">&quot;session&quot;</span>: <span class="st">&quot;&lt;thread&gt;&quot;</span>, <span class="kw">&quot;transcript&quot;</span>: <span class="st">&quot;&lt;path of the JSONL file&gt;&quot;</span>,
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode json code-with-copy"><code class="sourceCode json">{<span class="kw">&quot;harness&quot;</span>: <span class="st">&quot;codex&quot;</span>, <span class="kw">&quot;session&quot;</span>: <span class="st">&quot;&lt;thread&gt;&quot;</span>, <span class="kw">&quot;transcript&quot;</span>: <span class="st">&quot;&lt;path of the JSONL file&gt;&quot;</span>,
  <span class="kw">&quot;model&quot;</span>: <span class="st">&quot;&lt;model&gt;&quot;</span>, <span class="kw">&quot;parent&quot;</span>: <span class="st">&quot;&lt;parent thread&gt;&quot;</span>}</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>The environment.</strong> A recipe runs with <code>sh</code>, not with the shell of the person.
 A test on 2026-11-12 showed what a recipe gets:</p>
@@ -1413,7 +1449,7 @@ because transcripts hold secrets.</li>
 come from the worktree, not from the index. The gate and the agentic targets
 compute the worktree tree as below, and <code>jlog</code> and <code>jagt</code> also start from a
 copy of the index:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode sh">cp -p .git/index &lt;tmp&gt;/index                  <span class="co"># keeps the time of the index
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode sh code-with-copy"><code class="sourceCode sh">cp -p .git/index &lt;tmp&gt;/index                  <span class="co"># keeps the time of the index
 </span><span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt;/index git add -A
 <span class="va">GIT_INDEX_FILE</span><span class="op">=</span>&lt;tmp&gt;/index git write-tree</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
@@ -1448,7 +1484,7 @@ and <code>just check</code>, then commit, then <code>git stash pop</code>.</li>
 <section id="the-pass" class="level3">
 <h3 class="anchored" data-anchor-id="the-pass">The pass</h3>
 <p>The last line of <code>check</code> is <code>jlog pass</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">check: fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode just code-with-copy"><code class="sourceCode just">check: fmt-check lint typecheck test integration coverage-check docstring-check docs-check prose-check diff-check
   jlog pass</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>jlog</code> computes the worktree tree at the first line of a run, and again at
 <code>jlog pass</code>. <code>jlog pass</code> writes a pass for the tree only if all of these hold:</p>
@@ -1478,7 +1514,7 @@ gate does these checks:</p>
 <ol>
 <li>It checks that the steps and the required targets exist.</li>
 <li>It checks that the commit tree equals the worktree tree.</li>
-<li>It looks for a pass for the tree. It never runs the steps itself. A commit
+<li>It looks for a pass for the tree. It does not run the steps of the pass. A commit
 gives the hook a <code>GIT_INDEX_FILE</code>, and tests that run git can write into
 it and break the commit. If there is no pass, the gate stops and says
 “run <code>just check</code>”.</li>
@@ -1501,8 +1537,9 @@ tasker role has no gate and no framework.</p>
 <ul>
 <li><code>commit-gate</code> runs the gate for the stages <code>pre-commit</code> and
 <code>pre-merge-commit</code>.</li>
-<li><code>commit-gate-trailer</code> runs the gate again for the stage <code>commit-msg</code>,
-and adds the trailer <code>Commit-Gate:</code> to the message.</li>
+<li><code>commit-gate-trailer</code> runs the gate again for the stage <code>commit-msg</code>.
+Then it runs <code>just release-check</code> on the message, and adds the
+trailer <code>Commit-Gate:</code> to the message.</li>
 <li><code>just-ci</code> runs <code>just ci</code> for the stage <code>pre-push</code>. So a push checks
 on your machine what CI checks, and a commit without a trailer stops
 before it reaches GitHub.</li>
@@ -1521,6 +1558,11 @@ the config, and
 <code>pre-commit install</code> with a <code>--hook-type</code> for each of <code>pre-commit</code>,
 <code>pre-merge-commit</code>, <code>commit-msg</code> and <code>pre-push</code> installs them. jnterfaces installs the programs of a role after its
 files.</li>
+<li>The program of the hooks has <code>&quot;each_clone&quot;: true</code>, so jnterfaces 0.3.0
+or later keeps it in <code>.agents/stack.json</code>. A fresh clone without the
+hooks then fails <code>tools-check</code>, the first step of <code>just check</code>, and the
+message says to run <code>just install</code>. In CI, <code>tools-check</code> skips it, as CI
+makes no commits. The role requires jnterfaces 0.3.0 for the key.</li>
 <li>The framework stashes the unstaged edits of tracked files before its
 hooks run. So the gate sees them as a tree without a pass, not as
 partial staging. The framework sets <code>PRE_COMMIT=1</code> for its hooks, so then
@@ -1541,7 +1583,7 @@ gate, so that you can run the gate from the hooks of that folder.</li>
 <li>
 <p><strong>The required targets</strong> are in <code>.agents/targets/required.txt</code>. Each line
 names a target and the paths that make it required:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">review       **
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode text code-with-copy"><code class="sourceCode text">review       **
 test-review  @code
 update-docs  @pages  @api
 prose        @pages  @api</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1684,8 +1726,9 @@ the hooks.</li>
 <p><strong>The trailer and just ci.</strong> The gate stamps each commit that it passes,
 and CI checks the stamps:</p>
 <ul>
-<li><strong>The trailer.</strong> The <code>commit-msg</code> hook runs the gate once more. Then it
-adds <code>Commit-Gate: patch:&lt;patch-id&gt;</code> to the message. A merge gets
+<li><strong>The trailer.</strong> The <code>commit-msg</code> hook runs the gate once more, and then
+<code>just release-check</code> on the message. Then it adds
+<code>Commit-Gate: patch:&lt;patch-id&gt;</code> to the message. A merge gets
 <code>Commit-Gate: tree:&lt;tree&gt;</code>.</li>
 <li><strong>The patch ID</strong> is the hash of the change, from <code>git patch-id --verbatim</code>, which keeps the spaces of each line. The diff has no lines of
 context, so a rebase with no conflict keeps the ID, and a restacked branch
@@ -1703,16 +1746,32 @@ role gives <code>ci-gate</code>. Without the role, <code>ci-gate</code> only say
 is no gate.</li>
 <li><strong><code>ci-gate</code></strong> runs <code>commit_gate.py --trailers</code> on each commit of a
 range. Each commit needs a trailer that names its own patch ID, or its
-own tree for a merge. The range comes from the first of these that is
-there:
+own tree for a merge. Range selection follows these rules:
 <ol>
-<li><code>JN_CI_BASE</code> and <code>JN_CI_HEAD</code>, which CI sets.</li>
-<li><code>PRE_COMMIT_FROM_REF</code> and <code>PRE_COMMIT_TO_REF</code>, which the pre-push
-hook sets for a push to a branch that the remote has.</li>
-<li><code>PRE_COMMIT_LOCAL_BRANCH</code> alone, for a push of a new history. Each
-commit of the branch counts.</li>
-<li>By hand, the upstream of the branch, or else <code>origin/HEAD</code>. With
-neither, <code>ci-gate</code> fails and says to set <code>JN_CI_BASE</code>.</li>
+<li>For an existing remote branch, the pre-push hook sets
+<code>PRE_COMMIT_FROM_REF</code> and <code>PRE_COMMIT_TO_REF</code>. With an explicit
+<code>JN_CI_BASE</code>, the gate resolves the supplied base and checks that it
+is an ancestor of the pushed head. Each commit of the base must be on
+the remote of the push already, so a base of a new commit stops the
+push. It checks the complete selected-base range, retaining
+<code>PRE_COMMIT_TO_REF</code> as the head. A conflicting
+<code>JN_CI_HEAD</code> fails. Without <code>JN_CI_BASE</code>, it checks the ordinary push range.</li>
+<li>When the hook supplies <code>PRE_COMMIT_LOCAL_BRANCH</code> without the two
+push refs above, it means a push of a new history. Every commit counts,
+including when <code>JN_CI_BASE</code> is set.</li>
+<li>Outside a push, an explicit <code>JN_CI_BASE</code> selects the CI range.
+Optional <code>JN_CI_HEAD</code> selects its head, which defaults to <code>HEAD</code>.</li>
+<li>Otherwise, the base is the branch upstream, or else <code>origin/HEAD</code>. With
+neither, <code>ci-gate</code> fails and says to set <code>JN_CI_BASE</code>.
+With the tasker pre-push hook installed, verify the PR target’s current
+remote tip and pin its full SHA.
+Use <code>JN_CI_BASE=&lt;verified-PR-target-tip-SHA&gt; git push origin &lt;topic&gt;</code>.
+<code>BASE..HEAD</code> contains commits reachable from the pushed head, excluding
+those reachable from the selected base. Inspect that full feature range
+first; never select a topic commit to omit unaccepted work.
+This includes original feature commits and the gated local merge. The
+operator must verify that the supplied base is the PR target’s current
+remote tip; the gate does not establish PR acceptance.</li>
 </ol>
 </li>
 <li><strong>Limits of the pre-push hook.</strong>
@@ -1882,6 +1941,17 @@ profiles give different versions, or a version lower than the last tag or
 than the bump that the commits ask for. In a shallow checkout it passes and
 says that the tags are unknown. jnterfaces puts <code>release-check</code> in the
 steps of <code>just check</code>, with a no-op step where the role is not installed.</li>
+<li><strong>The release check at the commit.</strong> <code>just check</code> runs before the commit,
+so it cannot count the message of the commit. The <code>commit-msg</code> hook of the
+gate runs <code>just release-check</code> again, with the path of the message file in
+<code>JN_RELEASE_MESSAGE</code>. So a <code>fix:</code> commit with the tagged version stops at
+the commit, not at the release after the push. For an amend, the new
+message replaces the message of HEAD. The hook skips the check for a merge,
+for an amend of a merge, during a rebase, and when the Justfile has no
+recipe <code>release-check</code>. The check cleans up the message as git does, with
+the option <code>--cleanup</code> that the gate passes in <code>JN_RELEASE_CLEANUP</code>, and
+with <code>GIT_EDITOR</code>, which git sets to <code>:</code> when it runs no editor. An amend
+of the commit with the release tag stops.</li>
 </ul>
 <p>The run log, the packets and the records are not pieces. The runs write them,
 in the log folders.</p>
@@ -2314,5 +2384,12 @@ and the commits of smalldocs 0.5.9 to 0.5.12</li>
 just 1.50</li>
 <li>The just changelog, entry “Remove logging” (#2305)</li>
 </ul>
+</section>
+<section id="recommendations" class="level2">
+<h2 class="anchored" data-anchor-id="recommendations">Recommendations</h2>
+<p>Keep the hook’s pushed head authoritative. Before pushing a topic that merged
+its PR base, verify the current remote PR-target tip and inspect the full range
+from that tip to the topic. Set <code>JN_CI_BASE</code> to that tip’s full SHA. Check the
+PR’s required CI results on GitHub for the exact published head.</p>
 </section>
 <nav class="page-navigation"><div class="nav-page nav-page-previous"><a href="../g_commands_cheatsheet.html" class="pagination-link"><i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Gest g-commands cheat sheet</span></a></div><div class="nav-page nav-page-next"><a href="../integration_delivery_workflow.html" class="pagination-link"><span class="nav-page-text">Integration branches, review, and delivery</span> <i class="bi bi-arrow-right-short"></i></a></div></nav></main></div><footer class="footer"><div class="nav-footer"><div class="nav-footer-left">Part of <a href="https://rahuldave.github.io/jnterfaces/">jnterfaces</a> and its packages.</div><div class="nav-footer-center"></div><div class="nav-footer-right">Built with <a href="https://docs.smallish.dev/">smalldocs</a>.</div></div></footer></body></html>
