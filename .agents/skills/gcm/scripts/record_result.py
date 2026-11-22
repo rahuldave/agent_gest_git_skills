@@ -15,6 +15,9 @@ When the hook gives no record of a result whose nonce names a packet, it writes 
 `refusals/NONCE.json` of the shared log folder. The harness does not show the output of the hook, so the gate reads
 that file and says why the record is missing. A refusal never counts as a record.
 
+When the hook finds no result block at all, it writes `hook-stops/AGENT_ID.json` of the shared log folder: what the
+event held, the size of the transcript, whether it had a SubagentHandback call, and how many times the hook read it.
+
 A result counts only when `jagt result lint --expect-target TARGET --expect-nonce NONCE` accepts it. The nonce names
 the packet file in `packets/`, which gives the target, the input tree and the worktree. The output tree is the
 worktree tree of that worktree now, after the changes of the fresh agent.
@@ -24,14 +27,17 @@ Usage: record_result.py hook | record TARGET FILE | skip TARGET REASON
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import errno
 import json
+import math
 import os
 from pathlib import Path
 import re
 import secrets
 import subprocess
 import sys
+import time
 from typing import Iterator, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,6 +50,11 @@ NONCE = re.compile(r"^nonce:[ \t]*['\"]?([a-f][0-9a-f]{31})['\"]?[ \t]*$", re.M)
 START, END = "<<<AGENT_RESULT v1>>>", "<<<END_AGENT_RESULT>>>"
 # The variables of Claude Code, whose SubagentStop hook writes the records.
 CLAUDE_VARIABLES = ("CLAUDE_CODE_SESSION_ID", "CLAUDECODE")
+# How long the hook waits for a handback in the transcript, and how often it reads it again. Tests set them lower.
+WAIT_VARIABLE, WAIT_SECONDS = "RECORD_HOOK_WAIT_SECONDS", 2.0
+POLL_VARIABLE, POLL_SECONDS = "RECORD_HOOK_POLL_SECONDS", 0.2
+# The agent ids that name a hook-stops file. Any other id gives a name of its own.
+AGENT_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
 
 
 def result_block(text: str) -> dict:
@@ -252,33 +263,104 @@ def has_block(message: object) -> bool:
     return isinstance(message, str) and any(line.rstrip() == START for line in message.splitlines())
 
 
+def seconds(name: str, default: float, low: float, high: float) -> float:
+    """The number of seconds in the variable NAME, kept from LOW to HIGH, or DEFAULT when it is not a number."""
+    try:
+        value = float(os.environ.get(name, ""))
+    except ValueError:
+        return default
+    return min(max(value, low), high) if math.isfinite(value) else default
+
+
+def find_message(event: dict, transcript: Optional[str]) -> Tuple[Optional[str], bool, int]:
+    """The text with the result block, whether the transcript has a SubagentHandback call, and the count of re-reads.
+    The block is in the last message of the event or in the last handback of the transcript. Claude Code can run the
+    hook before it writes the handback in the transcript, so with no handback the hook reads the transcript again,
+    every POLL_SECONDS for up to WAIT_SECONDS. A block in the first read adds no delay."""
+    message = event.get("last_assistant_message")
+    if has_block(message):
+        return message, False, 0
+    deadline = time.monotonic() + seconds(WAIT_VARIABLE, WAIT_SECONDS, 0.0, 10.0)
+    poll = seconds(POLL_VARIABLE, POLL_SECONDS, 0.01, 1.0)
+    rereads = 0
+    while True:
+        handback = handback_message(transcript)
+        if has_block(handback):
+            return handback, True, rereads
+        left = deadline - time.monotonic()
+        # A handback with no block is the last word of the agent, so a new read cannot find a block.
+        if handback is not None or transcript is None or left <= 0:
+            return None, handback is not None, rereads
+        time.sleep(min(poll, left))
+        rereads += 1
+
+
+def transcript_size(path: Optional[str]) -> Optional[dict]:
+    """The size in bytes and the count of lines of the transcript, or why it cannot be read. None with no path."""
+    if path is None:
+        return None
+    try:
+        data = Path(path).expanduser().read_bytes()
+    except OSError as error:
+        return {"readable": False, "error": error.strerror or repr(error)}
+    return {"readable": True, "bytes": len(data), "lines": len(data.splitlines())}
+
+
+def log_stop(event: dict, transcript: Optional[str], handback: bool, rereads: int) -> None:
+    """Write hook-stops/AGENT_ID.json in the shared log folder for a stop with no result block, and print one line.
+    The file tells a stop with no transcript path from a transcript with no handback yet. A failure here only prints
+    why, since the hook never stops the agent."""
+    try:
+        agent = event.get("agent_id")
+        agent = agent if isinstance(agent, str) else None
+        message = event.get("last_assistant_message")
+        entry = {"version": 1, "time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                 "agent_id": agent, "last_assistant_message": isinstance(message, str) and bool(message),
+                 "agent_transcript_path": transcript is not None, "transcript": transcript_size(transcript),
+                 "handback_found": handback, "rereads": rereads}
+        name = agent if agent and AGENT_ID.fullmatch(agent) else f"unknown-{time.time_ns()}-{os.getpid()}"
+        where = "no hook-stops file"
+        try:
+            cwd = event.get("cwd")
+            cwd = Path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
+            root = Path(git(["rev-parse", "--show-toplevel"], cwd, plain_env()).strip())
+            where = f"wrote {write_record(root, entry, name, sub='hook-stops')}"
+        except Exception as error:
+            where = f"no hook-stops file: {error}"
+        print(f"record: no AGENT_RESULT block in the stop of agent {name} (transcript path: "
+              f"{'yes' if transcript else 'no'}, handback: {'yes' if handback else 'no'}, re-reads: {rereads}); "
+              f"{where}", file=sys.stderr)
+    except Exception as error:
+        try:
+            print(f"record: no hook-stops file: {error!r}", file=sys.stderr)
+        except Exception:
+            pass
+
+
 def hook(stdin: bytes) -> int:
     """The SubagentStop hook. It never blocks the fresh agent: a result that gives no record prints why, and writes
-    why in a refusal file when its nonce names a packet."""
+    why in a refusal file when its nonce names a packet. A stop with no result block writes a hook-stops file."""
+    try:
+        event = json.loads(stdin.decode(errors="replace"))
+    except (ValueError, RecursionError):  # RecursionError: JSON nested too deep.
+        print("record: the input of the hook is not JSON", file=sys.stderr)
+        return 0
+    if not isinstance(event, dict):
+        return 0
     root: Optional[Path] = None
     message: Optional[str] = None
     try:
-        event = json.loads(stdin.decode(errors="replace"))
-        if not isinstance(event, dict):
-            return 0
         transcript = event.get("agent_transcript_path")
-        transcript = transcript if isinstance(transcript, str) else None
-        message = event.get("last_assistant_message")
-        if not has_block(message):
-            message = handback_message(transcript)
-        if not has_block(message):
+        transcript = transcript if isinstance(transcript, str) and transcript else None
+        message, handback, rereads = find_message(event, transcript)
+        if message is None:
+            log_stop(event, transcript, handback, rereads)
             return 0
         cwd = event.get("cwd")
         cwd = Path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
         root = Path(git(["rev-parse", "--show-toplevel"], cwd, plain_env()).strip())
         path = record_from(message, root, "hook", transcript_model(transcript))
         print(f"record: wrote {path}", file=sys.stderr)
-    except ValueError as error:
-        # The input of the hook is not JSON. A ValueError after that is a fault of the record, as below.
-        if root is not None and message is not None:
-            print(f"record: no record of this result: {error!r}", file=sys.stderr)
-            write_refusal(root, message, repr(error))
-        return 0
     except Stop as stop:
         print(f"record: no record of this result: {stop}", file=sys.stderr)
         if root is not None and message is not None:

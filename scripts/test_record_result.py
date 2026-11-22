@@ -6,8 +6,10 @@ scripts/test_record_result.py`.
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -15,6 +17,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 import unittest.mock
 
@@ -22,6 +26,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / ".agents/skills/gcm/scripts"
 SCRIPT = SCRIPTS / "record_result.py"
 HARNESS = ("CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CODEX_THREAD_ID", "CODEX_HOME")
+# The transcripts of the three fresh agents whose results got no record in a Gossil session on 2026-11-22, and the
+# packets of their nonces. Each transcript keeps its line count, its model and its SubagentHandback call as saved.
+# Each other line is a stub, since the saved lines hold the prompts and settings of the person.
+FIXTURES = ROOT / "fixtures/record_hook"
 
 
 def load(name: str):
@@ -55,6 +63,8 @@ class RecordTests(unittest.TestCase):
         self.home = self.base / "home"
         self.home.mkdir()
         self.env["HOME"] = str(self.home)
+        # The hook waits for a handback in the transcript. Most tests need no wait.
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="0", RECORD_HOOK_POLL_SECONDS="0.05")
         git("init", "-q", "-b", "main", cwd=self.repo)
         self.write(".agents/skills/grv/references/targets/review.md", "BASE TASK\n")
         self.write(".gitignore", ".agents/log/\n")
@@ -143,6 +153,197 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertNotIn("Traceback", run.stderr)
         self.assertEqual(self.records(), [])
+
+    def stop_entry(self, agent: str) -> dict:
+        return json.loads((self.repo / f".agents/log/hook-stops/{agent}.json").read_text())
+
+    def text_entry(self, text: str = "Working.") -> str:
+        return json.dumps({"message": {"model": "claude-opus-5-5", "content": [{"type": "text", "text": text}]}}) + "\n"
+
+    def test_a_stop_with_no_handback_writes_a_hook_stop_and_no_record(self) -> None:
+        self.render()
+        transcript = self.base / "agent.jsonl"
+        transcript.write_text(self.text_entry())
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="0.3")
+        run = self.hook({"agent_id": "a1", "last_assistant_message": "", "agent_transcript_path": str(transcript)})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.records(), [])
+        entry = self.stop_entry("a1")
+        self.assertEqual((entry["agent_id"], entry["last_assistant_message"], entry["agent_transcript_path"],
+                          entry["handback_found"]), ("a1", False, True, False))
+        self.assertEqual(entry["transcript"], {"readable": True, "bytes": transcript.stat().st_size, "lines": 1})
+        self.assertGreater(entry["rereads"], 0)
+        self.assertIn("time", entry)
+        [line] = run.stderr.splitlines()
+        self.assertIn("no AGENT_RESULT block in the stop of agent a1", line)
+
+    def test_a_stop_with_no_transcript_path_says_so(self) -> None:
+        run = self.hook({"agent_id": "a2", "last_assistant_message": "Done."})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        entry = self.stop_entry("a2")
+        self.assertEqual((entry["last_assistant_message"], entry["agent_transcript_path"], entry["transcript"],
+                          entry["handback_found"], entry["rereads"]), (True, False, None, False, 0))
+        self.assertIn("transcript path: no", run.stderr)
+
+    def test_a_transcript_that_cannot_be_read_is_named(self) -> None:
+        self.hook({"agent_id": "a3", "agent_transcript_path": str(self.base / "missing.jsonl")})
+        self.assertEqual(self.stop_entry("a3")["transcript"]["readable"], False)
+
+    def test_a_handback_with_no_block_stops_the_wait(self) -> None:
+        transcript = self.base / "agent.jsonl"
+        call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": "No result here."}}
+        transcript.write_text(json.dumps({"message": {"content": [call]}}) + "\n")
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="5")
+        start = time.monotonic()
+        self.hook({"agent_id": "a4", "agent_transcript_path": str(transcript)})
+        self.assertLess(time.monotonic() - start, 4)
+        entry = self.stop_entry("a4")
+        self.assertEqual((entry["handback_found"], entry["rereads"]), (True, 0))
+
+    def test_an_agent_id_that_is_not_a_plain_name_gives_a_name_of_its_own(self) -> None:
+        run = self.hook({"agent_id": "../../escape", "last_assistant_message": ""})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        [path] = (self.repo / ".agents/log/hook-stops").iterdir()
+        self.assertTrue(path.name.startswith("unknown-"))
+        self.assertEqual(json.loads(path.read_text())["agent_id"], "../../escape")
+        self.assertFalse((self.base / "escape.json").exists())
+
+    def test_the_hook_waits_for_a_handback_that_comes_late(self) -> None:
+        nonce = self.render()
+        transcript = self.base / "agent.jsonl"
+        transcript.write_text(self.text_entry())
+        call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": result(nonce)}}
+
+        def append() -> None:
+            time.sleep(0.5)
+            with transcript.open("a") as handle:
+                handle.write(json.dumps({"message": {"model": "claude-opus-5-5", "content": [call]}}) + "\n")
+
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="5", RECORD_HOOK_POLL_SECONDS="0.1")
+        writer = threading.Thread(target=append)
+        writer.start()
+        self.addCleanup(writer.join)
+        run = self.hook({"agent_id": "a5", "last_assistant_message": "", "agent_transcript_path": str(transcript)})
+        writer.join()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("record: wrote", run.stderr)
+        [record] = self.records()
+        self.assertEqual(record["nonce"], nonce)
+        self.assertFalse((self.repo / ".agents/log/hook-stops").exists())
+
+    def test_the_wait_reads_the_transcript_again_until_the_handback_comes(self) -> None:
+        module = load("record_result")
+        transcript = self.base / "agent.jsonl"
+        transcript.write_text(self.text_entry())
+        call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": result("b" * 32)}}
+        reads = []
+        real = module.handback_message
+
+        def handback(path):
+            reads.append(path)
+            if len(reads) == 3:  # Claude Code writes the handback after the hook read the transcript twice.
+                with transcript.open("a") as handle:
+                    handle.write(json.dumps({"message": {"content": [call]}}) + "\n")
+            return real(path)
+
+        with unittest.mock.patch.dict(os.environ, {"RECORD_HOOK_WAIT_SECONDS": "5", "RECORD_HOOK_POLL_SECONDS": "0.01"}), \
+                unittest.mock.patch.object(module, "handback_message", handback):
+            message, found, rereads = module.find_message({"last_assistant_message": ""}, str(transcript))
+        self.assertEqual((module.has_block(message), found, rereads), (True, True, 2))
+
+    def test_input_nested_too_deep_never_stops_the_agent(self) -> None:
+        run = self.run_script("hook", stdin="[" * 100000)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+
+    def test_a_block_in_the_first_read_adds_no_delay(self) -> None:
+        module = load("record_result")
+        transcript = self.base / "agent.jsonl"
+        call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": result("b" * 32)}}
+        transcript.write_text(json.dumps({"message": {"content": [call]}}) + "\n")
+        with unittest.mock.patch.dict(os.environ, {"RECORD_HOOK_WAIT_SECONDS": "5"}), \
+                unittest.mock.patch.object(module.time, "sleep", side_effect=AssertionError("slept")):
+            for event in ({"last_assistant_message": result("b" * 32)}, {"last_assistant_message": ""}):
+                message, _, rereads = module.find_message(event, str(transcript))
+                self.assertEqual((module.has_block(message), rereads), (True, 0))
+
+    def test_the_wait_settings_ignore_values_that_are_not_numbers(self) -> None:
+        module = load("record_result")
+        for value, expected in (("x", 2.0), ("nan", 2.0), ("inf", 2.0), ("-1", 0.0), ("99", 10.0), ("0.5", 0.5)):
+            with self.subTest(value=value), unittest.mock.patch.dict(os.environ, {"RECORD_HOOK_WAIT_SECONDS": value}):
+                self.assertEqual(module.seconds(module.WAIT_VARIABLE, module.WAIT_SECONDS, 0.0, 10.0), expected)
+
+    def test_the_saved_transcripts_of_the_missed_results(self) -> None:
+        packets = self.repo / ".agents/log/packets"
+        packets.mkdir(parents=True)
+        for packet in sorted((FIXTURES / "packets").glob("*.json")):
+            data = json.loads(packet.read_text())
+            data["worktree"] = str(self.repo)
+            (packets / packet.name).write_text(json.dumps(data))
+        saved = sorted(FIXTURES.glob("agent-*.jsonl"))
+        self.assertEqual(len(saved), 3)
+        for path in saved:
+            agent = path.name[len("agent-"):-len(".jsonl")]
+            lines = path.read_text().splitlines(keepends=True)
+            last = max(i for i, line in enumerate(lines) if '"SubagentHandback"' in line)
+            with self.subTest(agent=agent):
+                # The transcript before Claude Code wrote the handback: a hook-stops file and no record.
+                truncated = self.base / f"{agent}.truncated.jsonl"
+                truncated.write_text("".join(lines[:last]))
+                before = len(self.records())
+                run = self.hook({"agent_id": agent, "last_assistant_message": "",
+                                 "agent_transcript_path": str(truncated)})
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(len(self.records()), before)
+                entry = self.stop_entry(agent)
+                self.assertEqual((entry["handback_found"], entry["transcript"]["lines"]), (False, last))
+                # The full transcript writes the record.
+                full = self.base / f"{agent}.jsonl"
+                full.write_text("".join(lines))
+                run = self.hook({"agent_id": agent, "last_assistant_message": "", "agent_transcript_path": str(full)})
+                self.assertIn("record: wrote", run.stderr)
+                self.assertEqual(len(self.records()), before + 1)
+        self.assertEqual(sorted(record["nonce"] for record in self.records()),
+                         sorted(packet.stem for packet in (FIXTURES / "packets").glob("*.json")))
+
+    def test_a_hook_stop_that_cannot_be_written_never_stops_the_agent(self) -> None:
+        log = self.repo / ".agents/log"
+        log.mkdir(parents=True)
+        (log / "hook-stops").write_text("a file, not a folder\n")
+        run = self.hook({"agent_id": "a6", "last_assistant_message": ""})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("no hook-stops file", run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+        (log / "hook-stops").unlink()
+        log.chmod(0o500)
+        self.addCleanup(log.chmod, 0o755)
+        run = self.hook({"agent_id": "a7", "last_assistant_message": ""})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("no hook-stops file", run.stderr)
+        # Outside a repository, and with a fault of any kind in the write, the hook still returns 0.
+        run = self.run_script("hook", stdin=json.dumps({"agent_id": "a8", "cwd": str(self.base)}), cwd=self.base)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("no hook-stops file", run.stderr)
+        module = load("record_result")
+        with unittest.mock.patch.object(module, "write_record", side_effect=RuntimeError("boom")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(module.hook(json.dumps({"agent_id": "a9", "cwd": str(self.repo)}).encode()), 0)
+        self.assertIn("no hook-stops file: boom", err.getvalue())
+        with unittest.mock.patch.object(module, "transcript_size", side_effect=RuntimeError("boom")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(module.hook(json.dumps({"agent_id": "a9", "cwd": str(self.repo)}).encode()), 0)
+        self.assertIn("no hook-stops file", err.getvalue())
+
+    def test_only_input_that_is_not_json_returns_at_once(self) -> None:
+        module = load("record_result")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(module.hook(b"not json"), 0)
+        self.assertIn("is not JSON", err.getvalue())
+        # A ValueError after the input was read is a fault of the hook, and the hook says so.
+        with unittest.mock.patch.object(module, "find_message", side_effect=ValueError("late")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(module.hook(json.dumps({"cwd": str(self.repo)}).encode()), 0)
+        self.assertIn("no record of this result: ValueError('late')", err.getvalue())
 
     def test_findings_that_the_gate_cannot_see_give_no_record(self) -> None:
         nonce = self.render()

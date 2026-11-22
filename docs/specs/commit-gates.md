@@ -767,6 +767,30 @@ only place for them.
   - The hook and the gate read a marker of a block only at the start of a
     line, as jagt does. So the indented form in a packet is not a block.
   - A refusal never counts as a record.
+- **A stop with no result block.** The hook runs for each subagent that
+  stops. A fresh agent of Claude Code hands back its result in a
+  `SubagentHandback` call. So the block is not in `last_assistant_message`,
+  and the hook reads the transcript at `agent_transcript_path`:
+  - When the transcript has no `SubagentHandback` call yet, the hook reads it
+    again every 0.2 seconds, for up to 2 seconds. Claude Code can run the hook
+    before it writes that call. A block in the first read adds no delay. A
+    handback with no block also stops the wait. The variables
+    `RECORD_HOOK_WAIT_SECONDS` and `RECORD_HOOK_POLL_SECONDS` change the two
+    times, and the tests set them lower.
+  - When the hook finds no block, it writes `hook-stops/<agent_id>.json` in
+    the shared log folder and prints one line. The file holds the time, the
+    agent id, whether the event had a `last_assistant_message` that is not
+    empty and an `agent_transcript_path`, and the size and line count of the transcript.
+    It also holds whether the transcript had a `SubagentHandback` call, and
+    the count of re-reads.
+    So a transcript that was not complete differs from an event with no
+    path. A stop of an ordinary subagent also writes this file.
+  - In a Gossil session on 2026-11-22, 3 of 73 results got no record and
+    no trace. A replay of the saved transcripts writes all three records.
+    The tests use cut-down copies of those transcripts, in
+    `fixtures/record_hook/`. Each line is a stub, except the handback, which
+    stays at its saved line.
+  - A failure to write the file only prints why, and the hook exits 0.
 - **The guard of the records.** The gate guard stops these calls:
   - `record_result.py hook`, which only the harness runs.
   - `just record` in Claude Code. The guard finds the recipe after the
@@ -806,7 +830,9 @@ only place for them.
   records. The hook `record-result.sh` runs it on `SubagentStop`. The recipes
   `record` and `record-skip` run it with `uv`, with pyyaml for the result
   block. The hook never stops the fresh agent. A result that gives no record
-  prints the reason and writes it in a refusal file.
+  prints the reason and writes it in a refusal file. A stop with no result
+  block writes a hook-stops file. Only input that is not JSON makes the hook
+  return before it reads the event.
 
 ### The run log
 
