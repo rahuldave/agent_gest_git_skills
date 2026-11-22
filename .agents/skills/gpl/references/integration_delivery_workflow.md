@@ -417,6 +417,42 @@ second run on the same commit is safe. A tag at or above the next number on a
 later commit also gives `no release`. That case occurs when the CI of an older
 push ends after the CI of a newer push.
 
+### A second run of a release
+
+A job after the release job can fail, such as a job `binaries`. "Re-run
+failed jobs" keeps the output `tag` of the release job, so use it first.
+"Re-run all jobs" runs `just release` again on the pushed commit. By then,
+the tag can be on the version commit, which is a child of the pushed commit.
+So the script looks for a released commit first:
+
+- HEAD has a release tag, as after a raise of the version by hand.
+- A commit with a release tag has HEAD as its only parent, and it is a
+  version commit. The script trusts it only when its author is
+  `github-actions[bot]`, and its subject is `chore(release): vX.Y.Z`. Its
+  files must also be exactly the files that the release writes from HEAD.
+
+Then the script prints `already released`, writes the tag and its commit to
+`GITHUB_OUTPUT`, and makes nothing. The later jobs build the tag again. The
+tag must be on the remote too, else the script stops with an error. A dry
+run writes no output. A commit that breaks one of the rules is not trusted.
+The script then works as before, and usually prints `no release`.
+
+A run on the version commit itself gives no tag. Such a run occurs when a
+token that starts workflows pushes the version commit. The run of the parent
+gives the tag, so the builds do not run twice. A force-push of `main` back to
+a released commit gives its tag again, so the later jobs build that tag
+again.
+
+The CI starter also has a run by hand. Give it the tag:
+
+```bash
+gh workflow run release --ref main -f tag=vX.Y.Z
+```
+
+The release job then skips `just release`. It checks that the tag exists,
+and gives the tag as its output. A missing tag fails the job with
+`no tag vX.Y.Z`.
+
 When a project has no CI release job, run the release by hand after the
 post-merge CI passes, in a clean checkout of the integration branch:
 
