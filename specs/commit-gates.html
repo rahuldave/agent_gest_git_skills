@@ -1127,6 +1127,34 @@ line, as jagt does. So the indented form in a packet is not a block.</li>
 </ul>
 </li>
 <li>
+<p><strong>A stop with no result block.</strong> The hook runs for each subagent that
+stops. A fresh agent of Claude Code hands back its result in a
+<code>SubagentHandback</code> call. So the block is not in <code>last_assistant_message</code>,
+and the hook reads the transcript at <code>agent_transcript_path</code>:</p>
+<ul>
+<li>When the transcript has no <code>SubagentHandback</code> call yet, the hook reads it
+again every 0.2 seconds, for up to 2 seconds. Claude Code can run the hook
+before it writes that call. A block in the first read adds no delay. A
+handback with no block also stops the wait. The variables
+<code>RECORD_HOOK_WAIT_SECONDS</code> and <code>RECORD_HOOK_POLL_SECONDS</code> change the two
+times, and the tests set them lower.</li>
+<li>When the hook finds no block, it writes <code>hook-stops/&lt;agent_id&gt;.json</code> in
+the shared log folder and prints one line. The file holds the time, the
+agent id, whether the event had a <code>last_assistant_message</code> that is not
+empty and an <code>agent_transcript_path</code>, and the size and line count of the transcript.
+It also holds whether the transcript had a <code>SubagentHandback</code> call, and
+the count of re-reads.
+So a transcript that was not complete differs from an event with no
+path. A stop of an ordinary subagent also writes this file.</li>
+<li>In a Gossil session on 2026-11-22, 3 of 73 results got no record and
+no trace. A replay of the saved transcripts writes all three records.
+The tests use cut-down copies of those transcripts, in
+<code>fixtures/record_hook/</code>. Each line is a stub, except the handback, which
+stays at its saved line.</li>
+<li>A failure to write the file only prints why, and the hook exits 0.</li>
+</ul>
+</li>
+<li>
 <p><strong>The guard of the records.</strong> The gate guard stops these calls:</p>
 <ul>
 <li><code>record_result.py hook</code>, which only the harness runs.</li>
@@ -1173,7 +1201,9 @@ check of that.</p>
 records. The hook <code>record-result.sh</code> runs it on <code>SubagentStop</code>. The recipes
 <code>record</code> and <code>record-skip</code> run it with <code>uv</code>, with pyyaml for the result
 block. The hook never stops the fresh agent. A result that gives no record
-prints the reason and writes it in a refusal file.</p>
+prints the reason and writes it in a refusal file. A stop with no result
+block writes a hook-stops file. Only input that is not JSON makes the hook
+return before it reads the event.</p>
 </li>
 </ul>
 </section>
@@ -1735,9 +1765,25 @@ context, so a rebase with no conflict keeps the ID, and a restacked branch
 still passes. An added line that moves within one part of a file keeps
 the ID too. The trailer is a claim, so that cost is fair. A file of <code>git add -N</code>
 is not in the ID, since the commit does not hold it.</li>
-<li><strong>An amend.</strong> For what looks like an amend, the trailer names the patch
-IDs against both possible parents. When HEAD is a merge, it names the
-tree too, since the amend is a merge.</li>
+<li><strong>One word.</strong> The trailer has one word. For an amend, the patch ID is
+against the parent of HEAD. When HEAD is a merge, the word is the tree,
+since the amend is a merge.</li>
+<li><strong>An amend that the gate cannot see.</strong> <code>ps</code> joins the words of each
+argument, so a word <code>--amend</code> after the text of <code>-m</code> can be a part of the
+message. Then the gate reads each argument whole, from <code>/proc</code> on Linux
+or from the <code>sysctl</code> value <code>KERN_PROCARGS2</code> on macOS. When neither one
+can tell, the gate stops the commit. Put <code>--amend</code> before <code>-m</code>, or give
+the message with <code>-F FILE</code>.</li>
+<li><strong>An old trailer.</strong> <code>git commit --amend -F FILE</code> can bring the old
+trailer back in FILE. The gate removes each old trailer of the gate in
+the last block of the message, so the commit has one trailer.</li>
+<li><strong>An empty message.</strong> When git can find the message empty, the gate adds
+no trailer, so git stops the commit. Git finds a message empty when each
+line is blank or a <code>Signed-off-by:</code> line, after its cleanup removes the
+comment lines. In the mode <code>verbatim</code>, only a message with no characters
+is empty. With <code>--allow-empty-message</code>, the trailer is the whole message.
+Git reads that line as the subject, not as a trailer, so <code>ci-gate</code> names
+the commit.</li>
 <li><strong>A skip shows.</strong> <code>git commit -n</code> skips the <code>commit-msg</code> hook too. So a
 commit that went around the gate has no trailer.</li>
 <li><strong><code>just ci</code></strong> runs <code>ci-gate</code>, then the steps in the list <code>ci</code> of
@@ -1745,8 +1791,12 @@ commit that went around the gate has no trailer.</li>
 role gives <code>ci-gate</code>. Without the role, <code>ci-gate</code> only says that there
 is no gate.</li>
 <li><strong><code>ci-gate</code></strong> runs <code>commit_gate.py --trailers</code> on each commit of a
-range. Each commit needs a trailer that names its own patch ID, or its
-own tree for a merge. Range selection follows these rules:
+range. It is a step of <code>just check</code> too, so CI runs only steps of
+<code>just check</code>. A valid commit has one <code>Commit-Gate:</code> trailer with one
+word, <code>patch:&lt;id&gt;</code>, and the ID is the patch ID of the commit. <code>ci-gate</code>
+computes the ID again from the commit. It needs no file of
+<code>.agents/log</code>, which CI does not have. Range selection follows these
+rules:
 <ol>
 <li>For an existing remote branch, the pre-push hook sets
 <code>PRE_COMMIT_FROM_REF</code> and <code>PRE_COMMIT_TO_REF</code>. With an explicit
@@ -1761,15 +1811,20 @@ push refs above, it means a push of a new history. Every commit counts,
 including when <code>JN_CI_BASE</code> is set.</li>
 <li>Outside a push, an explicit <code>JN_CI_BASE</code> selects the CI range.
 Optional <code>JN_CI_HEAD</code> selects its head, which defaults to <code>HEAD</code>.</li>
-<li>Otherwise, the base is the branch upstream, or else <code>origin/HEAD</code>. With
-neither, <code>ci-gate</code> fails and says to set <code>JN_CI_BASE</code>.
+<li>Otherwise, the base is the base branch on origin. The gate tries
+<code>GITHUB_BASE_REF</code> of a pull request first. Then it tries the default
+branch of the event of GitHub Actions. Then it tries <code>origin/HEAD</code>,
+<code>origin/main</code>, <code>origin/master</code>, and last the upstream of the branch. <code>BASE..HEAD</code> holds the commits from
+the merge-base to HEAD. With no base, <code>ci-gate</code> says to set
+<code>JN_CI_BASE</code>. On your machine it then passes, since a clone with no
+remote has no pull request. In CI it fails.
 With the tasker pre-push hook installed, verify the PR target’s current
 remote tip and pin its full SHA.
 Use <code>JN_CI_BASE=&lt;verified-PR-target-tip-SHA&gt; git push origin &lt;topic&gt;</code>.
 <code>BASE..HEAD</code> contains commits reachable from the pushed head, excluding
 those reachable from the selected base. Inspect that full feature range
 first; never select a topic commit to omit unaccepted work.
-This includes original feature commits and the gated local merge. The
+This includes original feature commits. The
 operator must verify that the supplied base is the PR target’s current
 remote tip; the gate does not establish PR acceptance.</li>
 </ol>
@@ -1786,17 +1841,52 @@ repository with commits from before the gate needs
 </li>
 <li><strong>Commits that git makes without the hooks.</strong> <code>git revert --no-edit</code>
 runs no <code>commit-msg</code> hook, and a squash of <code>git rebase --autosquash</code>
-keeps the old trailer. Each one stops the push until
-<code>git commit --amend --no-edit</code> gives it a new trailer.</li>
-<li><strong>CI is a part of <code>just check</code>.</strong> A step in the list <code>ci</code> must be a step
-of <code>just check</code>. The installer leaves out any other name and says so.
+keeps the old trailer. Each one stops the push.</li>
+<li><strong>The exempt commits.</strong> <code>ci-gate</code> skips three kinds of commit, and names
+each one with the reason:
+<ul>
+<li><strong>A merge with no change of its own.</strong> It has two parents, and its
+tree is the tree that <code>git merge-tree --write-tree</code> makes from them.
+GitHub makes the merge of a pull request like this, without the gate,
+and so does the checkout of a pull request. Each change of such a
+merge comes from a commit that <code>ci-gate</code> checks. Any other merge, such
+as one with the fix of a conflict, needs one trailer <code>tree:&lt;tree&gt;</code>
+with its own tree. So a merge amended with <code>git commit -n</code> fails.</li>
+<li><strong>A commit by a GitHub bot.</strong> Its author e-mail is
+<code>NAME[bot]@users.noreply.github.com</code>, with an optional <code>ID+</code> first.
+Dependabot and Renovate make commits like this. The release job makes
+only tags, so it needs no exemption.</li>
+<li><strong>A commit from before the gate.</strong> No commit that it reaches changed
+<code>.agents/stack.json</code>. The gate needs that file, so it never ran on the
+commit. A commit that removes the file is not exempt, and neither is
+each commit after it. <code>git rev-list --full-history</code> finds the file
+also behind a merge that drops it.</li>
+<li>A commit made on the GitHub website, such as with its “Revert”
+button, is not exempt.</li>
+</ul>
+</li>
+<li><strong>The error.</strong> Each bad commit has a line with its hash, its subject and
+the problem. Then one line tells the fix. <code>just check</code> runs <code>ci-gate</code>,
+so the fix takes the bad commit off HEAD first. For the newest commit,
+run <code>git reset --soft HEAD~1</code>, then <code>just check</code>, then
+<code>git commit -C ORIG_HEAD</code>. For an older commit, run <code>git rebase -i</code> on
+its parent, and mark the commit <code>edit</code>. Do the same at the stop, then
+run <code>git rebase --continue</code>. The later commits keep their trailers when
+the rebase has no conflict. When the bad commits are not yours, the
+base is wrong, for a branch that starts from <code>develop</code>. Give the base,
+as <code>JN_CI_BASE=origin/develop just check</code>.</li>
+<li><strong>A shallow clone.</strong> <code>ci-gate</code> stops in a shallow clone, since it needs
+the parent of each commit. CI uses <code>fetch-depth: 0</code>.</li>
+<li><strong>CI is a part of <code>just check</code>.</strong> <code>ci-gate</code> is a step of <code>just check</code>,
+and a step in the list <code>ci</code> must be a step of <code>just check</code> too. The
+installer leaves out any other name and says so.
 The default list is empty. Put a step in it only when a clean machine
 tells you more than your own machine, for example a test on Linux.</li>
 <li><strong>No agent runs in CI.</strong> The fresh agents run before each commit, on
 the machine of the person. CI reads only their trailers.</li>
 <li><strong>The limit.</strong> A trailer is a claim of the gate, not a proof. An agent
-can type one by hand. The review of the pull request is the check of
-that.</li>
+can type one by hand, or the e-mail of a bot. The review of the pull
+request is the check of that.</li>
 </ul>
 </li>
 <li>
@@ -2251,6 +2341,9 @@ passes it, also after a rebase with no conflict. It fails a commit made with
 <code>git commit -n</code>, and a commit changed after the gate passed it.</li>
 <li><code>just ci</code> runs <code>ci-gate</code> and the steps of the list <code>ci</code>. A name in the list
 that is not a step of <code>just check</code> is left out, with a message.</li>
+<li><code>just check</code> runs <code>ci-gate</code> as a step. <code>ci-gate</code> fails a trailer with two
+words or a word of another form, and two trailers. It names each exempt
+commit that it skips.</li>
 <li>The gate guard stops the plain forms of <code>--no-verify</code>, <code>-n</code>, <code>core.hooksPath</code>
 and a write to a protected path. It lets a command that hides git run, such
 as <code>bash &lt;&lt;EOF</code> or <code>python -c</code>. Its tests list both kinds.</li>
