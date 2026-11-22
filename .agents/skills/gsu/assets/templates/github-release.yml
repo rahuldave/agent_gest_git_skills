@@ -21,12 +21,23 @@
 #       - uses: actions/checkout@v4
 #         with:
 #           ref: ${{ needs.release.outputs.tag }}
+# When binaries or publish failed, use "Re-run failed jobs", which keeps the tag of the job release. "Re-run all
+# jobs" runs just release again on the pushed commit. It finds the tag on the version commit, prints "already
+# released" and gives the tag again. To build a tag by hand, run this workflow with the tag:
+# gh workflow run release --ref main -f tag=vX.Y.Z. The job release then skips just release, checks that the tag
+# exists and gives it as its output. It makes no new tag.
 # Add the setup of the tools of your languages before the step "Check", if just check needs them.
 name: release
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag vX.Y.Z to build and publish. The run makes no new tag."
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -56,9 +67,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    # The tag that the run made, or that was already on HEAD, else empty.
+    # The tag that the run made, or that was already released, or the given tag, else empty.
     outputs:
-      tag: ${{ steps.release.outputs.tag }}
+      tag: ${{ steps.release.outputs.tag || steps.given.outputs.tag }}
     # One release at a time. A run on an older commit after a newer release prints no release.
     concurrency:
       group: release
@@ -70,9 +81,22 @@ jobs:
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v6
       - name: Name the author of the tag and of the version commit
+        if: github.event_name == 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      # just release writes tag=vX.Y.Z to GITHUB_OUTPUT.
       - name: Release
+        if: github.event_name == 'push'
         id: release
         run: just release
+      # A run by hand: the tag must be a release tag that exists.
+      - name: Take the given tag
+        if: github.event_name == 'workflow_dispatch'
+        id: given
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          printf '%s\n' "$TAG" | grep -Eqx 'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)' || { echo "not a release tag vX.Y.Z: $TAG" >&2; exit 1; }
+          git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null || { echo "no tag $TAG" >&2; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"

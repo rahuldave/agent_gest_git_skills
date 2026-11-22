@@ -190,9 +190,11 @@ class ReleaseTests(ReleaseBase):
         self.assertEqual(git("cat-file", "-t", "v0.1.1", cwd=self.repo).strip(), "tag")
         remote = git("ls-remote", "origin", "refs/tags/v0.1.1^{}", cwd=self.repo).split()
         self.assertEqual(remote[0], head)
-        again = self.run_script()
+        output = self.base / "github-output"
+        again = self.run_script(GITHUB_OUTPUT=str(output))
         self.assertEqual(again.returncode, 0, again.stderr)
-        self.assertIn("no release", again.stdout)
+        self.assertIn("already released: v0.1.1 is on HEAD", again.stdout)
+        self.assertEqual(output.read_text(), f"tag=v0.1.1\ncommit={head}\n")
 
     def test_a_tag_on_another_commit_is_never_moved(self) -> None:
         self.commit("feat: start")
@@ -858,14 +860,22 @@ class WriteTests(ReleaseBase):
         self.start("python")
         self.commit("fix: a crash")
         git("push", "-q", "origin", "main", cwd=self.repo)
+        git("config", "user.name", release_tag.RELEASE_BOT_NAME, cwd=self.repo)
+        git("config", "user.email", release_tag.RELEASE_BOT_EMAIL, cwd=self.repo)
         self.assertEqual(self.run_script().returncode, 0)
         commit = self.head()
-        # A run on the release commit, as a push with a token that starts workflows would make.
-        for args in ((), ("--check",)):
-            result = self.run_script(*args)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("no release", result.stdout)
-            self.assertIn("ask for none", result.stdout)
+        # A run on the release commit, as a push with a token that starts workflows would make. The run of its
+        # parent gives the tag, so this run gives none, and the builds do not run twice.
+        output = self.base / "github-output"
+        result = self.run_script(GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release: HEAD is the version commit of v1.0.1", result.stdout)
+        self.assertFalse(output.exists())
+        self.assertEqual(git("worktree", "list", "--porcelain", cwd=self.repo).count("worktree "), 1)
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release", result.stdout)
+        self.assertIn("ask for none", result.stdout)
         self.assertEqual(self.head(), commit)
         self.assertEqual(self.remote_head(), commit)
         self.assertEqual(git("tag", "--list", cwd=self.repo).split(), ["v1.0.0", "v1.0.1"])
@@ -873,18 +883,256 @@ class WriteTests(ReleaseBase):
         self.commit("fix: another")
         self.assertIn("next tag: v1.0.2", self.run_script("--dry-run").stdout)
 
+    def as_bot(self) -> None:
+        git("config", "user.name", release_tag.RELEASE_BOT_NAME, cwd=self.repo)
+        git("config", "user.email", release_tag.RELEASE_BOT_EMAIL, cwd=self.repo)
+
+    def released(self, kinds: tuple = ("python",)) -> tuple:
+        """A fix merged and released by the bot. The pushed commit and the version commit."""
+        self.start(*kinds)
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        self.as_bot()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return merged, self.head()
+
+    def back_to(self, commit: str) -> None:
+        """Check out COMMIT on main, as actions/checkout does for a re-run of the push of COMMIT."""
+        git("checkout", "-q", "-B", "main", commit, cwd=self.repo)
+
+    def rerun(self, output: Path) -> subprocess.CompletedProcess:
+        return self.run_script(GITHUB_OUTPUT=str(output))
+
     def test_a_rerun_on_the_merge_after_the_release_commit_makes_nothing(self) -> None:
+        merged, commit = self.released(("python", "rust", "typescript"))
+        tags = self.remote_tags()
+        self.back_to(merged)
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("already released: v1.0.1 is on the version commit", result.stdout)
+        self.assertEqual(output.read_text(), f"tag=v1.0.1\ncommit={commit}\n")
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(self.remote_head(), commit)
+        self.assertEqual(self.remote_tags(), tags)
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+        self.assertEqual(git("tag", "--list", cwd=self.repo).split(), ["v1.0.0", "v1.0.1"])
+
+    def test_a_rerun_after_a_later_push_on_the_remote_still_gives_the_tag(self) -> None:
+        merged, commit = self.released()
+        git("config", "user.name", "t", cwd=self.repo)
+        self.commit("docs: a note")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.back_to(merged)
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output.read_text(), f"tag=v1.0.1\ncommit={commit}\n")
+
+    def test_a_later_commit_after_the_release_commit_is_not_this_case(self) -> None:
+        _, commit = self.released()
+        later = self.commit("fix: another crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        output = self.base / "github-output"
+        result = self.run_script("--dry-run", GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("next tag: v1.0.2", result.stdout)
+        self.assertFalse(output.exists())
+        # A docs commit after the release commit gives no release, and no tag of the earlier release.
+        self.back_to(commit)
+        self.commit("docs: a note")
+        git("push", "-q", "-f", "origin", "main", cwd=self.repo)
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release", result.stdout)
+        self.assertFalse(output.exists())
+        self.assertNotEqual(later, self.head())
+
+    def untrusted(self, change) -> subprocess.CompletedProcess:
+        """A release whose version commit CHANGE makes untrusted, amended before the push, then a re-run on the
+        pushed commit."""
         self.start("python")
         self.commit("fix: a crash")
         git("push", "-q", "origin", "main", cwd=self.repo)
         merged = self.head()
-        self.assertEqual(self.run_script().returncode, 0)
-        git("checkout", "-q", "--detach", merged, cwd=self.repo)
-        git("checkout", "-q", "-B", "main", merged, cwd=self.repo)
-        result = self.run_script()
+        git("config", "user.name", release_tag.RELEASE_BOT_NAME, cwd=self.repo)
+        git("config", "user.email", release_tag.RELEASE_BOT_EMAIL, cwd=self.repo)
+        release_tag.write_versions(self.repo, (1, 0, 0), (1, 0, 1))
+        change()
+        git("commit", "-q", "-a", "-m", "chore(release): v1.0.1", cwd=self.repo)
+        self.tag("v1.0.1")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.back_to(merged)
+        self.output = self.base / "github-output"
+        return self.rerun(self.output)
+
+    def assert_not_trusted(self, result: subprocess.CompletedProcess, why: str) -> None:
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("no release: v1.0.1 is on a later commit", result.stdout)
-        self.assertEqual(self.head(), merged)
+        self.assertIn("Not trusted as the release of HEAD: v1.0.1: ", result.stdout)
+        self.assertIn(why, result.stdout)
+        self.assertFalse(self.output.exists())
+
+    def test_a_version_commit_by_another_author_is_not_trusted(self) -> None:
+        result = self.untrusted(lambda: git("config", "user.name", "someone", cwd=self.repo))
+        self.assert_not_trusted(result, "not github-actions[bot]")
+
+    def test_a_version_commit_by_another_email_is_not_trusted(self) -> None:
+        result = self.untrusted(lambda: git("config", "user.email", "x[bot]@users.noreply.github.com",
+                                            cwd=self.repo))
+        self.assert_not_trusted(result, "not github-actions[bot]")
+
+    def test_a_version_commit_that_changes_another_file_is_not_trusted(self) -> None:
+        def change() -> None:
+            (self.repo / "f1.txt").write_text("more")
+        self.assert_not_trusted(self.untrusted(change), "changes f1.txt")
+
+    def test_a_version_commit_that_changes_another_line_is_not_trusted(self) -> None:
+        def change() -> None:
+            path = self.repo / "pyproject.toml"
+            path.write_text(path.read_text().replace('dependencies = ["click"]', 'dependencies = ["evil"]'))
+        self.assert_not_trusted(self.untrusted(change), "more than the version lines")
+
+    def test_a_version_commit_that_changes_another_version_line_is_not_trusted(self) -> None:
+        def change() -> None:
+            path = self.repo / "pyproject.toml"
+            path.write_text(path.read_text().replace('[tool.other]\nversion = "1.0.0"',
+                                                     '[tool.other]\nversion = "2.0.0"'))
+        self.assert_not_trusted(self.untrusted(change), "more than the version lines")
+
+    def test_a_version_commit_that_sets_another_version_line_to_the_tag_is_not_trusted(self) -> None:
+        def change() -> None:
+            path = self.repo / "pyproject.toml"
+            path.write_text(path.read_text().replace('[tool.other]\nversion = "1.0.0"',
+                                                     '[tool.other]\nversion = "1.0.1"'))
+        self.assert_not_trusted(self.untrusted(change), "more than the version lines of pyproject.toml")
+
+    def test_a_version_commit_that_changes_a_locked_dependency_is_not_trusted(self) -> None:
+        def change() -> None:
+            path = self.repo / "uv.lock"
+            text = path.read_text()
+            self.assertIn('name = "click"\nversion = "1.0.0"', text)
+            path.write_text(text.replace('name = "click"\nversion = "1.0.0"', 'name = "click"\nversion = "1.0.1"'))
+        self.assert_not_trusted(self.untrusted(change), "more than the version lines of uv.lock")
+
+    def test_a_version_commit_that_changes_the_line_endings_is_not_trusted(self) -> None:
+        def change() -> None:
+            path = self.repo / "pyproject.toml"
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        self.assert_not_trusted(self.untrusted(change), "more than the version lines of pyproject.toml")
+
+    def test_a_rerun_trusts_a_version_line_at_the_end_of_a_file_with_no_newline(self) -> None:
+        self.profiles("typescript")
+        (self.repo / "package.json").write_text('{\n  "name": "tool",\n  "version": "1.0.0"\n}')
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        self.as_bot()
+        self.assertEqual(self.run_script().returncode, 0)
+        commit = self.head()
+        self.assertFalse((self.repo / "package.json").read_text().endswith("\n"))
+        self.back_to(merged)
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output.read_text(), f"tag=v1.0.1\ncommit={commit}\n")
+
+    def test_files_checked_out_with_crlf_by_gitattributes_are_trusted(self) -> None:
+        self.start("python")
+        (self.repo / ".gitattributes").write_text("*.toml text eol=crlf\n*.lock text eol=crlf\n")
+        git("add", ".gitattributes", cwd=self.repo)
+        git("commit", "-q", "-m", "chore: line endings", cwd=self.repo)
+        for name in ("pyproject.toml", "uv.lock"):
+            (self.repo / name).unlink()
+        git("checkout", "--", "pyproject.toml", "uv.lock", cwd=self.repo)
+        self.assertIn(b"\r\n", (self.repo / "pyproject.toml").read_bytes())
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        self.as_bot()
+        self.assertEqual(self.run_script().returncode, 0)
+        commit = self.head()
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertIn("no release: HEAD is the version commit of v1.0.1", result.stdout)
+        self.assertFalse(output.exists())
+        self.back_to(merged)
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output.read_text(), f"tag=v1.0.1\ncommit={commit}\n")
+
+    def test_a_run_on_the_version_commit_runs_no_hook(self) -> None:
+        _, commit = self.released()
+        hook = Path(git("rev-parse", "--git-path", "hooks/post-checkout", cwd=self.repo).strip())
+        hook = hook if hook.is_absolute() else self.repo / hook
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        hook.write_text("#!/bin/sh\ntouch ran-hook\nexit 1\n")
+        hook.chmod(0o755)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release: HEAD is the version commit of v1.0.1", result.stdout)
+        self.assertFalse((self.repo / "ran-hook").exists())
+        self.assertEqual(self.head(), commit)
+
+    def test_a_dirty_checkout_does_not_blame_the_version_commit(self) -> None:
+        merged, _ = self.released()
+        self.back_to(merged)
+        path = self.repo / "pyproject.toml"
+        path.write_text(path.read_text() + "# a local edit\n")
+        result = self.run_script("--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("the checkout has changes", result.stdout)
+        self.assertNotIn("changes more than the version lines", result.stdout)
+
+    def test_a_dry_run_of_a_rerun_writes_no_output(self) -> None:
+        merged, _ = self.released()
+        self.back_to(merged)
+        output = self.base / "github-output"
+        result = self.run_script("--dry-run", GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("already released: v1.0.1", result.stdout)
+        self.assertFalse(output.exists())
+
+    def test_a_version_commit_with_another_subject_is_not_trusted(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        self.as_bot()
+        self.assertEqual(self.run_script().returncode, 0)
+        git("commit", "-q", "--amend", "-m", "chore(release): v9.9.9", cwd=self.repo)
+        git("tag", "-f", "-a", "v1.0.1", "-m", "v1.0.1", cwd=self.repo)
+        git("push", "-q", "-f", "origin", "main", "refs/tags/v1.0.1", cwd=self.repo)
+        self.back_to(merged)
+        self.output = self.base / "github-output"
+        self.assert_not_trusted(self.rerun(self.output), "subject")
+
+    def test_a_tag_on_the_version_commit_that_the_remote_lacks_stops_the_rerun(self) -> None:
+        merged, _ = self.released()
+        git("push", "-q", "origin", ":refs/tags/v1.0.1", cwd=self.repo)
+        self.back_to(merged)
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not on origin", result.stderr)
+        self.assertFalse(output.exists())
+
+    def test_a_rerun_on_a_version_raised_by_hand_gives_its_tag(self) -> None:
+        self.start("python")
+        self.python_files("1.1.0")
+        merged = self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.assertEqual(self.run_script().returncode, 0)
+        output = self.base / "github-output"
+        result = self.rerun(output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("already released: v1.1.0 is on HEAD", result.stdout)
+        self.assertEqual(output.read_text(), f"tag=v1.1.0\ncommit={merged}\n")
 
     def test_a_version_raised_by_hand_is_tagged_without_a_commit(self) -> None:
         self.start("python")
@@ -1188,9 +1436,52 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("run: just check", head)
         self.assertNotIn("concurrency", head, "a workflow-wide group cancels the check of a pending push")
         for line in ("needs: check", "contents: write", "group: release", "fetch-depth: 0", "run: just release",
-                     "id: release", "tag: ${{ steps.release.outputs.tag }}"):
+                     "id: release", "tag: ${{ steps.release.outputs.tag || steps.given.outputs.tag }}",
+                     "id: given", "TAG: ${{ inputs.tag }}"):
             with self.subTest(line=line):
                 self.assertIn(line, job)
+        self.assertIn("  workflow_dispatch:\n    inputs:\n      tag:\n", head)
+        # A run by hand skips just release and takes the given tag.
+        release_step = job[job.index("- name: Release"):job.index("- name: Take the given tag")]
+        self.assertIn("if: github.event_name == 'push'", release_step)
+        self.assertIn("if: github.event_name == 'workflow_dispatch'", job[job.index("- name: Take the given tag"):])
+
+    def given_tag_script(self) -> str:
+        """The run block of the step that takes the tag of a run by hand, in the release starter."""
+        text = (ROOT / ".agents/skills/gsu/assets/templates/github-release.yml").read_text()
+        lines = text[text.index("- name: Take the given tag"):].splitlines()
+        start = next(index for index, line in enumerate(lines) if line.strip() == "run: |") + 1
+        indent = len(lines[start]) - len(lines[start].lstrip())
+        block = []
+        for line in lines[start:]:
+            if line.strip() and len(line) - len(line.lstrip()) < indent:
+                break
+            block.append(line[indent:])
+        return "\n".join(block) + "\n"
+
+    def test_a_run_by_hand_takes_a_tag_that_exists_and_fails_on_a_missing_tag(self) -> None:
+        script = self.given_tag_script()
+        with tempfile.TemporaryDirectory(prefix="release-given-") as scratch:
+            repo = Path(scratch)
+            git("init", "-q", "-b", "main", cwd=repo)
+            git("-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "x",
+                cwd=repo)
+            git("-c", "user.name=t", "-c", "user.email=t@example.com", "tag", "-a", "v1.2.3", "-m", "v1.2.3",
+                cwd=repo)
+            output = repo / "out"
+            cases = {"v1.2.3": (0, "", "tag=v1.2.3\n"), "v1.2.4": (1, "no tag v1.2.4", ""),
+                     "main": (1, "not a release tag", ""), "v1.2.3 x": (1, "not a release tag", ""),
+                     "v01.2.3": (1, "not a release tag", ""), "v1.2.3\nx": (1, "no tag", "")}
+            for tag, (code, error, written) in cases.items():
+                with self.subTest(tag=tag):
+                    output.write_text("")
+                    env = {**os.environ, "TAG": tag, "GITHUB_OUTPUT": str(output)}
+                    # GitHub runs a step of bash as bash --noprofile --norc -eo pipefail.
+                    result = subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+                                            cwd=repo, env=env, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, code, result.stderr)
+                    self.assertIn(error, result.stderr)
+                    self.assertEqual(output.read_text(), written)
 
     def test_ci_gets_the_release_check_only_through_just_check(self) -> None:
         text = (ROOT / ".agents/skills/gsu/assets/templates/github-check.yml").read_text()

@@ -79,8 +79,21 @@ HEAD, or on the release commit, pushes it, and checks with `git ls-remote` that 
 When the variable `GITHUB_OUTPUT` names a file, as in GitHub Actions, the script adds the lines `tag=vX.Y.Z` and
 `commit=<hash>` to it, so that a later job can check out the tag. It never moves or deletes a tag.
 When there is nothing to tag, it prints "no release" and exits 0. A tag at or above the next number on a later
-commit also gives no release: a later commit was released first. A failure exits 1, also for a shallow checkout and
-for a remote tag that this checkout lacks or has on another commit.
+commit also gives no release: a later commit was released first. A failure exits 1, also for a shallow checkout
+and for a remote tag that this checkout lacks or has on another commit.
+
+A run on a commit that is released already prints "already released", writes its tag and commit to GITHUB_OUTPUT,
+and makes nothing. So "Re-run all jobs" of a release workflow, which runs the release again on the pushed commit,
+gives the later jobs the tag again. The commit is released in two cases:
+
+- HEAD has a release tag, as after a raise of the version by hand.
+- A version commit with a release tag has HEAD as its only parent. The run trusts it only when its author is
+  github-actions[bot], its subject is `chore(release): <tag>`, and its files are exactly the files that the release
+  writes from HEAD for the tag. A commit that fails one of these rules is not the release of HEAD.
+
+The tag must be on the remote too. The run reads the tags of the checkout, and fetches nothing. A dry run writes no
+output. A run on the version commit itself, as a push with a token that starts workflows makes, gives no tag, since
+the run of its parent gives it. That run checks the parent, the author, the subject and the names of the files.
 """
 
 from __future__ import annotations
@@ -261,10 +274,11 @@ def tag_commit(root: Path, name: str) -> Optional[str]:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def check_remote_tags(root: Path, remote: str) -> None:
-    """Fail when the remote has a release tag that the checkout lacks, since the next number would then be wrong."""
+def check_remote_tags(root: Path, remote: str) -> Optional[Dict[str, str]]:
+    """Fail when the remote has a release tag that the checkout lacks, since the next number would then be wrong. The
+    commit of each release tag on the remote, or None when there is no such remote."""
     if remote not in git(root, "remote").split():
-        return
+        return None
     result = subprocess.run(["git", "ls-remote", "--tags", remote], cwd=root, capture_output=True, text=True)
     if result.returncode != 0:
         raise ReleaseError(f"git ls-remote --tags {remote} failed: {result.stderr.strip()}")
@@ -284,6 +298,7 @@ def check_remote_tags(root: Path, remote: str) -> None:
     if differ:
         raise ReleaseError(f"the tags {', '.join(differ)} point at other commits on {remote} than here. A pushed tag "
                            "never moves, so delete the local tags and fetch them again")
+    return remote_commits
 
 
 def is_ancestor(root: Path, older: str, newer: str) -> bool:
@@ -301,6 +316,84 @@ def newer_release(root: Path, version: Version, head: str) -> Optional[str]:
             if commit and commit != head and is_ancestor(root, head, commit):
                 return name
     return None
+
+
+# The author of the version commit in the CI starter. A re-run trusts a version commit only from this author.
+RELEASE_BOT_NAME = "github-actions[bot]"
+RELEASE_BOT_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com"
+VERSION_FILES = ("pyproject.toml", "uv.lock", "Cargo.toml", "Cargo.lock", "package.json", "package-lock.json")
+
+
+def parents(root: Path, commit: str) -> List[str]:
+    return git(root, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+
+
+def distrust(root: Path, head: str, commit: str, name: str, full: bool = True) -> Optional[str]:
+    """Why COMMIT, the child of HEAD with the tag NAME, is not a version commit of the release, or None when it is
+    one: its only parent is HEAD, its author is the release bot, its subject is chore(release): NAME, and it changes
+    only the version lines: the files of COMMIT are the ones that the release writes from HEAD for NAME. Without FULL,
+    it checks the parent, the author, the subject and the names of the files only, and needs no checkout of HEAD."""
+    if parents(root, commit) != [head]:
+        return f"{commit[:12]} has other parents than HEAD"
+    author, email, subject = git(root, "log", "-1", "--format=%an%x1f%ae%x1f%s", commit).rstrip("\n").split("\x1f")
+    if (author, email) != (RELEASE_BOT_NAME, RELEASE_BOT_EMAIL):
+        return f"the author of {commit[:12]} is {author} <{email}>, not {RELEASE_BOT_NAME}"
+    if subject != f"chore(release): {name}":
+        return f"the subject of {commit[:12]} is not chore(release): {name}"
+    raw = git(root, "diff", "--raw", "--no-renames", "--no-ext-diff", head, commit).splitlines()
+    if not raw:
+        return f"{commit[:12]} changes no file"
+    for line in raw:
+        fields, _, path = line.partition("\t")
+        old_mode, new_mode, _, _, status = fields.lstrip(":").split()
+        if status != "M" or old_mode != new_mode or old_mode != "100644" or path not in VERSION_FILES:
+            return f"{commit[:12]} changes {path}, which is not a version file that the release writes"
+    if not full:
+        return None
+    changed = sorted(line.partition("\t")[2] for line in raw)
+    if git(root, "status", "--porcelain", "--untracked-files=no").strip():
+        return "the checkout has changes, so the files that the release writes from HEAD are unknown"
+    # The version commit must hold exactly what the release writes from HEAD. Git stores the planned text in the
+    # form of the commit, after the conversions of .gitattributes, such as eol=crlf.
+    try:
+        manifest = manifest_version(root)
+        version = parse_tag(name)
+        if manifest is None or version is None:
+            return "the profiles of HEAD give no version"
+        changes = planned_changes(root, manifest[1], version)
+        planned = {str(path.relative_to(root)): text for path, text in changes.items()}
+    except ReleaseError as error:
+        return f"the release cannot write {name} from HEAD: {error}"
+    if changed != sorted(planned):
+        return f"{commit[:12]} changes {', '.join(changed)}, but the release writes {', '.join(sorted(planned))}"
+    for path, text in planned.items():
+        stored = subprocess.run(["git", "hash-object", f"--path={path}", "--stdin"], cwd=root,
+                                input=text.encode("utf-8"), capture_output=True)
+        blob = git(root, "rev-parse", f"{commit}:{path}").strip()
+        if stored.returncode != 0 or stored.stdout.decode().strip() != blob:
+            return f"{commit[:12]} changes more than the version lines of {path}"
+    return None
+
+
+def released_child(root: Path, head: str) -> Tuple[Optional[Tuple[str, str]], List[str]]:
+    """The tag and the commit of a version commit of the release whose parent is HEAD, as a re-run on the pushed
+    commit finds it, or None. Also the reason for each child of HEAD with a release tag that is not trusted."""
+    found: List[Tuple[Version, str, str]] = []
+    reasons = []
+    for name in git(root, "tag", "--list", "v*").split():
+        version = parse_tag(name)
+        commit = tag_commit(root, name) if version is not None else None
+        if version is None or commit is None or commit == head or head not in parents(root, commit):
+            continue
+        reason = distrust(root, head, commit, name)
+        if reason is None:
+            found.append((version, name, commit))
+        else:
+            reasons.append(f"{name}: {reason}")
+    if not found:
+        return None, reasons
+    _, name, commit = max(found)
+    return (name, commit), reasons
 
 
 def config_value(root: Path, key: str) -> str:
@@ -819,19 +912,54 @@ def has_commit(root: Path, sha: str) -> bool:
     return subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=root, capture_output=True).returncode == 0
 
 
+def already_released(root: Path, remote: str, remote_tags: Optional[Dict[str, str]], head: str,
+                     dry_run: bool) -> Optional[str]:
+    """The message of a run on a commit that is released already, after it writes the tag and its commit to
+    GITHUB_OUTPUT, or None. HEAD is released when it has a release tag, as after a raise of the version by hand, or
+    when a trusted version commit of the release, whose parent is HEAD, has one. So "Re-run all jobs" of a release
+    workflow gives the later jobs the tag again. The tag must be on the remote, when there is one. A run on the
+    version commit itself, as a push with a token that starts workflows makes, gives no tag, since the run of its
+    parent gives it. A dry run writes no output."""
+    tagged = tag_on_head(root)
+    if tagged is not None:
+        above = parents(root, head)
+        # The checkout is at the version commit, not at its parent, so the check of its files is left out. A
+        # wrong answer here gives no tag, as before the re-run rule.
+        if len(above) == 1 and distrust(root, above[0], head, tagged, full=False) is None:
+            return f"no release: HEAD is the version commit of {tagged}, and the run of its parent gives the tag"
+        name, commit, where = tagged, head, "HEAD"
+    else:
+        child, _ = released_child(root, head)
+        if child is None:
+            return None
+        name, commit = child
+        where = f"the version commit {commit[:12]}, whose parent is HEAD"
+    if remote_tags is not None and remote_tags.get(name) != commit:
+        raise ReleaseError(f"{name} is on {where} here, but not on {remote}. Push it with git push {remote} "
+                           f"refs/tags/{name}, then run the release again")
+    if not dry_run:
+        write_output({"tag": name, "commit": commit})
+    return f"already released: {name} is on {where}, so the run makes nothing"
+
+
 def release(root: Path, remote: str, dry_run: bool) -> str:
     if git(root, "rev-parse", "--is-shallow-repository").strip() == "true":
         raise ReleaseError("the checkout is shallow, so the last tag and the commits since it are unknown. Fetch the "
                            "whole history, for example with fetch-depth: 0 in actions/checkout")
-    check_remote_tags(root, remote)
+    remote_tags = check_remote_tags(root, remote)
+    head = git(root, "rev-parse", "HEAD").strip()
+    done = already_released(root, remote, remote_tags, head, dry_run)
+    if done is not None:
+        return done
     version, reason, write = plan(root)
     if version is None:
         return f"no release: {reason}"
     name = tag_name(version)
-    head = git(root, "rev-parse", "HEAD").strip()
     newer = newer_release(root, version, head)
     if newer is not None:
-        return f"no release: {newer} is on a later commit, so a later release has this commit"
+        _, untrusted = released_child(root, head)
+        note = "".join(f". Not trusted as the release of HEAD: {why}" for why in untrusted)
+        return f"no release: {newer} is on a later commit, so a later release has this commit{note}"
     existing = tag_commit(root, name)
     if existing is not None:
         if existing == head:

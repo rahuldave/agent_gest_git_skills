@@ -402,9 +402,11 @@ gest task meta set <task-id> github.merged_commit <sha>
    just release
    ```
 
-   A run on a commit that already has its tag prints `no release`. Write the
-   tag, or `none` and the reason, on the `Release:` line of the Gest note of
-   step 3.
+   A run on a commit that already has its tag prints `already released` and
+   gives the tag again. So does a run on the pushed commit after its version
+   commit got the tag, as in "Re-run all jobs". To build a tag again by hand,
+   run the starter with the input `tag`. Write the tag, or `none` and the
+   reason, on the `Release:` line of the Gest note of step 3.
 
 ## Tag And Dependency Review
 

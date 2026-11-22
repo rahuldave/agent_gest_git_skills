@@ -386,7 +386,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
 | `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
 | `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
 | `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream or ahead of it, never with force. Takes `--dry-run` first |
-| `just release` | Tags the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag. When the version files of the language profiles are lower, it writes the bump into them, commits it as `chore(release): vX.Y.Z` and tags that commit. Never moves or deletes a tag. Takes `--dry-run` first |
+| `just release` | Tags the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag. When the version files of the language profiles are lower, it writes the bump into them, commits it as `chore(release): vX.Y.Z` and tags that commit. A run on a released commit, or on the parent of its version commit, prints `already released` and gives the tag again. Never moves or deletes a tag. Takes `--dry-run` first |
 
 Setup follows two files in the main checkout, as other tools do:
 
