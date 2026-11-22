@@ -54,8 +54,8 @@ When git may find the message empty and stop the commit, the gate adds no traile
 
 The release check: before it adds the trailer, the commit-msg hook runs `just release-check` with the path of the
 message file in `JN_RELEASE_MESSAGE`. `just check` ran before the message was written, so it could not count it. With
-the message, `release_tag.py --check` fails when the type of the commit, such as `fix:`, asks for a release and the
-version of the manifest is not raised. For an amend, it sets `JN_RELEASE_AMEND=1`, so the new message replaces the
+the message, `release_tag.py --check` counts it for the next tag, and fails when the type of the commit, such as
+`fix:`, asks for a release that the release script cannot write into the manifest. For an amend, it sets `JN_RELEASE_AMEND=1`, so the new message replaces the
 message of HEAD, but only when `--amend` comes before any text of the message in the command that ps shows. A word
 `--amend` after the text sets `JN_RELEASE_AMEND=maybe`, and HEAD counts too. It puts
 the option `--cleanup` of git in `JN_RELEASE_CLEANUP`, or `unknown` when ps cannot tell it, and sets
@@ -994,7 +994,7 @@ def rebasing(root: Path) -> bool:
 
 def release_check(root: Path, message: Path) -> None:
     """Run `just release-check` with the message of the commit, so that a commit whose type asks for a release
-    with an old manifest version stops here, not at the release after the push."""
+    that the release script cannot write stops here, not at the release after the push."""
     if resolve(root, "MERGE_HEAD") is not None or rebasing(root) or RELEASE_CHECK not in recipes(root):
         return
     env = plain_env()

@@ -380,12 +380,14 @@ gest task meta set <task-id> github.merged_commit <sha>
      tag. Breaking raises MAJOR, or MINOR below `1.0.0`. `feat` raises MINOR,
      and a fix raises PATCH. A merge of only `docs`, `test`, `ci`, `chore` or
      `style` commits gives no release.
-   - When a language profile gives the version of its manifest, the tag is that
-     version. `just release` fails when the version is lower than the bump that
-     the commits ask for. The step `release-check` of `just check` finds this
-     before the merge, so a PR that needs a bump also raises the version. The
-     `commit-msg` hook runs `release-check` with the message of the commit, so
-     a `fix:` commit with the tagged version stops at the commit.
+   - A PR does not raise the version of the manifest. When the language
+     profiles give a version lower than the bump, `just release` writes the
+     bump into the version files and lock files, commits it as
+     `chore(release): vX.Y.Z`, and tags that commit. A version at least the
+     bump, as after a raise by hand, is tagged on HEAD with no commit. The step
+     `release-check` of `just check` fails only when the profiles disagree,
+     when the version is lower than the last tag, or when the release cannot
+     write the version file of a profile.
    - Tag only after the merge and after the post-merge CI passes.
    - Never move or delete a pushed tag. Release a new version instead.
 

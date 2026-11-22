@@ -2,12 +2,25 @@
 # It runs on each push to main. The job check runs just check on the pushed commit. When it passes, the job release
 # runs just release, which makes the next tag vX.Y.Z by semver, pushes it and checks it. A push that needs no release,
 # such as a change of only the docs, makes no tag. Nobody tags by hand.
-# just release takes the number from the commits since the last tag, or from the version of the manifest that the
-# language profiles give. It fails when that version is lower than the bump that the commits ask for, so a pull
-# request that needs a bump also raises the version of the manifest.
+# just release takes the number from the commits since the last tag. A pull request does not raise the version of
+# the manifest. When the language profiles give a version below the bump that the commits ask for, just release
+# writes the bump into the version files and lock files, commits it as "chore(release): vX.Y.Z" by
+# github-actions[bot], and pushes that commit to main and its tag together. That commit asks for no bump, so the next
+# run stops at its tag. The commit gate passes it, since its author is a GitHub bot.
+# A push with the GITHUB_TOKEN starts no other workflow, so the version commit gets no CI run of its own. It changes
+# only the version lines. A rule of main that asks for a pull request blocks the push: let GitHub Actions bypass it.
 # No agent runs here. The checkout has fetch-depth: 0, so the script sees each tag and each commit.
-# Only the job release can write to the repository, to push the tag. A tag that the GITHUB_TOKEN pushes starts no
-# other workflow. If a publish job must run on the tag, use a token that can start it.
+# just release needs a clean checkout, so run it in its own job, after no step that changes tracked files.
+# Only the job release can write to the repository, to push the commit and the tag. A tag that the GITHUB_TOKEN
+# pushes starts no other workflow, so put a publish job in this workflow, with needs: release. The tag can be on the
+# version commit, not on the pushed commit, so the job checks out needs.release.outputs.tag, as in:
+#   binaries:
+#     needs: release
+#     if: needs.release.outputs.tag != ''
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           ref: ${{ needs.release.outputs.tag }}
 # Add the setup of the tools of your languages before the step "Check", if just check needs them.
 name: release
 
@@ -43,6 +56,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # The tag that the run made, or that was already on HEAD, else empty.
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     # One release at a time. A run on an older commit after a newer release prints no release.
     concurrency:
       group: release
@@ -53,9 +69,10 @@ jobs:
           fetch-depth: 0
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v6
-      - name: Name the author of the tag
+      - name: Name the author of the tag and of the version commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Release
+        id: release
         run: just release

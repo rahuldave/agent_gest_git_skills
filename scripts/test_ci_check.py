@@ -36,7 +36,7 @@ RELEASE_STEPS = [
     {"name": "Name the author of the tag",
      "run": 'git config user.name "github-actions[bot]"\n'
             'git config user.email "41898282+github-actions[bot]@users.noreply.github.com"\n'},
-    {"name": "Tag the release", "run": "just release"},
+    {"name": "Tag the release", "id": "release", "run": "just release"},
 ]
 # The tag of jlog that the CI of jnterfaces pins.
 JLOG = "v0.3.0"
@@ -137,6 +137,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(job["permissions"], {"contents": "write"})
         self.assertEqual(job["steps"][-1]["run"], "just release")
         self.assertEqual(job["steps"], RELEASE_STEPS)
+        # A later job checks out the tag that the release gives, which can be on the version commit.
+        self.assertEqual(job["outputs"], {"tag": "${{ steps.release.outputs.tag }}"})
 
 
 # A line that names jlog names only the version of jlog, so each version on such a line is a pin: in an install, the
