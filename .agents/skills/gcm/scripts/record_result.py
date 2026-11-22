@@ -17,7 +17,8 @@ that file and says why the record is missing. A refusal never counts as a record
 
 When the hook finds no result block in the stop of a fresh agent of a packet, it waits for the handback, and then it
 writes `hook-stops/AGENT_ID.json` of the shared log folder: what the event held, the size of the transcript, whether
-it had a SubagentHandback call, and how many times the hook read it. Any other stop with no block gives no output.
+it had a SubagentHandback call, and how many times the hook read it. A stop with no transcript path also
+writes that file, with no wait. Any other stop with no block gives no output.
 
 A result counts only when `jagt result lint --expect-target TARGET --expect-nonce NONCE` accepts it. The nonce names
 the packet file in `packets/`, which gives the target, the input tree and the worktree. The output tree is the
@@ -403,7 +404,7 @@ def log_stop(event: dict, transcript: Optional[str], handback: bool, rereads: in
             root = Path(git(["rev-parse", "--show-toplevel"], cwd, plain_env()).strip())
             where = f"wrote {write_record(root, entry, name, sub='hook-stops')}"
         except Exception as error:
-            where = f"no hook-stops file: {error}"
+            where = "no hook-stops file: " + " ".join(str(error).split())  # One line, also for a git error.
         print(f"record: no AGENT_RESULT block in the stop of agent {name} (transcript path: "
               f"{'yes' if transcript else 'no'}, handback: {'yes' if handback else 'no'}, re-reads: {rereads}); "
               f"{where}", file=sys.stderr)
@@ -417,7 +418,8 @@ def log_stop(event: dict, transcript: Optional[str], handback: bool, rereads: in
 def hook(stdin: bytes) -> int:
     """The SubagentStop hook. It never blocks the fresh agent: a result that gives no record prints why, and writes
     why in a refusal file when its nonce names a packet. A fresh agent of a packet whose stop has no result block
-    gets a wait for its handback and a hook-stops file. Any other stop with no block returns at once, with no output."""
+    gets a wait for its handback and a hook-stops file. A stop with no transcript path gets a hook-stops file and no
+    wait. Any other stop with no block returns at once, with no output."""
     try:
         event = json.loads(stdin.decode(errors="replace"))
     except (ValueError, RecursionError):  # RecursionError: JSON nested too deep.
@@ -433,6 +435,11 @@ def hook(stdin: bytes) -> int:
         message, handback, rereads = find_message(event, transcript, wait=False)
         cwd = event.get("cwd")
         cwd = Path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
+        if message is None and transcript is None:
+            # Claude Code sends the path with each stop, so a stop without it is rare. Its file is the trace of an
+            # event with no path, which the hook cannot tie to a packet. It gets no wait.
+            log_stop(event, None, False, 0)
+            return 0
         if message is None:
             # An ordinary subagent, such as an Explore agent, ends with text and no block: it pays no wait and leaves
             # no file. A git that fails here also means no packet, and so no fresh agent.

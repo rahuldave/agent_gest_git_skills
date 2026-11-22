@@ -250,18 +250,40 @@ class RecordTests(unittest.TestCase):
         self.env.update(RECORD_HOOK_WAIT_SECONDS="5")
         for event in ({"agent_id": "o1", "last_assistant_message": "Here they are.",
                        "agent_transcript_path": str(ordinary)},
-                      {"agent_id": "o2", "last_assistant_message": "Done."},
                       {"agent_id": "o3", "agent_transcript_path": str(unknown)},
                       {"agent_id": "o4", "agent_transcript_path": str(quoted)},
                       {"agent_id": "o5", "agent_transcript_path": str(self.base / "missing.jsonl")},
                       {"agent_id": "o6", "agent_transcript_path": str(ordinary), "cwd": str(self.base)},
-                      {"agent_id": "o7", "last_assistant_message": "hi", "cwd": str(self.base / "gone")}):
+                      {"agent_id": "o7", "last_assistant_message": "hi", "agent_transcript_path": str(ordinary),
+                       "cwd": str(self.base / "gone")}):
             with self.subTest(agent=event["agent_id"]):
                 start = time.monotonic()
                 run = self.hook(event)
                 self.assertLess(time.monotonic() - start, 2.5)
                 self.assertEqual((run.returncode, run.stderr), (0, ""))
         self.assertFalse((self.repo / ".agents/log/hook-stops").exists())
+
+    def test_a_stop_with_no_transcript_path_writes_a_hook_stop_with_no_wait(self) -> None:
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="5")
+        start = time.monotonic()
+        run = self.hook({"agent_id": "n1", "last_assistant_message": "Done."})
+        self.assertLess(time.monotonic() - start, 2.5)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        entry = self.stop_entry("n1")
+        self.assertEqual((entry["last_assistant_message"], entry["agent_transcript_path"], entry["transcript"],
+                          entry["handback_found"], entry["rereads"]), (True, False, None, False, 0))
+        [line] = run.stderr.splitlines()
+        self.assertIn("transcript path: no", line)
+        module = load("record_result")
+        with unittest.mock.patch.object(module, "write_record", side_effect=module.Stop("two\nlines")), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(module.hook(json.dumps({"agent_id": "n3", "cwd": str(self.repo)}).encode()), 0)
+        self.assertEqual(len(err.getvalue().splitlines()), 1)
+        # Outside a repository the file cannot be written, and the one line says why.
+        run = self.hook({"agent_id": "n2"}, cwd=self.base)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        [line] = run.stderr.splitlines()
+        self.assertIn("no hook-stops file", line)
 
     def test_a_handback_with_no_block_stops_the_wait(self) -> None:
         call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": "No result here."}}
