@@ -495,6 +495,13 @@ hooks name the tasker variant, and they report the worktrees that are ready to
 prune. They remove nothing. In `gitwt`, a `git commit` in the main checkout gets
 a warning, not a block.
 
+The `SubagentStop` hook `record-result.sh` runs when a subagent stops. It
+writes the record of the result of a fresh agent, which the commit gate needs.
+When it finds no result block, it writes the reason in
+`.agents/log/hook-stops/<agent_id>.json`, and it never stops the agent. The
+section "Records" of
+[`docs/specs/commit-gates.md`](docs/specs/commit-gates.md) tells how.
+
 The installer also installs the pre-commit framework and its git hooks, from
 `.pre-commit-config.yaml`:
 
