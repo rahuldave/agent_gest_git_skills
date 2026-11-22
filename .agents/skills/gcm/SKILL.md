@@ -111,8 +111,59 @@ both, so a commit without them stops.
    - The pre-commit hook runs the gate on the tree.
    - The commit-msg hook adds the trailer `Commit-Gate: patch:<id>` to the
      message.
-   - The pre-push hook runs `just ci`, which checks that each pushed commit has
-     the trailer.
+   - The pre-push hook runs `pre_push.py`. It runs `just ci`, less each recipe
+     that the pass of `just check` for the pushed tree ran. It always runs
+     `ci-gate`, which checks that each pushed commit has the trailer. When it
+     cannot prove that a recipe ran, it runs all of `just ci`.
+
+### Which change voids a record
+
+A record is for one tree. A later change keeps the record when the change has
+no path in the scope of the target. `SCOPES` in `commit_gate.py` gives the
+scopes. Each changed path is of one of three kinds:
+
+- **A page** is a plain Markdown file, `.md`, in `docs/`. These files are not
+  pages:
+  - A file whose name starts with `AGENTS`, `CLAUDE`, `GEMINI`, `SKILL`,
+    `CHANGELOG`, `LICENSE`, `COPYING`, `SECURITY` or `CODEOWNERS`.
+  - A file in a folder whose name starts with `.` or `_`.
+  - A file that the globs `code` or `tests` of `.agents/stack.json` name.
+  - A Markdown file at the top, such as `README.md`. A build can put it in the
+    docs of a package and run its examples as tests.
+  - Each page, when the tree holds a link. A link can make a page the text
+    of another file.
+- **Data** is a file such as a `.json` file, a `.lock` file or an image.
+- **Code** is each other path. A path whose kind is in doubt is code, for
+  example a link, a submodule, an executable file, or a Markdown file in
+  another folder.
+
+This table gives the effect of a change of each kind on each record:
+
+| Change | `update-docs` | `prose` | `review` | `test-review` |
+| --- | --- | --- | --- | --- |
+| A page | Voids it | Voids it | Keeps it | Keeps it |
+| Data | Voids it | Keeps it | Voids it | Voids it |
+| Code | Voids it | Voids it | Voids it | Voids it |
+
+- `prose` works on the docstrings of the code too, so a change of the code
+  voids it.
+- A rename changes two paths, the old path and the new path. A deletion is a
+  change.
+- A skip counts only for its own tree.
+- The gate needs the tree of the record to compare it. The targets keep the
+  tree objects of their packets and records in `.agents/log/objects`. The gate
+  checks that each object hashes to its name, and it reads git with no
+  replace refs. A record whose tree it cannot read counts only for its own
+  tree.
+- A change of a page alone does not get a new `review`. `prose` and
+  `update-docs` check it. Keep secrets and code out of the pages. When the
+  code reads or runs a page, for example as a doctest, name the page in the
+  globs `code` or `tests` of `.agents/stack.json`.
+- A target of the project has every kind in its scope.
+- The pass of `just check` must still be for the commit tree. Run
+  `just check` after each change.
+- When `update-docs` runs again and changes a page, `prose` must run again.
+  The gate tells you.
 
 When the repository has no `just check`, run `gsu` first. It installs the
 recipes and the hooks.

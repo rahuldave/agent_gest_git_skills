@@ -660,12 +660,45 @@ only place for them.
   check        T2
   ```
 
-  Each record must start at the output tree of the record before it. The last
-  tree must be the commit tree. An `update-docs` record comes before a `prose` record,
-  because `prose` checks the text that `update-docs` wrote. `test-review` and `review`
-  come after the last record that changes files. When a review leads to fixes, the fixes make a
-  new tree, and the review runs again on it. `test-review` and `review` change
+  An `update-docs` record comes before a `prose` record, because `prose`
+  checks the text that `update-docs` wrote. `test-review` and `review` change
   no files, so they can run in either order on the same tree.
+- **The scopes.** A record of tree T1 counts for the commit tree T2 when no
+  path that differs between T1 and T2 is in the scope of its target.
+  `SCOPES` in `commit_gate.py` gives each scope, in one place. A target of
+  the project has every path in its scope.
+  - **The paths.** The gate finds each path that differs between the two
+    trees. Each side of a rename counts, and a deleted path counts.
+    The gate compares the tree objects itself, so no diff setting of the
+    config can hide a path. The trees of the records are not in `.git/objects`, so
+    `agentic_target.py` and `record_result.py` keep their tree objects in
+    `objects` of the shared log folder. The gate reads the trees itself. It
+    checks that each object hashes to its ID, and it reads git with no
+    replace refs, so neither `git replace` nor a forged object file can hide
+    a change. A record whose tree the gate cannot read counts only for its
+    own tree.
+  - **The kinds.** A page is a plain Markdown file in `docs/`, but not a
+    file such as `SKILL.md` or `CHANGELOG.md`, and not a file that the globs
+    `code` or `tests` of `.agents/stack.json` name. `README.md` at the top is
+    code, because a build can put it in the docs of a package and run its
+    examples as tests. When either tree holds a link, each page is code,
+    because a link can make a page the text of another file. A page that the
+    code reads or runs, such as a doctest, must be in the globs `code` or
+    `tests`. Data is a
+    file such as a `.json` file, a `.lock` file or an image. Code is each other
+    path. A path whose kind is in doubt is code, for example a link or a
+    Markdown file in another folder.
+  - **The effect of a change.** A change of a page alone keeps `review` and
+    `test-review`. A change of data alone keeps `prose`. A change of code voids
+    every record, because `prose` works on the docstrings too. Every change
+    voids `update-docs`.
+  - **The trees of a record.** A target that changes no file counts only by a
+    record whose input tree is its output tree. `update-docs` and `prose`
+    count by their output tree. Between the output tree of `update-docs` and
+    the commit tree, `prose` records can come, because `prose` changes only
+    what it checks. A skip counts only for its own tree.
+  - **The pass does not change.** The pass of `just check` must be for the
+    commit tree itself.
 - **What a record must hold.** A record counts only if its status is
   `success`, and each finding is fixed with a test or has a reason not to fix it.
 - **The turn gate of nossaifd stays, with a different job.** nossaifd has its
@@ -1110,8 +1143,8 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
      gives the hook a `GIT_INDEX_FILE`, and tests that run git can write into
      it and break the commit. If there is no pass, the gate stops and says
      "run `just check`".
-  4. For a commit by an agent, it looks for a chain of records that ends at the
-     tree. It knows an agent by the variables of the harnesses, for example
+  4. For a commit by an agent, it looks for a record of each required target
+     that counts for the tree, by the scope of the target. It knows an agent by the variables of the harnesses, for example
      `CODEX_THREAD_ID` or `CLAUDE_CODE_SESSION_ID`.
   5. It stops the commit and says which target or step to run.
 - **The pre-merge-commit hook** runs the same gate for `git merge`.
@@ -1125,9 +1158,12 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     - `commit-gate-trailer` runs the gate again for the stage `commit-msg`.
       Then it runs `just release-check` on the message, and adds the
       trailer `Commit-Gate:` to the message.
-    - `just-ci` runs `just ci` for the stage `pre-push`. So a push checks
+    - `just-ci` runs `pre_push.py` for the stage `pre-push`. So a push checks
       on your machine what CI checks, and a commit without a trailer stops
-      before it reaches GitHub.
+      before it reaches GitHub. The script runs `just ci`, less each recipe
+      that a pass of `just check` ran for the same tree. The section "The
+      pre-push hook" tells how. An older config with the entry `just ci`
+      still passes `--check-hooks`.
   - The config also has the checks of `pre-commit-hooks` that change no
     file, such as `check-yaml` and `detect-private-key`, for a commit only.
   - The config has no hook that changes files, such as `ruff-format`,
@@ -1344,6 +1380,33 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     This includes original feature commits. The
     operator must verify that the supplied base is the PR target's current
     remote tip; the gate does not establish PR acceptance.
+  - **The pre-push hook.** `pre_push.py` does not run again what the commit
+    gate proved for the pushed tree. It runs all of `just ci` unless it can
+    prove each of these facts:
+    1. The framework names the pushed commit in `PRE_COMMIT_TO_REF`.
+    2. The worktree tree is the tree of that commit, so the Justfile is the
+       Justfile of the commit.
+    3. The run log holds a pass for that tree, with each step of the
+       `.agents/stack.json` of the commit. The line `jlog pass` of the same
+       run ran in `just check`.
+    4. The recipe `ci` has no parameter and no line of its own.
+
+    A dependency of `ci` is done when the same dependency, with no
+    arguments, is a dependency of `check`, or a dependency of one. A pass
+    means that just ran each dependency of `check`.
+
+    The hook runs each other
+    dependency as `just NAME`, in order, and prints one line that names
+    what it skips. It always runs `ci-gate`, because the last commit came
+    after the pass. A dependency of `ci` that runs `ci-gate` runs too. A
+    dependency of `check` after `&&` runs after `jlog pass`, so it is not
+    done. A recipe that names a recipe of a module, such as `sub::foo`, in
+    the Justfile or in a file that it imports, makes the hook run all of
+    `just ci`.
+
+    The hook trusts the run log, as the gate does. It also trusts that a
+    recipe gives the same result for the same files, so a recipe that reads
+    the commits or the environment can differ. CI runs all of `just ci`.
   - **Limits of the pre-push hook.**
     - The framework reads only the first branch of a push. So
       `git push origin a b` checks the commits of `a`. CI checks each pull
@@ -1631,6 +1694,11 @@ needs it.
 - The chain update-docs, prose, test-review, review and check passes, and so does
   the chain with `review` before `test-review`. A chain with `prose` before
   `update-docs` stops.
+- A change of a page alone keeps `review` and `test-review` and voids `prose`.
+  A change of code voids each record. A rename across kinds, the deletion of
+  a code file and a path whose kind is in doubt void `review`.
+- A pushed tree with a pass runs only `ci-gate` and the dependencies of `ci`
+  that `check` does not run. A pushed tree with no pass runs all of `just ci`.
 - A record with status `failed`, or with a finding that is not fixed, does not
   count.
 - A review by a fresh agent in another worktree gives a record that the gate

@@ -18,6 +18,9 @@ SCRIPT = ROOT / ".agents/skills/gcm/scripts/commit_gate.py"
 spec = importlib.util.spec_from_file_location("commit_gate", SCRIPT)
 commit_gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(commit_gate)
+# agentic_target.py keeps the trees of the packets and the records, so the gate can compare them with the commit tree.
+sys.path.insert(0, str(SCRIPT.parent))
+import agentic_target  # noqa: E402
 
 JUSTFILE = """\
 check:
@@ -78,7 +81,10 @@ class GateTests(unittest.TestCase):
         target.write_text(text)
 
     def tree(self) -> str:
-        return commit_gate.worktree_tree(self.repo)
+        """The worktree tree, kept as the packets and the records keep it. It is the tree that the gate computes."""
+        tree = agentic_target.worktree_diff(self.repo, keep=True)[1]
+        self.assertEqual(tree, commit_gate.worktree_tree(self.repo))
+        return tree
 
     def passed(self, tree=None, steps=("lint",)) -> None:
         line = {"kind": "pass", "tree": tree or self.tree(), "steps": list(steps)}
@@ -591,7 +597,10 @@ class GateTests(unittest.TestCase):
         self.record("prose", t0, t1)
         self.record("update-docs", t1, t2)
         self.record("review")
-        self.assertStops(self.commit(env=self.agent), "`just update-docs`, `just prose`")
+        # update-docs ends at the commit tree, and its change of the page voids prose, so only prose runs again.
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "no record for this tree of `just prose`: run them")
+        self.assertNotIn("`just update-docs`", result.stderr)
 
     def test_test_review_then_review_passes(self) -> None:
         # test-review and review both check the last tree, in either order.
@@ -609,6 +618,7 @@ class GateTests(unittest.TestCase):
         t0 = self.tree()
         self.write("a.py", "x = 1\n")
         self.record("test-review")
+        self.write("a.py", "x = 2\n")
         self.write("guide.md", "docs\n")
         t1 = self.tree()
         git("add", "-A", cwd=self.repo)
@@ -623,6 +633,7 @@ class GateTests(unittest.TestCase):
         self.write("guide.md", "draft\n")
         t0 = self.tree()
         self.record("review")
+        self.write("a.txt", "a\n")
         self.write("guide.md", "docs\n")
         t1 = self.tree()
         git("add", "-A", cwd=self.repo)
@@ -652,6 +663,334 @@ class GateTests(unittest.TestCase):
         self.assertStops(self.commit(env=self.agent), "`just review`")
         self.record("review", source="skip", reason="a typo")
         self.assertGoes(self.commit(env=self.agent))
+
+    # The scopes of the records
+
+    def all_records(self) -> None:
+        """A record of each of the four targets for the tree of the worktree."""
+        for target in ("update-docs", "prose", "test-review", "review"):
+            self.record(target)
+
+    def scoped_stop(self, voided, kept) -> None:
+        """The agent commit stops, names each target of VOIDED, in order, and names no target of KEPT."""
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "no record for this tree of " + ", ".join(f"`just {t}`" for t in voided) + ":")
+        for target in kept:
+            self.assertNotIn(f"`just {target}`", result.stderr)
+
+    def start_scoped(self) -> None:
+        """A first commit, then a change of a page and of the code, with a pass and the four records."""
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        self.all_records()
+
+    def test_a_change_of_a_page_alone_keeps_review_and_test_review_and_voids_prose(self) -> None:
+        self.start_scoped()
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose"], ["review", "test-review"])
+        self.record("update-docs")
+        self.record("prose")
+        self.assertGoes(self.commit(env=self.agent))
+
+    def test_a_change_of_a_page_under_docs_keeps_the_review(self) -> None:
+        self.start_scoped()
+        self.write("docs/guide/how.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose"], ["review", "test-review"])
+
+    def test_a_change_of_the_code_voids_review_test_review_and_prose(self) -> None:
+        # prose works on the docstrings of the code too, so a change of the code voids it.
+        self.start_scoped()
+        self.write("a.py", "x = 2\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_a_change_of_data_alone_keeps_prose_and_voids_the_reviews(self) -> None:
+        self.start_scoped()
+        self.write("data.json", "{}\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "review", "test-review"], ["prose"])
+        self.record("update-docs")
+        self.record("review")
+        self.record("test-review")
+        self.assertGoes(self.commit(env=self.agent))
+
+    def test_a_rename_of_code_to_a_page_voids_the_review(self) -> None:
+        # The old side of the rename is code.
+        self.write("a.py", "x = 1\n")
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        self.all_records()
+        (self.repo / "a.py").rename(self.repo / "docs/a.md")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_a_rename_of_a_page_to_code_voids_the_review(self) -> None:
+        # The page is in the parent, so the commit deletes a page and needs prose.
+        self.write("docs/guide.md", "zero\n")
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        self.all_records()
+        (self.repo / "docs/guide.md").rename(self.repo / "guide.py")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_a_rename_of_a_page_to_a_page_keeps_the_review(self) -> None:
+        self.start_scoped()
+        (self.repo / "docs/guide.md").rename(self.repo / "docs/other.md")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose"], ["review", "test-review"])
+
+    def test_a_deleted_code_file_voids_the_review(self) -> None:
+        self.write("b.py", "y = 1\n")
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        self.all_records()
+        (self.repo / "b.py").unlink()
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_a_deleted_page_keeps_the_review_and_voids_prose(self) -> None:
+        self.write("docs/other.md", "y\n")
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        self.all_records()
+        (self.repo / "docs/other.md").unlink()
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose"], ["review", "test-review"])
+
+    def test_a_file_whose_kind_is_in_doubt_voids_the_review(self) -> None:
+        for path in ("README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", "CHANGELOG.md", "LICENSE.md", "notes/x.md", ".agents/x.md",
+                     "docs/_layout.md", "docs/README.MD", "docs/LICENSE.md", "guide.qmd", "docs/SKILL.md", "src/x.md"):
+            with self.subTest(path=path):
+                self.setUp()
+                self.start_scoped()
+                self.write(path, "changed\n")
+                git("add", "-A", cwd=self.repo)
+                self.passed()
+                result = self.commit(env=self.agent)
+                self.assertStops(result, "`just review`")
+                self.assertIn("`just test-review`", result.stderr)
+
+    def test_a_page_that_becomes_a_link_voids_the_review(self) -> None:
+        self.start_scoped()
+        (self.repo / "docs/guide.md").unlink()
+        os.symlink("../a.py", self.repo / "docs/guide.md")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_a_skip_counts_for_its_own_tree_only(self) -> None:
+        self.start_scoped()
+        self.record("review", source="skip", reason="a typo")
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        # The review record of the hook still counts, so take it away and keep only the skip.
+        for path in (self.repo / ".agents/log/records").glob("*.json"):
+            if json.loads(path.read_text())["target"] == "review" and json.loads(path.read_text())["source"] == "hook":
+                path.unlink()
+        self.scoped_stop(["update-docs", "prose", "review"], ["test-review"])
+
+    def test_a_review_that_changed_files_does_not_count(self) -> None:
+        self.first_commit()
+        self.write("a.py", "x = 1\n")
+        t0 = self.tree()
+        self.write("a.py", "x = 2\n")
+        t1 = self.tree()
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("test-review")
+        self.record("review", t0, t1)
+        self.scoped_stop(["review"], ["test-review"])
+
+    def test_a_record_of_a_tree_that_git_does_not_have_does_not_count(self) -> None:
+        self.first_commit()
+        self.write("docs/guide.md", "one\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("update-docs")
+        self.record("prose")
+        self.record("review", "1" * 40, "1" * 40)
+        self.scoped_stop(["review"], ["prose"])
+
+    def test_a_record_whose_tree_was_not_kept_counts_for_its_own_tree_only(self) -> None:
+        self.start_scoped()
+        shutil.rmtree(self.repo / ".agents/log/objects")
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose", "review", "test-review"], [])
+
+    def test_update_docs_does_not_count_after_a_change_of_a_page_by_another_than_prose(self) -> None:
+        self.first_commit()
+        self.write("docs/guide.md", "draft\n")
+        t0 = self.tree()
+        self.write("docs/guide.md", "docs\n")
+        t1 = self.tree()
+        self.write("docs/guide.md", "prose\n")
+        t2 = self.tree()
+        self.record("update-docs", t0, t1)
+        self.record("prose", t1, t2)
+        self.record("review")
+        self.write("docs/guide.md", "by hand\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.scoped_stop(["update-docs", "prose"], ["review"])
+
+    def test_a_replace_ref_cannot_hide_a_change_of_the_code(self) -> None:
+        # The tree of the review is in .git/objects. A replace ref swaps in a fake tree with the new code, so that
+        # git sees a change of a page alone. The gate reads the objects with no replace refs.
+        self.start_scoped()
+        t1 = self.tree()
+        git("add", "-A", cwd=self.repo)
+        self.assertEqual(git("write-tree", cwd=self.repo).stdout.strip(), t1)
+        shutil.rmtree(self.repo / ".agents/log/objects")
+        self.write("a.py", "x = 'unreviewed'\n")
+        git("add", "-A", cwd=self.repo)
+        fake = git("write-tree", cwd=self.repo).stdout.strip()
+        git("replace", "-f", t1, fake, cwd=self.repo)
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "`just review`")
+        self.assertIn("`just test-review`", result.stderr)
+
+    def test_a_forged_kept_tree_does_not_count(self) -> None:
+        # A file of the kept trees with the content of another tree does not hash to its name.
+        self.start_scoped()
+        t1 = self.tree()
+        self.write("a.py", "x = 'unreviewed'\n")
+        fake = self.tree()
+        kept = self.repo / ".agents/log/objects"
+        (kept / t1).chmod(0o644)
+        (kept / t1).write_bytes((kept / fake).read_bytes())
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "`just review`")
+
+    def test_a_link_into_docs_makes_each_page_code(self) -> None:
+        # README.md is a link to a page, so a change of the page changes README.md too.
+        self.first_commit()
+        self.write("docs/index.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        os.symlink("docs/index.md", self.repo / "README.md")
+        self.all_records()
+        self.write("docs/index.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "`just review`")
+        self.assertIn("`just test-review`", result.stderr)
+
+    def test_a_link_to_a_folder_above_docs_makes_each_page_code(self) -> None:
+        self.first_commit()
+        self.write("docs/index.md", "one\n")
+        self.write("src/pkg/a.py", "x = 1\n")
+        os.symlink("../..", self.repo / "src/pkg/top")
+        self.all_records()
+        self.write("docs/index.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(self.commit(env=self.agent), "`just review`")
+
+    def test_a_link_that_climbs_with_dots_makes_each_page_code(self) -> None:
+        # src/m.py reaches docs/a.md through the link tools/sub/l1, which text alone cannot follow.
+        self.first_commit()
+        self.write("docs/a.md", "one\n")
+        (self.repo / "tools/sub").mkdir(parents=True)
+        os.symlink("..", self.repo / "tools/sub/l1")
+        (self.repo / "src").mkdir()
+        os.symlink("../tools/sub/l1/../docs/a.md", self.repo / "src/m.py")
+        self.all_records()
+        self.write("docs/a.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(self.commit(env=self.agent), "`just review`")
+
+    def test_a_link_in_another_case_makes_each_page_code(self) -> None:
+        self.first_commit()
+        self.write("docs/a.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        os.symlink("DOCS/a.md", self.repo / "m.py")
+        self.all_records()
+        self.write("docs/a.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(self.commit(env=self.agent), "`just review`")
+
+    def test_globs_match_as_a_pathspec_of_git_does(self) -> None:
+        match = commit_gate.glob_match
+        for glob in ("docs", "docs/", "./docs/*.md", "docs/../docs/a.md", "docs/**", "**/*.md", "d[o]cs/a.md",
+                     "docs/[]a]", "../x"):
+            with self.subTest(glob=glob):
+                self.assertTrue(match(glob, "docs/a.md" if glob != "docs/[]a]" else "docs/a"))
+        self.assertFalse(match("src/**", "docs/a.md"))
+        for odd in ("[!]", "[", "[]", "a[!"):
+            with self.subTest(glob=odd):
+                match(odd, "docs/a.md")
+        self.assertFalse(match("docs/*.py", "docs/a.md"))
+
+    def test_a_page_in_a_folder_that_the_tests_globs_name_is_code(self) -> None:
+        self.write(".agents/stack.json", json.dumps(dict(STACK, tests={"py": ["./docs/examples/"]})))
+        self.first_commit()
+        self.write("docs/examples/a.md", "one\n")
+        self.write("a.py", "x = 1\n")
+        self.all_records()
+        self.write("docs/examples/a.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(self.commit(env=self.agent), "`just review`")
+
+    def test_a_page_that_the_code_globs_name_is_code(self) -> None:
+        self.write(".agents/stack.json", json.dumps(dict(STACK, tests={"md": ["docs/**/*.md"]})))
+        self.start_scoped()
+        self.write("docs/guide.md", "two\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "`just review`")
+        self.assertIn("`just test-review`", result.stderr)
+
+    def test_the_scopes_hold_the_code_kind(self) -> None:
+        # The code kind holds each path in doubt, so every scope must hold it.
+        for target, scope in commit_gate.SCOPES.items():
+            self.assertIn(commit_gate.CODE, scope, target)
+        self.assertEqual(commit_gate.scope_of("security"), commit_gate.ALL_KINDS)
+
+    def test_the_kind_of_a_path(self) -> None:
+        kind = commit_gate.path_kind
+        regular = ("100644", "100644")
+        self.assertEqual(kind("README.md", regular), commit_gate.CODE)
+        self.assertEqual(kind("docs/README.md", regular), commit_gate.PAGE)
+        self.assertEqual(kind("docs/a/b.md", ("000000", "100644")), commit_gate.PAGE)
+        self.assertEqual(kind("docs/a.md", ("100644", "120000")), commit_gate.CODE)
+        self.assertEqual(kind("docs/a.md", ("160000", "000000")), commit_gate.CODE)
+        self.assertEqual(kind("Cargo.lock", regular), commit_gate.DATA)
+        self.assertEqual(kind("tests/fixture.json", regular), commit_gate.DATA)
+        self.assertEqual(kind("a.svg", regular), commit_gate.CODE)
+        self.assertEqual(kind("docs/Agents.md", regular), commit_gate.CODE)
+        self.assertEqual(kind("docs/run.md", ("100644", "100755")), commit_gate.CODE)
+        self.assertEqual(kind("docs/a.md", regular, linked=True), commit_gate.CODE)
+        self.assertEqual(kind("docs/a/b.md", regular, ["docs/**/*.md"]), commit_gate.CODE)
+        self.assertEqual(kind("docs/b.md", regular, ["docs/**/*.md"]), commit_gate.CODE)
+        self.assertEqual(kind("docs/b.md", regular, ["src/**"]), commit_gate.PAGE)
 
     # The lists come from the parent
 
@@ -2090,7 +2429,9 @@ class HookCheckTests(unittest.TestCase):
         config = self.repo / ".pre-commit-config.yaml"
         asset = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
         local = asset[:asset.index("  # Checks of any file")]
-        gate, trailer = commit_gate.CONFIG_HOOKS["commit-gate"][1], commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1]
+        gate = commit_gate.CONFIG_HOOKS["commit-gate"][1][0]
+        trailer = commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1][0]
+        pre_push = f"entry: {commit_gate.PRE_PUSH_COMMAND}"
         flow = ("repos:\n  - repo: local\n    hooks:\n"
                 f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system, "
                 "stages: [pre-commit, pre-merge-commit]}\n"
@@ -2099,11 +2440,12 @@ class HookCheckTests(unittest.TestCase):
                 "      - {id: just-ci, name: c, entry: just ci, language: system, stages: [pre-push]}\n")
         cases = (
             ("the config of the role", local, 0, None),
-            ("the flow form of YAML", flow, 0, None),
+            ("the flow form of YAML, with the entry just ci of an older config", flow, 0, None),
             ("a hook of the wrong stage", local.replace("stages: [pre-push]", "stages: [manual]"), 1, "just-ci"),
             ("a gate with no merge stage", local.replace("stages: [pre-commit, pre-merge-commit]",
                                                         "stages: [pre-commit]"), 1, "commit-gate"),
-            ("a hook with another entry", local.replace("entry: just ci", "entry: 'true'"), 1, "just-ci"),
+            ("a hook with another entry", local.replace(pre_push, "entry: 'true'"), 1, "just-ci"),
+            ("the entry just ci of an older config", local.replace(pre_push, "entry: just ci"), 0, None),
             ("the ids in a block of text", "repos:\n  - repo: local\n    hooks:\n      - id: x\n        name: x\n"
              "        entry: 'true'\n        language: system\n        args:\n          - |\n"
              "            id: commit-gate\n            id: commit-gate-trailer\n            id: just-ci\n",
@@ -2169,7 +2511,8 @@ class HookCheckTests(unittest.TestCase):
         for stage in commit_gate.INSTALLED_STAGES:
             self.hook(stage, self.good)
         config = self.repo / ".pre-commit-config.yaml"
-        gate, trailer = commit_gate.CONFIG_HOOKS["commit-gate"][1], commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1]
+        gate = commit_gate.CONFIG_HOOKS["commit-gate"][1][0]
+        trailer = commit_gate.CONFIG_HOOKS["commit-gate-trailer"][1][0]
         hooks = ("repos:\n  - repo: local\n    hooks:\n"
                  f"      - {{id: commit-gate, name: g, entry: \"{gate}\", language: system}}\n"
                  f"      - {{id: commit-gate-trailer, name: t, entry: \"{trailer}\", language: system}}\n"
@@ -2194,10 +2537,12 @@ class HookCheckTests(unittest.TestCase):
         for stage in commit_gate.INSTALLED_STAGES:
             self.hook(stage, self.good)
         asset = (ROOT / ".agents/skills/gcm/assets/pre-commit-config.yaml").read_text()
-        (self.repo / ".pre-commit-config.yaml").write_text(asset.replace("entry: just ci", "entry: 'true'"))
+        entry = f"entry: {commit_gate.PRE_PUSH_COMMAND}"
+        self.assertIn(entry, asset)
+        (self.repo / ".pre-commit-config.yaml").write_text(asset.replace(entry, "entry: 'true'"))
         # A pre_commit of the project whose loader gives each hook of the role, in the folder of the check.
-        hooks = [{"id": name, "entry": entry, "stages": list(stages)}
-                 for name, (stages, entry) in commit_gate.CONFIG_HOOKS.items()]
+        hooks = [{"id": name, "entry": entries[0], "stages": list(stages)}
+                 for name, (stages, entries) in commit_gate.CONFIG_HOOKS.items()]
         (self.repo / "pre_commit").mkdir()
         (self.repo / "pre_commit/__init__.py").write_text("")
         (self.repo / "pre_commit/clientlib.py").write_text(
