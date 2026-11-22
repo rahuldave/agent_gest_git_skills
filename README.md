@@ -110,11 +110,14 @@ AGENTS.instructions.md -> .agents/instructions/tasker.md, and a line in AGENTS.m
 
 The CI job in `.github/workflows/check.yml` checks out the whole history and
 runs `just ci` on each pull request. The step `release-check` of `just check`
-fails when a change needs a higher version in the manifest. The CI job in
-`.github/workflows/release.yml` runs `just check` on each push to `main`. When
-the check passes, it runs `just release`, which tags the release. Both files
-are yours from then on. Add the setup of the tools of your languages to them
-when the runner lacks them.
+fails when the language profiles give different versions, or a version lower
+than the last tag. A pull request does not raise the version.
+
+The CI job in `.github/workflows/release.yml` runs `just check` on each push
+to `main`. When the check passes, it runs `just release`. The release writes
+the bump into the version files, commits it as `github-actions[bot]`, and
+tags the release. Both files are yours from then on. Add the setup of the
+tools of your languages to them when the runner lacks them.
 
 It reports each workflow executable that is missing, such as `gest`. It checks for
 conflicts before it writes, and it keeps the instructions and the other settings that the
@@ -383,7 +386,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
 | `just worktrees` | Lists the worktrees: clean or dirty, merged or not, and the ignored files a removal deletes |
 | `just worktrees-prune` | Removes clean, merged worktrees that were idle for 2 hours, with no `--force`. Takes `--dry-run`, `--min-age HOURS` and `--with-ignored` |
 | `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream or ahead of it, never with force. Takes `--dry-run` first |
-| `just release` | Tags HEAD with the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag, or from the version that the language profiles give. Never moves or deletes a tag. Takes `--dry-run` first |
+| `just release` | Tags the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag. When the version files of the language profiles are lower, it writes the bump into them, commits it as `chore(release): vX.Y.Z` and tags that commit. Never moves or deletes a tag. Takes `--dry-run` first |
 
 Setup follows two files in the main checkout, as other tools do:
 
@@ -513,8 +516,8 @@ The installer also installs the pre-commit framework and its git hooks, from
   without the records of its required targets.
 - **commit-msg** runs the gate again. Then it runs `just release-check` on the
   message of the commit, since v0.3.5. A commit whose type asks for a
-  release, such as `fix:`, stops when the version of the manifest is lower
-  than that release. The hook skips this check for a merge, for an amend of
+  release, such as `fix:`, stops when the release cannot write the version
+  file of a profile. The hook skips this check for a merge, for an amend of
   a merge, during a rebase, and when the Justfile has no recipe
   `release-check`. When both checks pass, the hook adds the trailer
   `Commit-Gate:` to the message. CI checks the trailer of each commit.
@@ -544,8 +547,8 @@ It is a step of `just check` and of `just ci`, so CI runs only steps of
     request on GitHub. Another merge needs the trailer `tree:<tree>` of the
     gate.
   - A commit whose author is a GitHub bot, such as
-    `49699333+dependabot[bot]@users.noreply.github.com`. The release job
-    makes only tags, so it has no commit to skip.
+    `49699333+dependabot[bot]@users.noreply.github.com`. The version commit
+    of the release job, `chore(release): vX.Y.Z`, is such a commit.
   - A commit from before the gate. No commit that it reaches changed
     `.agents/stack.json`, so the gate could not run. This repository has no
     `.agents/stack.json`, so its own commits are of this kind.

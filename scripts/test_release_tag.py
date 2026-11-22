@@ -323,7 +323,7 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("fix: a")
         self.assertIn("next tag: v2.0.0", self.run_script("--dry-run").stdout)
 
-    def test_a_version_below_the_bump_fails(self) -> None:
+    def test_a_version_below_the_bump_of_a_profile_the_release_cannot_write_fails(self) -> None:
         self.profile("1.0.0")
         self.commit("feat: start")
         self.tag("v1.0.0")
@@ -331,7 +331,7 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("feat: a page")
         result = self.run_script("--dry-run")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("at least 1.1.0", result.stderr)
+        self.assertIn("Raise the version to 1.1.0", result.stderr)
 
     def test_an_unchanged_version_with_a_fix_fails(self) -> None:
         self.profile("1.0.0")
@@ -380,7 +380,7 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("feat: start")
         self.assertIn("next tag: v0.1.0", self.run_script("--dry-run").stdout)
 
-    def test_the_check_fails_on_a_version_below_the_bump_without_a_remote(self) -> None:
+    def test_the_check_fails_on_a_bump_it_cannot_write_without_a_remote(self) -> None:
         self.profile("1.0.0")
         self.commit("feat: start")
         self.tag("v1.0.0")
@@ -388,21 +388,21 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("feat: a page")
         result = self.run_script("--check")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("at least 1.1.0", result.stderr)
+        self.assertIn("Raise the version to 1.1.0", result.stderr)
         (self.repo / "VERSION").write_text("1.1.0\n")
         self.commit("chore: raise the version")
         result = self.run_script("--check")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("release-check: the next tag is v1.1.0", result.stdout)
 
-    def test_the_check_fails_on_a_fix_with_the_tagged_version(self) -> None:
+    def test_the_check_fails_on_a_fix_it_cannot_write(self) -> None:
         self.profile("0.2.2")
         self.commit("feat: start")
         self.tag("v0.2.2")
         self.commit("fix: a bug")
         result = self.run_script("--check")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("must be at least 0.2.3, but the profile py gives 0.2.2", result.stderr)
+        self.assertIn("the profile py gives 0.2.2, so the release writes 0.2.3", result.stderr)
         (self.repo / "VERSION").write_text("0.2.3\n")
         self.commit("chore: raise the version to 0.2.3")
         result = self.run_script("--check")
@@ -432,8 +432,9 @@ class ProfileVersionTests(ReleaseBase):
         self.commit("chore: a")
         result = self.check_with_message("fix: a bug\n")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("1 commit(s) since v0.2.2 and the commit being made ask for patch, so the version must be at "
-                      "least 0.2.3, but the profile py gives 0.2.2", result.stderr)
+        self.assertIn("1 commit(s) since v0.2.2 and the commit being made ask for patch, and the profile py gives "
+                      "0.2.2, so the release writes 0.2.3 into the version files, but the release cannot write the "
+                      "version of the profile py", result.stderr)
         (self.repo / "VERSION").write_text("0.2.3\n")
         result = self.check_with_message("fix: a bug\n")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -465,7 +466,7 @@ class ProfileVersionTests(ReleaseBase):
         self.tag("v0.2.2")
         result = self.check_with_message("#12 fix login\n", GIT_EDITOR=":")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("at least 0.2.3", result.stderr)
+        self.assertIn("Raise the version to 0.2.3", result.stderr)
 
     def test_a_custom_comment_character_cuts_the_diff_of_verbose(self) -> None:
         self.profile("0.2.2")
@@ -512,7 +513,7 @@ class ProfileVersionTests(ReleaseBase):
         self.tag("v0.2.2")
         result = self.check_with_message("#12 login\n\ndocs: note\n", GIT_EDITOR=":")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("at least 0.2.3", result.stderr)
+        self.assertIn("Raise the version to 0.2.3", result.stderr)
 
     def test_the_cleanup_mode_decides_which_comment_lines_count(self) -> None:
         self.profile("0.2.2")
@@ -532,7 +533,7 @@ class ProfileVersionTests(ReleaseBase):
                 self.assertEqual(self.check_with_message(message, **extra).returncode, code)
         # The biggest bump also when the comment lines hide it: strip gives the feat.
         result = self.check_with_message("#12 fix\n\nfeat: g\n", JN_RELEASE_CLEANUP="unknown")
-        self.assertIn("at least 0.3.0", result.stderr)
+        self.assertIn("Raise the version to 0.3.0", result.stderr)
         git("config", "commit.cleanup", "strip", cwd=self.repo)
         self.assertEqual(self.check_with_message(message, GIT_EDITOR=":").returncode, 0)
 
@@ -645,7 +646,7 @@ class HookTests(ReleaseBase):
         git("add", "n.txt", cwd=self.repo)
         result = self.run_git("commit", "-q", "-m", "fix: use --amend", **{release_tag.AMEND_VARIABLE: "maybe"})
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("at least 0.2.3", result.stderr)
+        self.assertIn("Raise the version to 0.2.3", result.stderr)
 
     def test_a_merge_with_a_conflict_goes_through(self) -> None:
         git("checkout", "-q", "-b", "side", cwd=self.repo)
@@ -669,7 +670,7 @@ class HookTests(ReleaseBase):
         git("add", "n.txt", cwd=self.repo)
         result = self.run_git("commit", "-q", "-e", "-m", "#12 tidy", "-m", "docs: x", GIT_EDITOR="true")
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("at least 0.2.3", result.stderr)
+        self.assertIn("Raise the version to 0.2.3", result.stderr)
         result = self.run_git("commit", "-q", "--no-verify", "-e", "-m", "#12 tidy", "-m", "docs: x", GIT_EDITOR="true")
         self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).strip(), "#12 tidy")
 
@@ -681,7 +682,7 @@ class HookTests(ReleaseBase):
         git("add", "n.txt", cwd=self.repo)
         result = self.run_git("commit", "-q", "-F", str(self.base / "m"))
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("at least 0.2.3", result.stderr)
+        self.assertIn("Raise the version to 0.2.3", result.stderr)
 
     def test_an_amend_of_the_tagged_commit_stops_with_a_clear_message(self) -> None:
         result = self.run_git("commit", "-q", "--amend", "-m", "feat: retag", **{release_tag.AMEND_VARIABLE: "1"})
@@ -695,6 +696,479 @@ class HookTests(ReleaseBase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+# A stub of the version recipes of the profiles python, rust and typescript, which reads the manifests as the
+# profiles do.
+VERSION_READER = """import json, sys, tomllib
+kind = sys.argv[1]
+if kind == "python":
+    print(tomllib.load(open("pyproject.toml", "rb"))["project"].get("version", ""))
+elif kind == "rust":
+    data = tomllib.load(open("Cargo.toml", "rb"))
+    found = data.get("package", {}).get("version")
+    if not isinstance(found, str):
+        found = data["workspace"]["package"]["version"]
+    print(found)
+else:
+    print(json.load(open("package.json")).get("version", ""))
+"""
+
+UV_LOCK = """version = 1
+requires-python = ">=3.11"
+
+[[package]]
+name = "my-tool"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "click" },
+]
+
+[[package]]
+name = "click"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://example.com/click.tar.gz", hash = "sha256:ab", size = 1 }
+"""
+
+CARGO_LOCK = """# This file is automatically @generated by Cargo.
+# It is not intended for manual editing.
+version = 4
+
+[[package]]
+name = "dep"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abc"
+
+[[package]]
+name = "tool"
+version = "1.0.0"
+dependencies = [
+ "dep",
+]
+"""
+
+
+@unittest.skipIf(sys.version_info < (3, 11), "the version writers need tomllib")
+class WriteTests(ReleaseBase):
+    """The release writes the bump into the version files of the profiles, commits it and tags the commit."""
+
+    def profiles(self, *kinds: str) -> None:
+        (self.repo / ".agents").mkdir(exist_ok=True)
+        (self.repo / ".agents/stack.json").write_text(json.dumps({"profiles": list(kinds)}))
+        (self.repo / "ver.py").write_text(VERSION_READER)
+        (self.repo / "Justfile").write_text("".join(f"mod {kind} '{kind}.just'\n" for kind in kinds))
+        for kind in kinds:
+            (self.repo / f"{kind}.just").write_text(f"version:\n    @'{sys.executable}' ver.py {kind}\n")
+
+    def python_files(self, version: str = "1.0.0") -> None:
+        (self.repo / "pyproject.toml").write_text(
+            f'[project]\nname = "My_Tool"\nversion = "{version}"  # the version\ndependencies = ["click"]\n\n'
+            '[tool.other]\nversion = "1.0.0"\n')
+        (self.repo / "uv.lock").write_text(UV_LOCK.replace('"1.0.0"\nsource = { editable', f'"{version}"\nsource = '
+                                                                                             '{ editable', 1))
+
+    def rust_files(self) -> None:
+        (self.repo / "Cargo.toml").write_text('[package]\nname = "tool"\nversion = "1.0.0"\nedition = "2021"\n\n'
+                                              '[dependencies]\ndep = { version = "1.0.0" }\n')
+        (self.repo / "Cargo.lock").write_text(CARGO_LOCK)
+
+    def typescript_files(self) -> None:
+        (self.repo / "package.json").write_text(json.dumps(
+            {"name": "tool", "version": "1.0.0", "dependencies": {"dep": "1.0.0"}}, indent=2) + "\n")
+        (self.repo / "package-lock.json").write_text(json.dumps(
+            {"name": "tool", "version": "1.0.0", "lockfileVersion": 3, "requires": True,
+             "packages": {"": {"name": "tool", "version": "1.0.0"}, "node_modules/dep": {"version": "1.0.0"}}},
+            indent=2) + "\n")
+
+    def start(self, *kinds: str) -> str:
+        """The profiles KINDS at 1.0.0, tagged v1.0.0 and pushed. The hash of the tagged commit."""
+        self.profiles(*kinds)
+        for kind in kinds:
+            getattr(self, f"{kind}_files")()
+        head = self.commit("feat: start")
+        self.tag("v1.0.0")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        return head
+
+    def head(self) -> str:
+        return git("rev-parse", "HEAD", cwd=self.repo).strip()
+
+    def remote_head(self) -> str:
+        return git("ls-remote", "origin", "refs/heads/main", cwd=self.repo).split()[0]
+
+    def test_two_branches_from_one_tag_pass_the_check_with_the_version_of_the_tag(self) -> None:
+        self.start("python")
+        for branch, message, tag in (("one", "feat: a page", "v1.1.0"), ("two", "fix: a crash", "v1.0.1")):
+            git("checkout", "-q", "-b", branch, "v1.0.0", cwd=self.repo)
+            self.commit(message)
+            result = self.run_script("--check")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"the next tag is {tag}", result.stdout)
+            self.assertIn("so the release writes", result.stdout)
+        git("checkout", "-q", "main", cwd=self.repo)
+        for branch in ("one", "two"):
+            git("merge", "-q", "--no-ff", "-m", f"Merge {branch}", branch, cwd=self.repo)
+            self.assertEqual(self.run_script("--check").returncode, 0)
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("tagged v1.1.0", result.stdout)
+
+    def test_the_release_writes_each_profile_file_and_lock_commits_and_tags(self) -> None:
+        before = self.start("python", "rust", "typescript")
+        self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        output = self.base / "github-output"
+        result = self.run_script(GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commit = self.head()
+        self.assertNotEqual(commit, merged)
+        self.assertEqual(git("rev-parse", "HEAD^", cwd=self.repo).strip(), merged)
+        self.assertEqual(git("log", "-1", "--format=%s", cwd=self.repo).strip(), "chore(release): v1.1.0")
+        self.assertEqual(git("tag", "--points-at", "HEAD", cwd=self.repo).split(), ["v1.1.0"])
+        self.assertEqual(self.remote_head(), commit)
+        self.assertIn(f"{commit}\trefs/tags/v1.1.0^{{}}", self.remote_tags())
+        self.assertEqual(output.read_text(), f"tag=v1.1.0\ncommit={commit}\n")
+        changed = sorted(git("diff", "--name-only", "HEAD^", "HEAD", cwd=self.repo).split())
+        self.assertEqual(changed, ["Cargo.lock", "Cargo.toml", "package-lock.json", "package.json", "pyproject.toml",
+                                   "uv.lock"])
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+        import tomllib
+        pyproject = tomllib.loads((self.repo / "pyproject.toml").read_text())
+        self.assertEqual(pyproject["project"]["version"], "1.1.0")
+        self.assertEqual(pyproject["tool"]["other"]["version"], "1.0.0")
+        self.assertIn('version = "1.1.0"  # the version\n', (self.repo / "pyproject.toml").read_text())
+        uv_lock = {p["name"]: p["version"] for p in tomllib.loads((self.repo / "uv.lock").read_text())["package"]}
+        self.assertEqual(uv_lock, {"my-tool": "1.1.0", "click": "1.0.0"})
+        cargo = tomllib.loads((self.repo / "Cargo.toml").read_text())
+        self.assertEqual((cargo["package"]["version"], cargo["dependencies"]["dep"]["version"]), ("1.1.0", "1.0.0"))
+        cargo_lock = tomllib.loads((self.repo / "Cargo.lock").read_text())
+        self.assertEqual(cargo_lock["version"], 4)
+        self.assertEqual({p["name"]: p["version"] for p in cargo_lock["package"]}, {"tool": "1.1.0", "dep": "1.0.0"})
+        package = json.loads((self.repo / "package.json").read_text())
+        self.assertEqual((package["version"], package["dependencies"]["dep"]), ("1.1.0", "1.0.0"))
+        lock = json.loads((self.repo / "package-lock.json").read_text())
+        self.assertEqual((lock["version"], lock["packages"][""]["version"], lock["packages"]["node_modules/dep"]
+                          ["version"]), ("1.1.0", "1.1.0", "1.0.0"))
+        self.assertNotEqual(before, commit)
+
+    def test_the_next_run_finds_the_tag_and_does_not_loop(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.assertEqual(self.run_script().returncode, 0)
+        commit = self.head()
+        # A run on the release commit, as a push with a token that starts workflows would make.
+        for args in ((), ("--check",)):
+            result = self.run_script(*args)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("no release", result.stdout)
+            self.assertIn("ask for none", result.stdout)
+        self.assertEqual(self.head(), commit)
+        self.assertEqual(self.remote_head(), commit)
+        self.assertEqual(git("tag", "--list", cwd=self.repo).split(), ["v1.0.0", "v1.0.1"])
+        # The next change after it bumps from the new tag.
+        self.commit("fix: another")
+        self.assertIn("next tag: v1.0.2", self.run_script("--dry-run").stdout)
+
+    def test_a_rerun_on_the_merge_after_the_release_commit_makes_nothing(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        self.assertEqual(self.run_script().returncode, 0)
+        git("checkout", "-q", "--detach", merged, cwd=self.repo)
+        git("checkout", "-q", "-B", "main", merged, cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release: v1.0.1 is on a later commit", result.stdout)
+        self.assertEqual(self.head(), merged)
+
+    def test_a_version_raised_by_hand_is_tagged_without_a_commit(self) -> None:
+        self.start("python")
+        self.python_files("1.1.0")
+        merged = self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("tagged v1.1.0", result.stdout)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(self.remote_head(), merged)
+        self.assertEqual(git("tag", "--points-at", "HEAD", cwd=self.repo).split(), ["v1.1.0"])
+
+    def test_a_version_raised_too_little_by_hand_gets_the_bump(self) -> None:
+        self.start("python")
+        self.python_files("1.0.1")
+        self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("wrote 1.1.0", result.stdout)
+        self.assertIn('version = "1.1.0"', (self.repo / "pyproject.toml").read_text())
+
+    def test_the_check_still_fails_below_the_tag_and_on_profiles_that_disagree(self) -> None:
+        self.start("python", "typescript")
+        git("checkout", "-q", "-b", "low", cwd=self.repo)
+        self.python_files("0.9.0")
+        self.commit("fix: low")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("different versions", result.stderr)
+        self.typescript_files()
+        (self.repo / "package.json").write_text((self.repo / "package.json").read_text().replace("1.0.0", "0.9.0", 1))
+        self.commit("fix: both low")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("lower than the last tag v1.0.0", result.stderr)
+
+    def test_a_later_push_on_the_remote_leaves_the_release_to_its_run(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        other = self.base / "other"
+        git("clone", "-q", "-b", "main", str(self.origin), str(other), cwd=self.base)
+        git("-c", "user.name=o", "-c", "user.email=o@example.com", "commit", "-q", "--allow-empty", "-m", "fix: b",
+            cwd=other)
+        git("push", "-q", "origin", "main", cwd=other)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no release", result.stdout)
+        self.assertIn("the run of the later push makes the release", result.stdout)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("tag", "--list", "v1.0.1", cwd=self.repo), "")
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_a_rejected_push_leaves_no_commit_and_no_tag(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        hook = self.origin / "hooks/pre-receive"
+        hook.write_text("#!/bin/sh\necho 'main is protected' >&2\nexit 1\n")
+        hook.chmod(0o755)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("neither was pushed", result.stderr)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("tag", "--list", "v1.0.1", cwd=self.repo), "")
+        self.assertNotIn("v1.0.1", self.remote_tags())
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_a_dry_run_and_a_dirty_or_detached_checkout_change_nothing(self) -> None:
+        self.start("python")
+        self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        result = self.run_script("--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("next tag: v1.1.0", result.stdout)
+        self.assertIn("commits it as chore(release): v1.1.0", result.stdout)
+        (self.repo / "uv.lock").write_text("dirty\n")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("the checkout has changes", result.stderr)
+        git("checkout", "-q", "--", "uv.lock", cwd=self.repo)
+        git("checkout", "-q", "--detach", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("HEAD is detached", result.stderr)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("tag", "--list", "v1.1.0", cwd=self.repo), "")
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_a_rust_workspace_writes_the_shared_version_and_its_members(self) -> None:
+        self.profiles("rust")
+        (self.repo / "Cargo.toml").write_text('[workspace]\nmembers = ["crates/*"]\nresolver = "2"\n\n'
+                                              '[workspace.package]\nversion = "0.4.0"\nedition = "2021"\n')
+        for name, version in (("a", "version.workspace = true"), ("b", 'version = "0.4.0"')):
+            (self.repo / f"crates/{name}").mkdir(parents=True)
+            (self.repo / f"crates/{name}/Cargo.toml").write_text(f'[package]\nname = "{name}"\n{version}\n')
+        (self.repo / "Cargo.lock").write_text('version = 4\n\n[[package]]\nname = "a"\nversion = "0.4.0"\n\n'
+                                              '[[package]]\nname = "b"\nversion = "0.4.0"\n')
+        self.commit("feat: start")
+        self.tag("v0.4.0")
+        self.commit("feat!: drop the old api")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("tagged v0.5.0", result.stdout)
+        import tomllib
+        cargo = tomllib.loads((self.repo / "Cargo.toml").read_text())
+        self.assertEqual(cargo["workspace"]["package"]["version"], "0.5.0")
+        lock = {p["name"]: p["version"] for p in tomllib.loads((self.repo / "Cargo.lock").read_text())["package"]}
+        self.assertEqual(lock, {"a": "0.5.0", "b": "0.4.0"})
+
+    def test_a_package_json_in_another_form_stops_the_release_and_changes_nothing(self) -> None:
+        self.profiles("typescript")
+        (self.repo / "package.json").write_text('{"name": "tool", "version": "1.0.0"}\n')
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("fix: a")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not in the form that npm writes", result.stderr)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_a_file_with_crlf_keeps_its_line_endings(self) -> None:
+        self.profiles("python")
+        (self.repo / "pyproject.toml").write_bytes(b'[project]\r\nname = "tool"\r\nversion = "1.0.0"\r\n')
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("fix: a")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.repo / "pyproject.toml").read_bytes(),
+                         b'[project]\r\nname = "tool"\r\nversion = "1.0.1"\r\n')
+
+    def test_a_commit_that_fails_after_the_write_leaves_nothing_and_a_rerun_does_not_tag(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        hook = self.repo / ".git/hooks/commit-msg"
+        hook.write_text("#!/bin/sh\nexit 1\n")
+        hook.chmod(0o755)
+        for _ in range(2):
+            result = self.run_script()
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("took back its commit", result.stderr)
+            self.assertEqual(self.head(), merged)
+            self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+            self.assertEqual(git("tag", "--list", "v1.0.1", cwd=self.repo), "")
+        self.assertNotIn("v1.0.1", self.remote_tags())
+
+    def test_a_dirty_version_file_is_not_tagged_as_raised_by_hand(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        self.python_files("1.0.1")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("the checkout has changes", result.stderr)
+        self.assertNotIn("v1.0.1", self.remote_tags())
+
+    def test_a_push_during_the_release_gives_no_release(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        other = self.base / "other"
+        git("clone", "-q", "-b", "main", str(self.origin), str(other), cwd=self.base)
+        git("-c", "user.name=o", "-c", "user.email=o@example.com", "commit", "-q", "--allow-empty", "-m", "fix: b",
+            cwd=other)
+        real = shutil.which("git")
+        wrapper = self.base / "bin/git"
+        wrapper.parent.mkdir()
+        # The wrapper pushes the other commit just before the atomic push of the release.
+        wrapper.write_text(f'#!/bin/sh\nif [ "$1" = push ] && [ "$2" = --atomic ]; then '
+                           f'"{real}" -C "{other}" push -q origin main; fi\nexec "{real}" "$@"\n')
+        wrapper.chmod(0o755)
+        result = self.run_script(PATH=f"{wrapper.parent}{os.pathsep}{os.environ['PATH']}")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("moved to", result.stdout)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+        self.assertNotIn("v1.0.1", self.remote_tags())
+
+    def test_the_check_runs_the_writers_so_a_file_they_cannot_change_fails_on_the_branch(self) -> None:
+        self.profiles("typescript")
+        (self.repo / "package.json").write_text('{\n  "name": "tool",\n  "version": "1.0.0",\n  "files": ["dist"]\n}\n')
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("fix: a")
+        for args in (("--check",), ("--dry-run",)):
+            result = self.run_script(*args)
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("not in the form that npm writes", result.stderr)
+
+    def test_an_ignored_lock_file_is_left_alone_and_an_untracked_manifest_fails(self) -> None:
+        self.profiles("rust")
+        self.rust_files()
+        (self.repo / ".gitignore").write_text("Cargo.lock\n")
+        self.commit("feat: start")
+        self.tag("v1.0.0")
+        self.commit("fix: a")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(git("diff", "--name-only", "HEAD^", "HEAD", cwd=self.repo).split(), ["Cargo.toml"])
+        self.assertEqual((self.repo / "Cargo.lock").read_text(), CARGO_LOCK)
+        (self.repo / ".gitignore").write_text("Cargo.lock\nCargo.toml\n")
+        git("rm", "-q", "--cached", "Cargo.toml", cwd=self.repo)
+        self.commit("fix: b")
+        result = self.run_script("--check")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("Cargo.toml is not tracked by git", result.stderr)
+
+    def test_a_push_that_fails_after_the_remote_took_it_counts_as_the_release(self) -> None:
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        real = shutil.which("git")
+        wrapper = self.base / "bin/git"
+        wrapper.parent.mkdir()
+        wrapper.write_text(f'#!/bin/sh\nif [ "$1" = push ] && [ "$2" = --atomic ]; then '
+                           f'"{real}" "$@"; exit 1; fi\nexec "{real}" "$@"\n')
+        wrapper.chmod(0o755)
+        output = self.base / "github-output"
+        result = self.run_script(PATH=f"{wrapper.parent}{os.pathsep}{os.environ['PATH']}",
+                                 GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commit = self.head()
+        self.assertEqual(self.remote_head(), commit)
+        self.assertEqual(git("tag", "--points-at", "HEAD", cwd=self.repo).split(), ["v1.0.1"])
+        self.assertEqual(output.read_text(), f"tag=v1.0.1\ncommit={commit}\n")
+
+    def test_a_versioned_dependency_on_a_workspace_crate_fails_the_check(self) -> None:
+        self.profiles("rust")
+        (self.repo / "Cargo.toml").write_text(
+            '[workspace]\nmembers = ["crates/*"]\n\n[workspace.package]\nversion = "0.4.0"\n\n'
+            '[workspace.dependencies]\nb = { path = "crates/b", version = "0.4.0" }\n')
+        for name, extra in (("a", "\n[dependencies]\nb.workspace = true\n"), ("b", "")):
+            (self.repo / f"crates/{name}").mkdir(parents=True)
+            (self.repo / f"crates/{name}/Cargo.toml").write_text(
+                f'[package]\nname = "{name}"\nversion.workspace = true\n{extra}')
+        self.commit("feat: start")
+        self.tag("v0.4.0")
+        self.commit("feat: a page")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        merged = self.head()
+        for args in (("--check",), ()):
+            result = self.run_script(*args)
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("asks for a version of the workspace crate b", result.stderr)
+        self.assertEqual(self.head(), merged)
+        self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_the_release_commit_passes_ci_gate_as_a_github_bot(self) -> None:
+        sys.path.insert(0, str(ROOT / ".agents/skills/gcm/scripts"))
+        import commit_gate
+        for workflow in (".github/workflows/verify.yml", ".agents/skills/gsu/assets/templates/github-release.yml"):
+            text = (ROOT / workflow).read_text()
+            email = text.split('git config user.email "', 1)[1].split('"', 1)[0]
+            with self.subTest(workflow=workflow):
+                self.assertTrue(commit_gate.BOT_EMAIL.fullmatch(email))
+        self.start("python")
+        self.commit("fix: a crash")
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        git("config", "user.name", "github-actions[bot]", cwd=self.repo)
+        git("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com", cwd=self.repo)
+        self.assertEqual(self.run_script().returncode, 0)
+        notes: list = []
+        problems = commit_gate.check_trailers(self.repo, "HEAD^", "HEAD", notes)
+        self.assertEqual(problems, [])
+        self.assertIn("is a GitHub bot", notes[0])
+
+
 class WorkflowTests(unittest.TestCase):
     """The release jobs run just release after the check, with write access to push the tag, and no agent."""
 
@@ -702,7 +1176,8 @@ class WorkflowTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/verify.yml").read_text()
         job = text[text.index("\n  release:\n"):]
         for line in ("needs: verify", "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
-                     "contents: write", "fetch-depth: 0", "run: just release"):
+                     "contents: write", "fetch-depth: 0", "run: just release", "id: release",
+                     "tag: ${{ steps.release.outputs.tag }}"):
             with self.subTest(line=line):
                 self.assertIn(line, job)
 
@@ -712,7 +1187,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("branches: [main]", head)
         self.assertIn("run: just check", head)
         self.assertNotIn("concurrency", head, "a workflow-wide group cancels the check of a pending push")
-        for line in ("needs: check", "contents: write", "group: release", "fetch-depth: 0", "run: just release"):
+        for line in ("needs: check", "contents: write", "group: release", "fetch-depth: 0", "run: just release",
+                     "id: release", "tag: ${{ steps.release.outputs.tag }}"):
             with self.subTest(line=line):
                 self.assertIn(line, job)
 

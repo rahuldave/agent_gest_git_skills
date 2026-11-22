@@ -146,7 +146,7 @@ release_tag := "uv run --no-project --quiet --no-python-downloads --python '>=3.
 # Tag HEAD with the next release vX.Y.Z by semver, push the tag and check it. Takes --dry-run first
 [positional-arguments]
 release *args:
-  @{{release_tag}} "$@"
+  @uv run --no-project --quiet --no-python-downloads --python '>=3.11' python .agents/skills/gpa/scripts/release_tag.py "$@"
 
 # Print the next tag, or fail on a git error. It needs no network and no remote
 release-check:

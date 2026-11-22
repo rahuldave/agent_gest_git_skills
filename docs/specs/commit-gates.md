@@ -1484,15 +1484,17 @@ The tasker role also writes the release job,
 - **The step `release-check`.** It is a step of `just check`, from the role
   file of the tasker role, so CI runs it only through `just check`. It runs
   `release_tag.py --check`, with no network and no remote. It fails when the
-  profiles give different versions, or a version lower than the last tag or
-  than the bump that the commits ask for. In a shallow checkout it passes and
+  profiles give different versions, or a version lower than the last tag. A
+  version equal to the last tag passes, because `just release` writes the
+  bump on `main`. In a shallow checkout it passes and
   says that the tags are unknown. jnterfaces puts `release-check` in the
   steps of `just check`, with a no-op step where the role is not installed.
 - **The release check at the commit.** `just check` runs before the commit,
   so it cannot count the message of the commit. The `commit-msg` hook of the
   gate runs `just release-check` again, with the path of the message file in
-  `JN_RELEASE_MESSAGE`. So a `fix:` commit with the tagged version stops at
-  the commit, not at the release after the push. For an amend, the new
+  `JN_RELEASE_MESSAGE`. So the check counts the message for the next tag,
+  and a bump that the release cannot write stops at the commit, not at the
+  release after the push. For an amend, the new
   message replaces the message of HEAD. The hook skips the check for a merge,
   for an amend of a merge, during a rebase, and when the Justfile has no
   recipe `release-check`. The check cleans up the message as git does, with

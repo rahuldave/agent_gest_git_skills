@@ -1348,10 +1348,10 @@ class GateTests(unittest.TestCase):
         self.passed()
         return git("commit", "-q", "-m", message, cwd=self.repo, env=self.person, check=False)
 
-    def test_a_fix_with_the_tagged_version_stops_at_the_commit_msg_hook(self) -> None:
+    def test_a_fix_that_the_release_cannot_write_stops_at_the_commit_msg_hook(self) -> None:
         self.release_setup()
         result = self.commit_with("fix: a bug")
-        self.assertStops(result, "the version must be at least 0.2.3, but the profile py gives 0.2.2")
+        self.assertStops(result, "the profile py gives 0.2.2, so the release writes 0.2.3")
         self.assertIn("release-check", result.stderr)
         self.assertGoes(self.commit_with("fix: a bug", "VERSION", "0.2.3\n"))
 
@@ -1362,7 +1362,7 @@ class GateTests(unittest.TestCase):
 
     def test_a_subject_with_an_issue_number_stops_at_the_commit_msg_hook(self) -> None:
         self.release_setup()
-        self.assertStops(self.commit_with("#12 fix login"), "at least 0.2.3")
+        self.assertStops(self.commit_with("#12 fix login"), "Raise the version to 0.2.3")
 
     def test_an_amend_can_change_the_type(self) -> None:
         self.release_setup()
@@ -1377,7 +1377,7 @@ class GateTests(unittest.TestCase):
         git("add", "-A", cwd=self.repo)
         self.passed()
         self.assertStops(git("commit", "-q", "--amend", "-m", "fix: q", cwd=self.repo, env=self.person,
-                             check=False), "at least 0.2.3")
+                             check=False), "Raise the version to 0.2.3")
 
     def test_no_recipe_release_check_skips_the_check(self) -> None:
         self.release_setup()
@@ -1472,12 +1472,12 @@ class GateTests(unittest.TestCase):
         # subject, which is not conventional and asks for a patch.
         self.release_setup()
         result = self.editor_commit("#12 tidy\n", "--cleanup", "scissors")
-        self.assertStops(result, "at least 0.2.3")
-        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=scissors", "-v"), "at least 0.2.3")
+        self.assertStops(result, "Raise the version to 0.2.3")
+        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=scissors", "-v"), "Raise the version to 0.2.3")
 
     def test_cleanup_verbatim_keeps_a_comment_subject_from_the_editor(self) -> None:
         self.release_setup()
-        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=verbatim"), "at least 0.2.3")
+        self.assertStops(self.editor_commit("#12 tidy\n", "--cleanup=verbatim"), "Raise the version to 0.2.3")
 
     def test_the_editor_strips_comments_in_a_localised_git(self) -> None:
         # A German git writes its help line in German. The comment lines first still do not count.
@@ -1512,7 +1512,7 @@ class GateTests(unittest.TestCase):
         self.assertGoes(self.commit_with("docs: a"))
         self.assertGoes(self.commit_with("docs: explain --amend", "b.txt", "b\n"))
         self.assertEqual(len(git("log", "--format=%H", cwd=self.repo).stdout.split()), 3)
-        self.assertStops(self.commit_with("fix: drop --amend", "c.txt", "c\n"), "at least 0.2.3")
+        self.assertStops(self.commit_with("fix: drop --amend", "c.txt", "c\n"), "Raise the version to 0.2.3")
 
     def test_the_word_amend_in_a_message_on_a_merge_is_checked(self) -> None:
         # HEAD is a merge, as main after a PR. The word --amend of the message makes no amend of the merge.
@@ -1524,7 +1524,7 @@ class GateTests(unittest.TestCase):
         git("merge", "-q", "--no-ff", "--no-commit", "side", cwd=self.repo, env=self.person)
         self.passed()
         self.assertGoes(git("commit", "-q", "-m", "Merge side", cwd=self.repo, env=self.person, check=False))
-        self.assertStops(self.commit_with("fix: say when to use --amend", "c.txt", "c\n"), "at least 0.2.3")
+        self.assertStops(self.commit_with("fix: say when to use --amend", "c.txt", "c\n"), "Raise the version to 0.2.3")
 
     def test_a_maybe_amend_of_the_tagged_commit_stops_with_a_clear_message(self) -> None:
         # git commit -m "docs: x" --amend is an amend that the gate cannot tell from a word of the message.
@@ -1543,8 +1543,8 @@ class GateTests(unittest.TestCase):
         # Without -v and the mode scissors, git keeps the lines after the scissors line, and the bullet counts.
         self.release_setup()
         text = "docs: x\n\n# ------------------------ >8 ------------------------\n- fix: y\n"
-        self.assertStops(self.editor_commit(text), "at least 0.2.3")
-        self.assertStops(self.editor_commit(text, "--cleanup=verbatim"), "at least 0.2.3")
+        self.assertStops(self.editor_commit(text), "Raise the version to 0.2.3")
+        self.assertStops(self.editor_commit(text, "--cleanup=verbatim"), "Raise the version to 0.2.3")
         # With -v, git writes the diff after the line and cuts there.
         self.write("CHANGELOG.md", "- feat: an old line\n")
         git("add", "CHANGELOG.md", cwd=self.repo)
@@ -1562,7 +1562,7 @@ class GateTests(unittest.TestCase):
         self.passed()
         result = git("commit", "-q", "-F", str(self.base / "m"), "-e", cwd=self.repo,
                      env=dict(self.person, GIT_EDITOR=":"), check=False)
-        self.assertStops(result, "at least 0.3.0")
+        self.assertStops(result, "Raise the version to 0.3.0")
 
     def test_the_word_cleanup_in_a_message_is_no_option(self) -> None:
         # Git keeps "# --cleanup=strip" as the subject, which asks for a patch.
@@ -1571,7 +1571,7 @@ class GateTests(unittest.TestCase):
         git("add", "a.txt", cwd=self.repo)
         self.passed()
         self.assertStops(git("commit", "-q", "-m", "# --cleanup=strip", "-m", "docs: x", cwd=self.repo,
-                             env=self.person, check=False), "at least 0.2.3")
+                             env=self.person, check=False), "Raise the version to 0.2.3")
 
     def test_an_editor_of_a_person_set_to_a_colon_still_strips_comments(self) -> None:
         # GIT_EDITOR=: with -e runs the editor ":", so git strips the comment lines.
