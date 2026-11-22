@@ -15,8 +15,9 @@ When the hook gives no record of a result whose nonce names a packet, it writes 
 `refusals/NONCE.json` of the shared log folder. The harness does not show the output of the hook, so the gate reads
 that file and says why the record is missing. A refusal never counts as a record.
 
-When the hook finds no result block at all, it writes `hook-stops/AGENT_ID.json` of the shared log folder: what the
-event held, the size of the transcript, whether it had a SubagentHandback call, and how many times the hook read it.
+When the hook finds no result block in the stop of a fresh agent of a packet, it waits for the handback, and then it
+writes `hook-stops/AGENT_ID.json` of the shared log folder: what the event held, the size of the transcript, whether
+it had a SubagentHandback call, and how many times the hook read it. Any other stop with no block gives no output.
 
 A result counts only when `jagt result lint --expect-target TARGET --expect-nonce NONCE` accepts it. The nonce names
 the packet file in `packets/`, which gives the target, the input tree and the worktree. The output tree is the
@@ -35,6 +36,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import stat
 import subprocess
 import sys
 import time
@@ -55,6 +57,13 @@ WAIT_VARIABLE, WAIT_SECONDS = "RECORD_HOOK_WAIT_SECONDS", 2.0
 POLL_VARIABLE, POLL_SECONDS = "RECORD_HOOK_POLL_SECONDS", 0.2
 # The agent ids that name a hook-stops file. Any other id gives a name of its own.
 AGENT_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
+# A nonce anywhere in the first prompt of a fresh agent, as in "(target: prose, nonce: e9ce...)". Only a nonce with
+# a packet file counts, so a hex word of another kind does no harm.
+BARE_NONCE = re.compile(r"(?<![0-9A-Za-z_])([a-f][0-9a-f]{31})(?![0-9A-Za-z_])")
+# An absolute path or a path from ~ in the first prompt, which can be the packet file. The hook looks at most at
+# PROMPT_PATHS of them, reads at most PROMPT_FILES regular files, and at most PROMPT_FILE_BYTES of each.
+PROMPT_PATH = re.compile(r"(?<![\w.~/])((?:~)?/[^\s'\"`<>()]+)")
+PROMPT_PATHS, PROMPT_FILES, PROMPT_FILE_BYTES = 64, 8, 256 * 1024
 
 
 def result_block(text: str) -> dict:
@@ -272,15 +281,15 @@ def seconds(name: str, default: float, low: float, high: float) -> float:
     return min(max(value, low), high) if math.isfinite(value) else default
 
 
-def find_message(event: dict, transcript: Optional[str]) -> Tuple[Optional[str], bool, int]:
+def find_message(event: dict, transcript: Optional[str], wait: bool = True) -> Tuple[Optional[str], bool, int]:
     """The text with the result block, whether the transcript has a SubagentHandback call, and the count of re-reads.
     The block is in the last message of the event or in the last handback of the transcript. Claude Code can run the
     hook before it writes the handback in the transcript, so with no handback the hook reads the transcript again,
-    every POLL_SECONDS for up to WAIT_SECONDS. A block in the first read adds no delay."""
+    every POLL_SECONDS for up to WAIT_SECONDS. A block in the first read adds no delay. Without WAIT it reads once."""
     message = event.get("last_assistant_message")
     if has_block(message):
         return message, False, 0
-    deadline = time.monotonic() + seconds(WAIT_VARIABLE, WAIT_SECONDS, 0.0, 10.0)
+    deadline = time.monotonic() + (seconds(WAIT_VARIABLE, WAIT_SECONDS, 0.0, 10.0) if wait else 0.0)
     poll = seconds(POLL_VARIABLE, POLL_SECONDS, 0.01, 1.0)
     rereads = 0
     while True:
@@ -293,6 +302,74 @@ def find_message(event: dict, transcript: Optional[str]) -> Tuple[Optional[str],
             return None, handback is not None, rereads
         time.sleep(min(poll, left))
         rereads += 1
+
+
+def first_prompt(path: Optional[str]) -> str:
+    """The text of the first user entry of a transcript of Claude Code, or "" when there is none or no file."""
+    if not path:
+        return ""
+    try:
+        with Path(path).expanduser().open(errors="replace") as handle:
+            for line in handle:
+                try:
+                    entry = json.loads(line)
+                except (ValueError, RecursionError):
+                    continue
+                message = entry.get("message") if isinstance(entry, dict) else None
+                if not (isinstance(message, dict) and (entry.get("type") == "user" or message.get("role") == "user")):
+                    continue
+                content = message.get("content")
+                if isinstance(content, str):
+                    return content
+                parts = content if isinstance(content, list) else []
+                return "\n".join(part["text"] for part in parts
+                                 if isinstance(part, dict) and isinstance(part.get("text"), str))
+    except OSError:
+        pass
+    return ""
+
+
+def prompt_nonces(prompt: str) -> set:
+    """The nonces that a first prompt names: each bare nonce in its text, and each nonce line of a file that it names
+    by an absolute path and that holds an AGENT_TASK v1 packet. A prompt can hold the whole packet, give its nonce in
+    a sentence, or only name the packet file."""
+    nonces = set(BARE_NONCE.findall(prompt))
+    read = 0
+    for path in list(dict.fromkeys(PROMPT_PATH.findall(prompt)))[:PROMPT_PATHS]:
+        if read >= PROMPT_FILES:
+            break
+        try:
+            # With no block on a pipe or a device: only a regular file is read.
+            fd = os.open(os.path.expanduser(path.rstrip(".,;:!?)]}'\"`")), os.O_RDONLY | os.O_NONBLOCK)
+        except (OSError, ValueError):
+            continue
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                continue
+            read += 1
+            text = os.read(fd, PROMPT_FILE_BYTES).decode(errors="replace")
+        except OSError:
+            continue
+        finally:
+            os.close(fd)
+        if "AGENT_TASK v1" in text:
+            nonces.update(NONCE.findall(text))
+    return nonces
+
+
+def packet_agent(root: Optional[Path], transcript: Optional[str]) -> bool:
+    """True when the subagent is a fresh agent of a packet: the first prompt of its transcript names a nonce that has
+    a packet file. Only such a stop waits for the handback and writes a hook-stops file."""
+    if root is None:
+        return False
+    prompt = first_prompt(transcript)
+    if not prompt:
+        return False
+    try:
+        packets = shared_log(root) / "packets"
+    except Exception:
+        return False
+    return any((packets / f"{nonce}.json").is_file() for nonce in prompt_nonces(prompt))
 
 
 def transcript_size(path: Optional[str]) -> Optional[dict]:
@@ -339,7 +416,8 @@ def log_stop(event: dict, transcript: Optional[str], handback: bool, rereads: in
 
 def hook(stdin: bytes) -> int:
     """The SubagentStop hook. It never blocks the fresh agent: a result that gives no record prints why, and writes
-    why in a refusal file when its nonce names a packet. A stop with no result block writes a hook-stops file."""
+    why in a refusal file when its nonce names a packet. A fresh agent of a packet whose stop has no result block
+    gets a wait for its handback and a hook-stops file. Any other stop with no block returns at once, with no output."""
     try:
         event = json.loads(stdin.decode(errors="replace"))
     except (ValueError, RecursionError):  # RecursionError: JSON nested too deep.
@@ -352,12 +430,22 @@ def hook(stdin: bytes) -> int:
     try:
         transcript = event.get("agent_transcript_path")
         transcript = transcript if isinstance(transcript, str) and transcript else None
-        message, handback, rereads = find_message(event, transcript)
-        if message is None:
-            log_stop(event, transcript, handback, rereads)
-            return 0
+        message, handback, rereads = find_message(event, transcript, wait=False)
         cwd = event.get("cwd")
         cwd = Path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
+        if message is None:
+            # An ordinary subagent, such as an Explore agent, ends with text and no block: it pays no wait and leaves
+            # no file. A git that fails here also means no packet, and so no fresh agent.
+            try:
+                root = Path(git(["rev-parse", "--show-toplevel"], cwd, plain_env()).strip())
+            except (Stop, OSError):
+                return 0
+            if not packet_agent(root, transcript):
+                return 0
+            message, handback, rereads = find_message(event, transcript)
+            if message is None:
+                log_stop(event, transcript, handback, rereads)
+                return 0
         root = Path(git(["rev-parse", "--show-toplevel"], cwd, plain_env()).strip())
         path = record_from(message, root, "hook", transcript_model(transcript))
         print(f"record: wrote {path}", file=sys.stderr)

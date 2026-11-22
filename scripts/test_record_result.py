@@ -27,8 +27,9 @@ SCRIPTS = ROOT / ".agents/skills/gcm/scripts"
 SCRIPT = SCRIPTS / "record_result.py"
 HARNESS = ("CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CODEX_THREAD_ID", "CODEX_HOME")
 # The transcripts of the three fresh agents whose results got no record in a Gossil session on 2026-11-22, and the
-# packets of their nonces. Each transcript keeps its line count, its model and its SubagentHandback call as saved.
-# Each other line is a stub, since the saved lines hold the prompts and settings of the person.
+# packets of their nonces. Each transcript keeps its line count, its first prompt, its model and its SubagentHandback
+# call as saved, with the paths of the person replaced. Each other line is a stub, since the saved lines hold the
+# prompts and settings of the person.
 FIXTURES = ROOT / "fixtures/record_hook"
 
 
@@ -160,10 +161,19 @@ class RecordTests(unittest.TestCase):
     def text_entry(self, text: str = "Working.") -> str:
         return json.dumps({"message": {"model": "claude-opus-5-5", "content": [{"type": "text", "text": text}]}}) + "\n"
 
-    def test_a_stop_with_no_handback_writes_a_hook_stop_and_no_record(self) -> None:
-        self.render()
+    def prompt_entry(self, nonce: str, target: str = "review") -> str:
+        """The first prompt of a fresh agent, in the form of the saved transcripts: it names the packet and nonce."""
+        text = (f"You are a fresh agent. Your task is one AGENT_TASK v1 packet (target: {target}, nonce: {nonce}). "
+                f"Read the packet file first.")
+        return json.dumps({"type": "user", "message": {"role": "user", "content": text}}) + "\n"
+
+    def fresh_transcript(self, nonce: str, *lines: str) -> Path:
         transcript = self.base / "agent.jsonl"
-        transcript.write_text(self.text_entry())
+        transcript.write_text(self.prompt_entry(nonce) + "".join(lines))
+        return transcript
+
+    def test_a_stop_with_no_handback_writes_a_hook_stop_and_no_record(self) -> None:
+        transcript = self.fresh_transcript(self.render(), self.text_entry())
         self.env.update(RECORD_HOOK_WAIT_SECONDS="0.3")
         run = self.hook({"agent_id": "a1", "last_assistant_message": "", "agent_transcript_path": str(transcript)})
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -171,28 +181,91 @@ class RecordTests(unittest.TestCase):
         entry = self.stop_entry("a1")
         self.assertEqual((entry["agent_id"], entry["last_assistant_message"], entry["agent_transcript_path"],
                           entry["handback_found"]), ("a1", False, True, False))
-        self.assertEqual(entry["transcript"], {"readable": True, "bytes": transcript.stat().st_size, "lines": 1})
+        self.assertEqual(entry["transcript"], {"readable": True, "bytes": transcript.stat().st_size, "lines": 2})
         self.assertGreater(entry["rereads"], 0)
         self.assertIn("time", entry)
         [line] = run.stderr.splitlines()
         self.assertIn("no AGENT_RESULT block in the stop of agent a1", line)
 
-    def test_a_stop_with_no_transcript_path_says_so(self) -> None:
-        run = self.hook({"agent_id": "a2", "last_assistant_message": "Done."})
+    def test_a_prompt_that_holds_the_whole_packet_counts(self) -> None:
+        run = subprocess.run([sys.executable, SCRIPTS / "agentic_target.py", "render", "review"], cwd=self.repo,
+                             capture_output=True, text=True, env=self.env)
         self.assertEqual(run.returncode, 0, run.stderr)
-        entry = self.stop_entry("a2")
-        self.assertEqual((entry["last_assistant_message"], entry["agent_transcript_path"], entry["transcript"],
-                          entry["handback_found"], entry["rereads"]), (True, False, None, False, 0))
-        self.assertIn("transcript path: no", run.stderr)
+        transcript = self.base / "agent.jsonl"
+        parts = [{"type": "text", "text": run.stdout}]
+        transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": parts}}) + "\n")
+        self.hook({"agent_id": "a2", "last_assistant_message": "", "agent_transcript_path": str(transcript)})
+        self.assertEqual(self.stop_entry("a2")["handback_found"], False)
 
-    def test_a_transcript_that_cannot_be_read_is_named(self) -> None:
-        self.hook({"agent_id": "a3", "agent_transcript_path": str(self.base / "missing.jsonl")})
-        self.assertEqual(self.stop_entry("a3")["transcript"]["readable"], False)
+    def test_each_shape_of_a_fresh_agent_prompt_counts(self) -> None:
+        run = subprocess.run([sys.executable, SCRIPTS / "agentic_target.py", "render", "review"], cwd=self.repo,
+                             capture_output=True, text=True, env=self.env)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        nonce = next(line.split(":", 1)[1].strip() for line in run.stdout.splitlines() if line.startswith("nonce:"))
+        packet = self.write("review.packet", run.stdout, folder=self.base)
+        prompts = {"file": f"Read the whole packet in {packet}; then do it.",
+                   "sentence": f"Give the top-level nonce from the packet: {nonce} in your result.",
+                   "parts": [{"type": "text", "text": "First part."}, {"type": "text", "text": f"nonce: {nonce}"}]}
+        for name, content in prompts.items():
+            with self.subTest(prompt=name):
+                transcript = self.base / f"{name}.jsonl"
+                transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": content}})
+                                      + "\n")
+                self.hook({"agent_id": f"p-{name}", "agent_transcript_path": str(transcript)})
+                self.assertEqual(self.stop_entry(f"p-{name}")["handback_found"], False)
+
+    def test_folders_in_the_prompt_do_not_use_up_the_files_to_read(self) -> None:
+        module = load("record_result")
+        nonce = "c" * 32
+        packet = self.write("p.packet", f"<<<AGENT_TASK v1>>>\nnonce: {nonce}\n", folder=self.base)
+        folders = " ".join(str(self.base / f"d{i}") for i in range(12))
+        self.assertEqual(module.prompt_nonces(f"Work in {folders}. Read {packet}."), {nonce})
+        home = self.base / "home"
+        self.write("x.packet", f"<<<AGENT_TASK v1>>>\nnonce: {nonce}\n", folder=home)
+        with unittest.mock.patch.dict(os.environ, {"HOME": str(home)}):
+            self.assertEqual(module.prompt_nonces("Read ~/x.packet first."), {nonce})
+
+    def test_a_pipe_named_in_the_prompt_is_not_read(self) -> None:
+        pipe = self.base / "pipe"
+        os.mkfifo(pipe)
+        transcript = self.base / "agent.jsonl"
+        transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": f"Read {pipe}."}})
+                              + "\n")
+        run = subprocess.run([sys.executable, SCRIPT, "hook"], cwd=self.repo, env=self.env, capture_output=True,
+                             timeout=20, input=json.dumps({"agent_transcript_path": str(transcript),
+                                                          "cwd": str(self.repo)}).encode())
+        self.assertEqual((run.returncode, run.stderr), (0, b""))
+
+    def test_an_ordinary_subagent_returns_at_once_and_silently(self) -> None:
+        nonce = self.render()
+        ordinary = self.base / "explore.jsonl"
+        ordinary.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": "Find the tests."}})
+                            + "\n" + self.text_entry("Here they are."))
+        unknown = self.base / "unknown.jsonl"
+        unknown.write_text(self.prompt_entry("b" * 32))  # A packet nonce with no packet file.
+        quoted = self.base / "quoted.jsonl"
+        # Only the first prompt counts, so a packet that a later message names does not make a fresh agent.
+        quoted.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": "Look around."}}) + "\n"
+                          + self.prompt_entry(nonce))
+        self.env.update(RECORD_HOOK_WAIT_SECONDS="5")
+        for event in ({"agent_id": "o1", "last_assistant_message": "Here they are.",
+                       "agent_transcript_path": str(ordinary)},
+                      {"agent_id": "o2", "last_assistant_message": "Done."},
+                      {"agent_id": "o3", "agent_transcript_path": str(unknown)},
+                      {"agent_id": "o4", "agent_transcript_path": str(quoted)},
+                      {"agent_id": "o5", "agent_transcript_path": str(self.base / "missing.jsonl")},
+                      {"agent_id": "o6", "agent_transcript_path": str(ordinary), "cwd": str(self.base)},
+                      {"agent_id": "o7", "last_assistant_message": "hi", "cwd": str(self.base / "gone")}):
+            with self.subTest(agent=event["agent_id"]):
+                start = time.monotonic()
+                run = self.hook(event)
+                self.assertLess(time.monotonic() - start, 2.5)
+                self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertFalse((self.repo / ".agents/log/hook-stops").exists())
 
     def test_a_handback_with_no_block_stops_the_wait(self) -> None:
-        transcript = self.base / "agent.jsonl"
         call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": "No result here."}}
-        transcript.write_text(json.dumps({"message": {"content": [call]}}) + "\n")
+        transcript = self.fresh_transcript(self.render(), json.dumps({"message": {"content": [call]}}) + "\n")
         self.env.update(RECORD_HOOK_WAIT_SECONDS="5")
         start = time.monotonic()
         self.hook({"agent_id": "a4", "agent_transcript_path": str(transcript)})
@@ -201,7 +274,8 @@ class RecordTests(unittest.TestCase):
         self.assertEqual((entry["handback_found"], entry["rereads"]), (True, 0))
 
     def test_an_agent_id_that_is_not_a_plain_name_gives_a_name_of_its_own(self) -> None:
-        run = self.hook({"agent_id": "../../escape", "last_assistant_message": ""})
+        transcript = self.fresh_transcript(self.render())
+        run = self.hook({"agent_id": "../../escape", "agent_transcript_path": str(transcript)})
         self.assertEqual(run.returncode, 0, run.stderr)
         [path] = (self.repo / ".agents/log/hook-stops").iterdir()
         self.assertTrue(path.name.startswith("unknown-"))
@@ -210,8 +284,7 @@ class RecordTests(unittest.TestCase):
 
     def test_the_hook_waits_for_a_handback_that_comes_late(self) -> None:
         nonce = self.render()
-        transcript = self.base / "agent.jsonl"
-        transcript.write_text(self.text_entry())
+        transcript = self.fresh_transcript(nonce, self.text_entry())
         call = {"type": "tool_use", "name": "SubagentHandback", "input": {"message": result(nonce)}}
 
         def append() -> None:
@@ -307,31 +380,29 @@ class RecordTests(unittest.TestCase):
                          sorted(packet.stem for packet in (FIXTURES / "packets").glob("*.json")))
 
     def test_a_hook_stop_that_cannot_be_written_never_stops_the_agent(self) -> None:
+        transcript = str(self.fresh_transcript(self.render()))
         log = self.repo / ".agents/log"
-        log.mkdir(parents=True)
         (log / "hook-stops").write_text("a file, not a folder\n")
-        run = self.hook({"agent_id": "a6", "last_assistant_message": ""})
+        run = self.hook({"agent_id": "a6", "agent_transcript_path": transcript})
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("no hook-stops file", run.stderr)
         self.assertNotIn("Traceback", run.stderr)
         (log / "hook-stops").unlink()
         log.chmod(0o500)
         self.addCleanup(log.chmod, 0o755)
-        run = self.hook({"agent_id": "a7", "last_assistant_message": ""})
+        run = self.hook({"agent_id": "a7", "agent_transcript_path": transcript})
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("no hook-stops file", run.stderr)
-        # Outside a repository, and with a fault of any kind in the write, the hook still returns 0.
-        run = self.run_script("hook", stdin=json.dumps({"agent_id": "a8", "cwd": str(self.base)}), cwd=self.base)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn("no hook-stops file", run.stderr)
+        log.chmod(0o755)
         module = load("record_result")
+        event = json.dumps({"agent_id": "a9", "cwd": str(self.repo), "agent_transcript_path": transcript}).encode()
         with unittest.mock.patch.object(module, "write_record", side_effect=RuntimeError("boom")), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
-            self.assertEqual(module.hook(json.dumps({"agent_id": "a9", "cwd": str(self.repo)}).encode()), 0)
+            self.assertEqual(module.hook(event), 0)
         self.assertIn("no hook-stops file: boom", err.getvalue())
         with unittest.mock.patch.object(module, "transcript_size", side_effect=RuntimeError("boom")), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
-            self.assertEqual(module.hook(json.dumps({"agent_id": "a9", "cwd": str(self.repo)}).encode()), 0)
+            self.assertEqual(module.hook(event), 0)
         self.assertIn("no hook-stops file", err.getvalue())
 
     def test_only_input_that_is_not_json_returns_at_once(self) -> None:
