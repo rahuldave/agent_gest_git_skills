@@ -1132,25 +1132,35 @@ stops. A fresh agent of Claude Code hands back its result in a
 <code>SubagentHandback</code> call. So the block is not in <code>last_assistant_message</code>,
 and the hook reads the transcript at <code>agent_transcript_path</code>:</p>
 <ul>
-<li>When the transcript has no <code>SubagentHandback</code> call yet, the hook reads it
-again every 0.2 seconds, for up to 2 seconds. Claude Code can run the hook
-before it writes that call. A block in the first read adds no delay. A
-handback with no block also stops the wait. The variables
-<code>RECORD_HOOK_WAIT_SECONDS</code> and <code>RECORD_HOOK_POLL_SECONDS</code> change the two
-times, and the tests set them lower.</li>
-<li>When the hook finds no block, it writes <code>hook-stops/&lt;agent_id&gt;.json</code> in
-the shared log folder and prints one line. The file holds the time, the
-agent id, whether the event had a <code>last_assistant_message</code> that is not
-empty and an <code>agent_transcript_path</code>, and the size and line count of the transcript.
-It also holds whether the transcript had a <code>SubagentHandback</code> call, and
-the count of re-reads.
-So a transcript that was not complete differs from an event with no
-path. A stop of an ordinary subagent also writes this file.</li>
+<li>The hook waits and writes a file only for a fresh agent of a packet. A
+nonce that the first user prompt of its transcript names must have a
+packet file in <code>packets/</code>. The prompt can hold the whole packet, or give
+the nonce in a sentence. It can also name the packet file by an absolute
+path or a path from <code>~</code>, and then the hook reads the nonce from that
+file. The hook reads at most 8 regular files, and at most 256 KB of
+each. It reads no folder, pipe or device.</li>
+<li>Any other stop with no block returns at once, with no output. An
+ordinary subagent, such as an Explore agent, ends with text and no
+block, so it pays no wait and leaves no file. An event with no
+transcript path also returns at once, since the hook cannot read the
+first prompt.</li>
+<li>When the transcript of a fresh agent has no <code>SubagentHandback</code> call
+yet, the hook reads it again every 0.2 seconds, for up to 2 seconds.
+Claude Code can run the hook before it writes that call. A block in the
+first read adds no delay. A handback with no block also stops the wait.
+The variables <code>RECORD_HOOK_WAIT_SECONDS</code> and <code>RECORD_HOOK_POLL_SECONDS</code>
+change the two times, and the tests set them lower.</li>
+<li>When the hook then finds no block, it writes <code>hook-stops/&lt;agent_id&gt;.json</code>
+in the shared log folder and prints one line. The file holds the time,
+the agent id, whether the event had a <code>last_assistant_message</code> that is
+not empty and an <code>agent_transcript_path</code>, and the size and line count of
+the transcript. It also holds whether the transcript had a
+<code>SubagentHandback</code> call, and the count of re-reads.</li>
 <li>In a Gossil session on 2026-11-22, 3 of 73 results got no record and
 no trace. A replay of the saved transcripts writes all three records.
 The tests use cut-down copies of those transcripts, in
-<code>fixtures/record_hook/</code>. Each line is a stub, except the handback, which
-stays at its saved line.</li>
+<code>fixtures/record_hook/</code>. Each line is a stub, except the first prompt
+and the handback, which stay at their saved lines.</li>
 <li>A failure to write the file only prints why, and the hook exits 0.</li>
 </ul>
 </li>
@@ -1201,8 +1211,8 @@ check of that.</p>
 records. The hook <code>record-result.sh</code> runs it on <code>SubagentStop</code>. The recipes
 <code>record</code> and <code>record-skip</code> run it with <code>uv</code>, with pyyaml for the result
 block. The hook never stops the fresh agent. A result that gives no record
-prints the reason and writes it in a refusal file. A stop with no result
-block writes a hook-stops file. Only input that is not JSON makes the hook
+prints the reason and writes it in a refusal file. A stop of a fresh agent
+of a packet with no result block writes a hook-stops file. Only input that is not JSON makes the hook
 return before it reads the event.</p>
 </li>
 </ul>
