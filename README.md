@@ -498,9 +498,11 @@ a warning, not a block.
 The `SubagentStop` hook `record-result.sh` runs when a subagent stops. It
 writes the record of the result of a fresh agent, which the commit gate needs.
 When a fresh agent of a packet stops with no result block, the hook writes
-the facts in `.agents/log/hook-stops/<agent_id>.json`. Another subagent with
-no block gets no wait and no file. The hook never stops the agent. The
-section "Records" of
+the facts in `.agents/log/hook-stops/<agent_id>.json`. A stop with no
+transcript path also writes that file. Another subagent with no block gets no
+wait and no file. The hook never stops the agent.
+
+The section "Records" of
 [`docs/specs/commit-gates.md`](docs/specs/commit-gates.md) tells how.
 
 The installer also installs the pre-commit framework and its git hooks, from
