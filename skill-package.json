@@ -113,7 +113,7 @@
         "check": "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py --check-hooks",
         "install": "uv tool run pre-commit install --hook-type pre-commit --hook-type pre-merge-commit --hook-type commit-msg --hook-type pre-push",
         "each_clone": true,
-        "description": "The git hooks pre-commit, pre-merge-commit and commit-msg, which run the commit gate, and pre-push, which runs just ci. When the check still fails, its message says why, for example a repo: local entry of the project that needs the hooks of the role."
+        "description": "The git hooks pre-commit, pre-merge-commit and commit-msg, which run the commit gate, and pre-push, which runs just ci less what a pass of just check ran. When the check still fails, its message says why, for example a repo: local entry of the project that needs the hooks of the role."
       }
     ],
     "before_remove": {

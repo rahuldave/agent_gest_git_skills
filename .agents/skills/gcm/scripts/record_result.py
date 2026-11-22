@@ -200,7 +200,7 @@ def record_from(text: str, root: Path, source: str, model: Optional[str], target
         raise Stop(f"the worktree of the packet, {worktree}, is gone")
     if not same_repository(root, worktree):
         raise Stop(f"the worktree of the packet, {worktree}, is not a worktree of this repository")
-    _, output_tree, _ = worktree_diff(worktree)
+    _, output_tree, _ = worktree_diff(worktree, keep=True)
     record = {"version": 1, "target": packet["target"], "status": block.get("status"),
               "input_tree": packet["input_tree"], "output_tree": output_tree, "findings": findings_of(block),
               "source": source, "model": model or "unknown", "nonce": nonce}

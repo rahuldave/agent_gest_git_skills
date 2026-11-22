@@ -31,6 +31,7 @@ It exits with 0 when it printed the packet, and with 1 when not.
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -139,10 +140,16 @@ def shared_log(root: Path) -> Path:
     return common.parent / ".agents/log"
 
 
-def worktree_diff(root: Path) -> Tuple[str, str, bytes]:
+# The folder of the shared log folder that keeps the tree objects of the packets and the records, and the objects of
+# their links, that `.git/objects` does not have. The gate compares the tree of a record with the commit tree.
+TREES = "objects"
+
+
+def worktree_diff(root: Path, keep: bool = False) -> Tuple[str, str, bytes]:
     """The commit of HEAD, or `none`, the worktree tree, and the diff of the worktree against HEAD, as bytes. They
     come from a copy of the index and a temporary object store, as in the gate, so neither the real index nor
-    `.git/objects` changes. The diff ignores the diff settings of the person and of the repository."""
+    `.git/objects` changes. The diff ignores the diff settings of the person and of the repository. With KEEP, the
+    tree objects stay in the folder `objects` of the shared log folder, for the gate, as keep_trees says."""
     env = plain_env()
     objects = Path(git(["rev-parse", "--git-path", "objects"], root, env).strip())
     real_index = Path(git(["rev-parse", "--git-path", "index"], root, env).strip())
@@ -175,7 +182,98 @@ def worktree_diff(root: Path) -> Tuple[str, str, bytes]:
         diff = git_bytes(["-c", "diff.noprefix=false", "-c", "diff.mnemonicPrefix=false", "diff", "--binary",
                           "--no-color", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/",
                           base, tree], root, env)
+        if keep:
+            keep_trees(root, env, tree)
     return head or "none", tree, diff
+
+
+def keep_trees(root: Path, env: Dict[str, str], tree: str) -> None:
+    """Copy the tree objects of TREE, and the objects of its links, that `.git/objects` does not have, into the
+    folder `objects` of the shared log folder. Each file has the ID of its object as its name and the content of the
+    object, and the gate checks the content against the ID. ENV reads the temporary object store. The script writes
+    each file through the descriptor of the folder, follows no link, and writes the files of a tree before the tree,
+    so a kept tree has its subtrees. It goes into no tree that `.git/objects` or the folder has already."""
+    _, fd = prepare_log(root, TREES)
+    algorithm = "sha256" if git(["rev-parse", "--show-object-format"], root, plain_env(),
+                                check=False).strip() == "sha256" else "sha1"
+    size = 20 if algorithm == "sha1" else 32
+    reader = subprocess.Popen(["git", "--no-replace-objects", "cat-file", "--batch"], cwd=root, env=env,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    real = subprocess.Popen(["git", "--no-replace-objects", "cat-file", "--batch-check"], cwd=root,
+                            env=dict(plain_env(), GIT_NO_REPLACE_OBJECTS="1"), stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
+    def ask(process: subprocess.Popen, oid: str) -> List[bytes]:
+        process.stdin.write(oid.encode() + b"\n")
+        process.stdin.flush()
+        return process.stdout.readline().split()
+
+    def has(oid: str, kind: str) -> bool:
+        """True when the folder has a file of OID that hashes to it, or `.git/objects` has OID. A file of the
+        folder that does not hash to its name goes, so the tree is kept again."""
+        try:
+            handle = os.open(oid, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+        except FileNotFoundError:
+            return len(ask(real, oid)) == 3
+        with os.fdopen(handle, "rb") as file:
+            data = file.read()
+        if hashlib.new(algorithm, b"%s %d\0" % (kind.encode(), len(data)) + data).hexdigest() == oid:
+            return True
+        os.unlink(oid, dir_fd=fd)
+        return False
+
+    def read(oid: str) -> bytes:
+        header = ask(reader, oid)
+        if len(header) != 3:
+            raise Stop(f"git has no object {oid} of the tree {tree}")
+        data = reader.stdout.read(int(header[2]))
+        reader.stdout.read(1)
+        return data
+
+    def write(oid: str, data: bytes) -> None:
+        temp = f".{oid}.{os.getpid()}"
+        try:
+            os.unlink(temp, dir_fd=fd)
+        except FileNotFoundError:
+            pass
+        out = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o444, dir_fd=fd)
+        try:
+            with os.fdopen(out, "wb") as handle:
+                handle.write(data)
+            os.rename(temp, oid, src_dir_fd=fd, dst_dir_fd=fd)
+        except BaseException:
+            try:
+                os.unlink(temp, dir_fd=fd)
+            except OSError:
+                pass
+            raise
+
+    def walk(oid: str) -> None:
+        if has(oid, "tree"):
+            return
+        data = read(oid)
+        index = 0
+        while index < len(data):
+            space = data.index(b" ", index)
+            nul = data.index(b"\0", space + 1)
+            mode, child = data[index:space].zfill(6), data[nul + 1:nul + 1 + size].hex()
+            index = nul + 1 + size
+            if mode == b"040000":
+                walk(child)
+            elif mode == b"120000" and not has(child, "blob"):
+                write(child, read(child))
+        write(oid, data)
+
+    try:
+        walk(tree)
+    except OSError as exc:
+        raise Stop(f"cannot write the tree {tree} in {shared_log(root) / TREES}: {exc.strerror}")
+    finally:
+        for process in (reader, real):
+            process.stdin.close()
+            process.wait()
+            process.stdout.close()
+        os.close(fd)
 
 
 def base_task(root: Path, target: str) -> Path:
@@ -349,7 +447,7 @@ def render(root: Path, target: str, args: Sequence[str]) -> int:
     text, layers = prompt(root, target)
     log, diffs_fd = prepare_log(root)
     try:
-        head, tree, diff = worktree_diff(root)
+        head, tree, diff = worktree_diff(root, keep=True)
         # The same tree has another diff against another HEAD, so the name holds both.
         name = f"{head}-{tree}.diff"
         diff_file = log / "diffs" / name

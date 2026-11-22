@@ -375,6 +375,7 @@ done
   "${python[@]}" -m unittest scripts/test_worktrees.py -q
   "${python[@]}" -m unittest scripts/test_commit_gate.py -q
   "${python[@]}" -m unittest scripts/test_gate_guard.py -q
+  "${python[@]}" -m unittest scripts/test_pre_push.py -q
   "${python[@]}" -m unittest scripts/test_agentic_target.py -q
   "${python[@]}" -m unittest scripts/test_test_parent.py -q
   "${python[@]}" -m unittest scripts/test_stack_prs.py -q

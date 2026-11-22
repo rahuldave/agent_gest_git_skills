@@ -6,7 +6,7 @@ something is missing:
 1. The steps of `.agents/stack.json` and the required targets must be recipes of the Justfile.
 2. The commit tree must equal the worktree tree, so all changes must be staged.
 3. The run log must hold a pass of `just check` for the commit tree.
-4. For a commit by an agent, the records must hold a chain of the required targets that ends at the commit tree.
+4. For a commit by an agent, the records must hold a record of each required target that counts for the commit tree.
 
 The lists that exempt paths come from the parent commit, so a commit cannot change them for itself:
 `.agents/targets/required.txt` and `.agents/generated.txt`. With no parent, or a parent without the file, the gate
@@ -37,9 +37,15 @@ A record is a JSON file in `records/` of the shared log folder, the `.agents/log
 A record counts when its status is `success` and each finding has a `test` or a `reason`. A skip from
 `just record-skip` is a record with `"source": "skip"`, a `reason`, and the same tree twice.
 
-The chain: `update-docs` comes before `prose`, and each record starts at the output tree of the record before it. The
-last output tree is the commit tree. Every other target, such as `review` and `test-review`, has the commit tree as
-its input tree and its output tree.
+The scopes: a record of a tree counts for the commit tree when no path that differs between the two trees is in the
+scope of its target, as SCOPES gives it. Objects compares the two trees, so each side of a rename counts, and a
+deleted path counts. It reads each tree object from the folder `objects` of a log folder or from git with no replace
+refs, and checks that it hashes to its ID. A path is a page, data or code, and a path whose kind is in doubt is code. A change
+of a page alone keeps `review` and `test-review`, a change of data alone keeps `prose`, and every change voids
+`update-docs`. A target that changes no file, such as `review`, counts by a record whose input tree is its output tree.
+`update-docs` and `prose` change files, so they count by their output tree. Between the output tree of `update-docs`
+and the commit tree, `prose` records may come, since `prose` changes only what it checks. A skip counts for its own
+tree only. The pass of `just check` is still for the commit tree itself.
 
 The trailer: the commit-msg hook runs the gate once more, and when it passes, it adds a trailer to the message:
 `Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. A patch ID is the hash of the change,
@@ -79,7 +85,8 @@ Usage: commit_gate.py [--hook pre-commit|pre-merge-commit|commit-msg] [MESSAGE_F
 [BASE HEAD], or commit_gate.py --check-hooks. It exits with 0 to let the commit through and with 1 to stop it.
 
 `commit_gate.py --check-hooks` checks that the pre-commit framework runs the hooks of the tasker role: pre-commit,
-pre-merge-commit and commit-msg, which run the gate, and pre-push, which runs just ci. It exits with 0 when the hook of
+pre-merge-commit and commit-msg, which run the gate, and pre-push, which runs pre_push.py, or just ci in an older
+config. It exits with 0 when the hook of
 each stage is a hook of pre-commit for .pre-commit-config.yaml whose Python has pre-commit, and the config has the
 hooks of the role, and with 1 when not. The tasker role runs it as the check of its hook install.
 """
@@ -87,9 +94,11 @@ hooks of the role, and with 1 when not. The tasker role runs it as the check of 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
+import posixpath
 import re
 import shlex
 import shutil
@@ -124,6 +133,8 @@ STACK = ".agents/stack.json"
 REQUIRED = ".agents/targets/required.txt"
 GENERATED = ".agents/generated.txt"
 RUN_LOG = "just.jsonl"
+# The folder of a log folder where agentic_target.py keeps the trees of the packets and the records.
+TREES = "objects"
 
 
 class Stop(Exception):
@@ -788,24 +799,354 @@ def refusal_notes(folders: List[Path], missing: List[str], tree: str, root: Path
     return notes
 
 
-def missing_targets(required: List[str], records: List[dict], tree: str) -> List[str]:
-    """The required targets with no record in a chain that ends at TREE, in the order to run them."""
-    by_target: Dict[str, List[Tuple[str, str]]] = {}
-    for record in records:
-        by_target.setdefault(record["target"], []).append((record["input_tree"], record["output_tree"]))
-    missing = [t for t in required if t not in CHANGERS and (tree, tree) not in by_target.get(t, [])]
-    changers = [t for t in CHANGERS if t in required]
+# The scope of each record: the kinds of path whose change after the record voids it. A record of tree T1 counts for
+# the commit tree T2 when no path that differs between T1 and T2 is of a kind in its scope. The kinds come from
+# path_kind. "code" is in every scope, since it holds each path whose kind is in doubt. A target with no entry here,
+# such as a target of the project, has every kind in its scope.
+#
+# - review and test-review read the code, the tests and the data, and not the pages, so a change of a page alone
+#   keeps them.
+# - prose works on the pages and on the docstrings and comments of the code, so a change of the code voids it. A
+#   change of data alone, such as a lock file, keeps it.
+# - update-docs checks that the docs match the code, so every change voids it.
+PAGE, CODE, DATA = "page", "code", "data"
+SCOPES: Dict[str, Set[str]] = {
+    "review": {CODE, DATA},
+    "test-review": {CODE, DATA},
+    "prose": {PAGE, CODE},
+    "update-docs": {PAGE, CODE, DATA},
+}
+ALL_KINDS = {PAGE, CODE, DATA}
+# A page is a Markdown file under docs/. A Markdown file at the top, such as README.md, is code: a build can put it in
+# the docs of a crate or a package, and run its examples as tests. These names are instructions for agents, legal text
+# or files that tools read, so they are code under docs/ too. The match is on the start of the name, in any case.
+NOT_PAGES = ("AGENTS", "CLAUDE", "GEMINI", "SKILL", "CHANGELOG", "LICENSE", "COPYING", "SECURITY", "CODEOWNERS")
+# The suffixes of data files: files that hold no prose for a person and no docstring.
+DATA_SUFFIXES = (".json", ".jsonl", ".lock", ".csv", ".tsv", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+                 ".pdf", ".woff", ".woff2", ".ttf", ".otf", ".zip", ".gz", ".tgz")
+# The git mode of a plain file, and of no file, as the side of an added or a deleted path shows it. An executable
+# file is code.
+REGULAR_MODES = ("100644", "000000")
 
-    def chain_ends(index: int, end: str) -> bool:
-        """True when the changers up to INDEX make a chain whose last output tree is END."""
-        if index < 0:
+
+def scope_of(target: str) -> Set[str]:
+    return SCOPES.get(target, ALL_KINDS)
+
+
+def path_kind(path: str, modes: Sequence[str], code: Sequence[str] = (), linked: bool = False) -> str:
+    """The kind of a changed path: PAGE, DATA or CODE. MODES are the git modes of the path on the two sides. CODE
+    holds the code globs of the project, from the keys `code` and `tests` of stack.json: a path that one matches is
+    code, such as a page that the tests run. LINKED is True when either tree holds a link, so a page can be the text
+    of another path. A path whose kind is in doubt is CODE: a link, a submodule, an executable file,
+    a Markdown file outside docs/, a name in NOT_PAGES, or any path when LINKED holds."""
+    if any(mode not in REGULAR_MODES for mode in modes) or any(glob_match(glob, path) for glob in code):
+        return CODE
+    parts = path.split("/")
+    name = parts[-1]
+    if any(not part or part.startswith((".", "_")) for part in parts):
+        return CODE
+    if (name.endswith(".md") and len(parts) > 1 and parts[0] == "docs" and not name.upper().startswith(NOT_PAGES)
+            and not linked):
+        return PAGE
+    if name.endswith(DATA_SUFFIXES):
+        return DATA
+    return CODE
+
+
+def glob_match(glob: str, path: str) -> bool:
+    """True when the git glob GLOB, as `:(glob)` reads it, may match PATH or a folder above it, as a pathspec of git
+    matches each path in a folder that it names. A leading `./`, a `..` and an ending `/` go first. A class such as
+    `[ab]` matches any one character, so the match is never narrower than the match of git."""
+    glob = posixpath.normpath(glob).lstrip("/") if glob not in ("", ".") else "**"
+    if glob in (".", "") or glob.startswith(".."):
+        return True
+    pattern = glob_regex(glob)
+    parts = path.split("/")
+    return any(re.fullmatch(pattern, "/".join(parts[:end]), re.DOTALL) for end in range(1, len(parts) + 1))
+
+
+def glob_regex(glob: str) -> str:
+    out, index = "", 0
+    while index < len(glob):
+        if glob.startswith("**/", index):
+            out, index = out + "(?:.*/)?", index + 3
+        elif glob.startswith("**", index):
+            out, index = out + ".*", index + 2
+        elif glob[index] == "*":
+            out, index = out + "[^/]*", index + 1
+        elif glob[index] == "?":
+            out, index = out + "[^/]", index + 1
+        elif glob[index] == "[" and "]" in glob[index + 2 + (glob[index + 1:index + 2] in ("!", "^")):]:
+            # A `]` right after `[` or `[!` is a character of the class.
+            out, index = out + "[^/]", glob.index("]", index + 2 + (glob[index + 1:index + 2] in ("!", "^"))) + 1
+        else:
+            out, index = out + re.escape(glob[index]), index + 1
+    return out
+
+
+# The mode of a tree, of a link and of a submodule in a tree object, as git writes it.
+TREE_MODE, LINK_MODE, SUBMODULE_MODE = "040000", "120000", "160000"
+
+
+class Objects:
+    """The tree and link objects of the gate, read by their IDs. Each object comes from the folder `objects` of a log
+    folder, where agentic_target.py keeps it, or from git with no replace refs, and each must hash to its ID. So
+    neither `git replace` nor a forged object file can change what the gate compares. None stands for an object
+    that no place has, or whose content does not match its ID."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.kept = [folder / TREES for folder in log_folders(root)]
+        name = git(["rev-parse", "--show-object-format"], root, plain_env(), check=False).strip() or "sha1"
+        self.hash = name if name in ("sha1", "sha256") else "sha1"
+        self.size = 20 if self.hash == "sha1" else 32
+        self.cache: Dict[Tuple[str, str], Optional[bytes]] = {}
+        self.linked: Dict[str, bool] = {}
+        self.process: Optional[subprocess.Popen] = None
+
+    def close(self) -> None:
+        if self.process is not None:
+            self.process.stdin.close()
+            self.process.wait()
+            self.process.stdout.close()
+            self.process = None
+
+    def matches(self, oid: str, kind: str, data: bytes) -> bool:
+        return hashlib.new(self.hash, b"%s %d\0" % (kind.encode(), len(data)) + data).hexdigest() == oid
+
+    def read(self, oid: str, kind: str) -> Optional[bytes]:
+        if (oid, kind) in self.cache:
+            return self.cache[(oid, kind)]
+        data = None
+        if is_tree(oid):
+            for folder in self.kept:
+                try:
+                    found = (folder / oid).read_bytes()
+                except OSError:
+                    continue
+                if self.matches(oid, kind, found):
+                    data = found
+                    break
+            if data is None:
+                found = self.from_git(oid, kind)
+                data = found if found is not None and self.matches(oid, kind, found) else None
+        self.cache[(oid, kind)] = data
+        return data
+
+    def from_git(self, oid: str, kind: str) -> Optional[bytes]:
+        if self.process is None:
+            env = dict(plain_env(), GIT_NO_REPLACE_OBJECTS="1")
+            self.process = subprocess.Popen(["git", "--no-replace-objects", "cat-file", "--batch"], cwd=self.root,
+                                            env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                            stderr=subprocess.DEVNULL)
+        self.process.stdin.write(oid.encode() + b"\n")
+        self.process.stdin.flush()
+        header = self.process.stdout.readline().split()
+        if len(header) != 3 or header[0].decode() != oid:
+            return None
+        data = self.process.stdout.read(int(header[2]))
+        self.process.stdout.read(1)
+        return data if header[1].decode() == kind else None
+
+    def entries(self, oid: str) -> Optional[Dict[str, Tuple[str, str]]]:
+        """The entries of the tree OID, by name, as their modes and IDs."""
+        data = self.read(oid, "tree")
+        if data is None:
+            return None
+        found: Dict[str, Tuple[str, str]] = {}
+        index = 0
+        while index < len(data):
+            space = data.find(b" ", index)
+            nul = data.find(b"\0", space + 1)
+            if space < 0 or nul < 0 or nul + 1 + self.size > len(data):
+                return None
+            mode = data[index:space].decode(errors="replace").zfill(6)
+            name = data[space + 1:nul].decode(errors="surrogateescape")
+            found[name] = (mode, data[nul + 1:nul + 1 + self.size].hex())
+            index = nul + 1 + self.size
+        return found
+
+    def leaves(self, oid: str, prefix: str) -> Optional[List[Tuple[str, str]]]:
+        """Each path below the tree OID, with its mode, under PREFIX."""
+        entries = self.entries(oid)
+        if entries is None:
+            return None
+        out: List[Tuple[str, str]] = []
+        for name, (mode, child) in entries.items():
+            if mode == TREE_MODE:
+                below = self.leaves(child, f"{prefix}{name}/")
+                if below is None:
+                    return None
+                out += below
+            else:
+                out.append((f"{prefix}{name}", mode))
+        return out
+
+    def changes(self, before: str, after: str, prefix: str = "") -> Optional[List[Tuple[str, Tuple[str, str]]]]:
+        """Each path that differs between the trees BEFORE and AFTER, with its mode on each side, or 000000 on the
+        side that lacks it. A rename is a deletion and an addition, and a change of a file to a folder gives both."""
+        if before == after:
+            return []
+        old, new = self.entries(before), self.entries(after)
+        if old is None or new is None:
+            return None
+        out: List[Tuple[str, Tuple[str, str]]] = []
+        for name in sorted(set(old) | set(new)):
+            one, two = old.get(name), new.get(name)
+            if one == two:
+                continue
+            path = prefix + name
+            if one and two and one[0] == two[0] == TREE_MODE:
+                below = self.changes(one[1], two[1], f"{path}/")
+                if below is None:
+                    return None
+                out += below
+                continue
+            sides = []
+            for side, entry in ((0, one), (1, two)):
+                if entry and entry[0] == TREE_MODE:
+                    below = self.leaves(entry[1], f"{path}/")
+                    if below is None:
+                        return None
+                    out += [(leaf, (mode, "000000") if side == 0 else ("000000", mode)) for leaf, mode in below]
+                    sides.append("000000")
+                else:
+                    sides.append(entry[0] if entry else "000000")
+            if sides != ["000000", "000000"]:
+                out.append((path, (sides[0], sides[1])))
+        return out
+
+    def has_links(self, oid: str) -> Optional[bool]:
+        """True when the tree OID holds a link at any depth. A link can make a page the text of another path, also
+        through `..` and folders that are links, or a name in another case on a file system that ignores case."""
+        if oid in self.linked:
+            return self.linked[oid]
+        entries = self.entries(oid)
+        if entries is None:
+            return None
+        found = False
+        for mode, child in entries.values():
+            if mode == LINK_MODE:
+                found = True
+            elif mode == TREE_MODE:
+                below = self.has_links(child)
+                if below is None:
+                    return None
+                found = found or below
+            if found:
+                break
+        self.linked[oid] = found
+        return found
+
+
+def changed_kinds(objects: "Objects", before: str, after: str, code: Sequence[str] = ()) -> Optional[Set[str]]:
+    """The kinds of the paths that differ between the trees BEFORE and AFTER, or None when the gate cannot compare
+    them, as for a tree that neither git nor a log folder has. A record from before agentic_target.py kept its trees
+    counts for its own tree only. Each side of a rename counts, and a deleted path counts. CODE is as in path_kind."""
+    if before == after:
+        return set()
+    changes = objects.changes(before, after)
+    if changes is None:
+        return None
+    kinds = {path_kind(path, modes, code) for path, modes in changes}
+    if PAGE not in kinds:
+        return kinds
+    # A link of either tree can make a page the text of another path, so then each page is code.
+    linked = [objects.has_links(tree) for tree in (before, after)]
+    if None in linked:
+        return None
+    return {path_kind(path, modes, code, any(linked)) for path, modes in changes}
+
+
+def scope_code(root: Path, parents: Sequence[Optional[str]], stack: dict) -> List[str]:
+    """The globs of the keys `code` and `tests` of the stack.json of the commit and of each parent, for path_kind. A
+    path that a profile names as code or tests is code, though it looks like a page."""
+    stacks: List[object] = [stack]
+    for parent in parents:
+        text = None if parent is None else read_at(root, parent, STACK)
+        try:
+            stacks.append(json.loads(text) if text is not None else None)
+        except ValueError:
+            continue
+    globs: List[str] = []
+    for one in stacks:
+        globs += code_globs(one)
+        tests = one.get("tests") if isinstance(one, dict) else None
+        if isinstance(tests, dict):
+            globs += [g for found in tests.values() if isinstance(found, list) for g in found if isinstance(g, str) and g]
+    return list(dict.fromkeys(globs))
+
+
+def missing_targets(required: List[str], records: List[dict], tree: str, root: Optional[Path] = None,
+                    code: Sequence[str] = ()) -> List[str]:
+    """The required targets with no record that counts for TREE, in the order to run them.
+
+    A record of a target that changes no file counts when its input tree is its output tree, and no path that differs
+    between that tree and TREE is in the scope of the target. A record of a target that changes files, such as
+    update-docs, counts when the same holds for its output tree. Between its output tree and TREE, the records of the
+    targets after it in CHANGERS may come, since they change only what they check: update-docs, then prose. A skip
+    counts for its own tree only. Without ROOT, the gate cannot compare trees, and a record counts for its own tree
+    only. CODE is the code globs of the project, as path_kind reads them."""
+    cache: Dict[Tuple[str, str], Optional[Set[str]]] = {}
+    objects = Objects(root) if root is not None else None
+    try:
+        return _missing(required, records, tree, objects, code, cache)
+    finally:
+        if objects is not None:
+            objects.close()
+
+
+def _missing(required: List[str], records: List[dict], tree: str, objects: Optional["Objects"], code: Sequence[str],
+             cache: Dict[Tuple[str, str], Optional[Set[str]]]) -> List[str]:
+
+    def clean(before: str, after: str, scope: Set[str]) -> bool:
+        """True when no path that differs between BEFORE and AFTER is in SCOPE."""
+        if before == after:
             return True
-        return any(out == end and chain_ends(index - 1, start) for start, out in by_target.get(changers[index], []))
+        # With every kind in the scope, any change voids the record, so only the same tree counts.
+        if objects is None or scope >= ALL_KINDS:
+            return False
+        if (before, after) not in cache:
+            cache[(before, after)] = changed_kinds(objects, before, after, code)
+        kinds = cache[(before, after)]
+        return kinds is not None and not kinds & scope
 
-    if changers and not chain_ends(len(changers) - 1, tree):
-        # A changer that runs again changes the input of each later one, so they all run again, in order.
-        missing = changers + missing
-    return missing
+    def own(record: dict) -> Optional[str]:
+        """The tree that the record checked last, or None for a record that cannot count."""
+        if record.get("source") == "skip":
+            return record["output_tree"] if record["input_tree"] == tree == record["output_tree"] else None
+        if record["target"] not in CHANGERS and record["input_tree"] != record["output_tree"]:
+            return None
+        return record["output_tree"]
+
+    by_target: Dict[str, List[dict]] = {}
+    for record in records:
+        by_target.setdefault(record["target"], []).append(record)
+
+    def reaches(start: str, scope: Set[str], later: Sequence[str]) -> bool:
+        """True when TREE comes from START with no change in SCOPE, other than the changes of the records of the
+        targets in LATER, in their order."""
+        if clean(start, tree, scope):
+            return True
+        for index, target in enumerate(later):
+            for record in by_target.get(target, []):
+                if record.get("source") != "skip" and clean(start, record["input_tree"], scope) \
+                        and reaches(record["output_tree"], scope, later[index + 1:]):
+                    return True
+        return False
+
+    def counts(target: str) -> bool:
+        scope = scope_of(target)
+        later = CHANGERS[CHANGERS.index(target) + 1:] if target in CHANGERS else ()
+        # A record of TREE itself needs no git, so those come first.
+        for record in sorted(by_target.get(target, []), key=lambda record: own(record) != tree):
+            start = own(record)
+            if start is not None and reaches(start, scope, later):
+                return True
+        return False
+
+    changers = [t for t in CHANGERS if t in required and not counts(t)]
+    return changers + [t for t in required if t not in CHANGERS and not counts(t)]
 
 
 def is_agent() -> bool:
@@ -903,7 +1244,7 @@ def gate(root: Path) -> None:
         raise Stop(message)
 
     if is_agent():
-        missing = missing_targets(required, load_records(folders), tree)
+        missing = missing_targets(required, load_records(folders), tree, root, scope_code(root, parents, stack))
         if missing:
             notes = refusal_notes(folders, missing, tree, root)
             raise Stop("no record for this tree of " + ", ".join(f"`just {t}`" for t in missing)
@@ -1389,12 +1730,16 @@ GATE_COMMAND = ("uv run --no-project --quiet --no-python-downloads --python '>=3
 # The config of the framework, and the hooks of it that the tasker role needs: the stages and the entry of each one.
 # The gate runs before a commit and before the commit of a merge.
 CONFIG = ".pre-commit-config.yaml"
-CONFIG_HOOKS = {"commit-gate": (("pre-commit", "pre-merge-commit"), GATE_COMMAND),
-                "commit-gate-trailer": (("commit-msg",), f"{GATE_COMMAND} --hook commit-msg"),
-                "just-ci": (("pre-push",), "just ci")}
+# The pre-push hook runs pre_push.py, which runs just ci less what a pass of just check did. The entry `just ci` of an
+# older config counts too: it runs all of just ci.
+PRE_PUSH_COMMAND = ("uv run --no-project --quiet --no-python-downloads --python '>=3.9' python "
+                    ".agents/skills/gcm/scripts/pre_push.py")
+CONFIG_HOOKS = {"commit-gate": (("pre-commit", "pre-merge-commit"), (GATE_COMMAND,)),
+                "commit-gate-trailer": (("commit-msg",), (f"{GATE_COMMAND} --hook commit-msg",)),
+                "just-ci": (("pre-push",), (PRE_PUSH_COMMAND, "just ci"))}
 
 # The stages of the gate, the stages that the tasker role installs, and the text that each hook of the pre-commit
-# framework holds. The pre-push hook runs just ci, not the gate.
+# framework holds. The pre-push hook runs pre_push.py, not the gate.
 HOOK_STAGES = ("pre-commit", "pre-merge-commit", "commit-msg")
 INSTALLED_STAGES = HOOK_STAGES + ("pre-push",)
 FRAMEWORK_MARK = "# File generated by pre-commit"
@@ -1495,11 +1840,11 @@ def config_problems(root: Path) -> List[str]:
     if not isinstance(hooks, list):
         return [f"pre-commit cannot read {CONFIG}: {(run.stderr.strip().splitlines() or ['no output'])[-1]}"]
     problems = []
-    for name, (stages, entry) in CONFIG_HOOKS.items():
+    for name, (stages, entries) in CONFIG_HOOKS.items():
         for stage in stages:
-            if not any(isinstance(h, dict) and h.get("id") == name and h.get("entry") == entry
+            if not any(isinstance(h, dict) and h.get("id") == name and h.get("entry") in entries
                        and stage in (h.get("stages") or ()) for h in hooks):
-                problems.append(f"{CONFIG} has no local hook {name} that runs {entry} for the stage {stage}. A "
+                problems.append(f"{CONFIG} has no local hook {name} that runs {entries[0]} for the stage {stage}. A "
                                 "repo: local entry of the project takes the place of the entry of the tasker role, so "
                                 "copy the hooks of .agents/skills/gcm/assets/pre-commit-config.yaml into it")
     return problems
@@ -1513,7 +1858,7 @@ def check_hooks(root: Path) -> List[str]:
     if hooks_path:
         print(f"commit gate: core.hooksPath is {hooks_path}, so pre-commit installs no hook. Run "
               f"{GATE_COMMAND} from the pre-commit and pre-merge-commit hooks of that folder, {GATE_COMMAND} --hook "
-              f"commit-msg from its commit-msg hook, and just ci from its pre-push hook.", file=sys.stderr)
+              f"commit-msg from its commit-msg hook, and {PRE_PUSH_COMMAND} from its pre-push hook.", file=sys.stderr)
         return []
     hooks = [problem for stage in INSTALLED_STAGES for problem in [framework_hook_problem(root, stage)] if problem]
     return config_problems(root) + hooks

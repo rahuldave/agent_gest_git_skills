@@ -18,10 +18,11 @@ repos:
         language: system
         always_run: true
         stages: [commit-msg]
-      # What CI checks, on your machine before a push: the trailers, then the steps of the list ci
+      # What CI checks, on your machine before a push: just ci, less each recipe that a pass of just check for the
+      # pushed tree ran. The trailers are always checked
       - id: just-ci
         name: just ci
-        entry: just ci
+        entry: uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/pre_push.py
         language: system
         pass_filenames: false
         always_run: true

@@ -522,7 +522,8 @@ The installer also installs the pre-commit framework and its git hooks, from
   `release-check`. When both checks pass, the hook adds the trailer
   `Commit-Gate:` to the message. CI checks the trailer of each commit.
 - **pre-push** runs `just ci`, so a push checks on your machine what CI
-  checks.
+  checks. It skips each recipe that a pass of `just check` for the pushed
+  tree ran, and it always checks the trailers.
 
 ### The check of the trailers
 

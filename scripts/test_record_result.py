@@ -112,6 +112,42 @@ class RecordTests(unittest.TestCase):
         self.assertTrue(gate.record_counts(record))
         self.assertEqual(gate.missing_targets(["review"], self.records(), gate.worktree_tree(self.repo)), [])
 
+    def test_the_trees_of_a_packet_and_a_record_stay_for_the_scopes_of_the_gate(self) -> None:
+        # A change of a page alone keeps the review. The gate needs the tree of the record for that, and the packet
+        # and the record keep their trees in the folder objects of the shared log folder.
+        nonce = self.render()
+        run = self.hook({"last_assistant_message": result(nonce)})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        [record] = self.records()
+        self.assertTrue((self.repo / ".agents/log/objects").is_dir())
+        self.write("docs/guide.md", "a page\n")
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        self.assertNotEqual(tree, record["output_tree"])
+        # The gate compares with the commit tree, which git commit writes to .git/objects.
+        git("add", "-A", cwd=self.repo, env=self.env)
+        self.assertEqual(git("write-tree", cwd=self.repo, env=self.env).strip(), tree)
+        self.assertEqual(gate.missing_targets(["review"], self.records(), tree, self.repo), [])
+        self.write("a.txt", "code\n")
+        git("add", "-A", cwd=self.repo, env=self.env)
+        tree = git("write-tree", cwd=self.repo, env=self.env).strip()
+        self.assertEqual(gate.missing_targets(["review"], self.records(), tree, self.repo), ["review"])
+
+    def test_a_kept_tree_that_does_not_hash_to_its_name_is_kept_again(self) -> None:
+        agentic = load("agentic_target")
+        tree = agentic.worktree_diff(self.repo, keep=True)[1]
+        kept = self.repo / ".agents/log/objects" / tree
+        kept.chmod(0o644)
+        kept.write_bytes(b"forged")
+        self.assertEqual(agentic.worktree_diff(self.repo, keep=True)[1], tree)
+        self.assertNotEqual(kept.read_bytes(), b"forged")
+        gate = load("commit_gate")
+        objects = gate.Objects(self.repo)
+        try:
+            self.assertIsNotNone(objects.entries(tree))
+        finally:
+            objects.close()
+
     def test_the_output_tree_holds_the_changes_of_the_fresh_agent(self) -> None:
         self.write(".agents/skills/gdo/references/targets/update-docs.md", "DOCS TASK\n")
         nonce = self.render("update-docs")

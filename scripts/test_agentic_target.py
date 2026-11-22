@@ -491,8 +491,8 @@ class RenderTests(unittest.TestCase):
         outside.mkdir()
         real = module.worktree_diff
 
-        def swap(root):
-            result = real(root)
+        def swap(root, **options):
+            result = real(root, **options)
             diffs = self.repo / ".agents/log/diffs"
             diffs.rename(self.base / "old-diffs")
             diffs.symlink_to(outside)
