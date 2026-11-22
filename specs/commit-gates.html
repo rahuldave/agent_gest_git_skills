@@ -1141,9 +1141,14 @@ file. The hook reads at most 8 regular files, and at most 256 KB of
 each. It reads no folder, pipe or device.</li>
 <li>Any other stop with no block returns at once, with no output. An
 ordinary subagent, such as an Explore agent, ends with text and no
-block, so it pays no wait and leaves no file. An event with no
-transcript path also returns at once, since the hook cannot read the
-first prompt.</li>
+block, so it pays no wait and leaves no file.</li>
+<li>An event with no transcript path gets no wait, since the hook cannot
+read the first prompt. Claude Code sends the path with each stop, so
+such a stop is rare. It writes a hook-stops file, with
+<code>agent_transcript_path</code> false, and prints one line. That file is the
+trace of an event with no path.</li>
+<li>An agent id that is not a plain name of letters, digits, <code>_</code> and <code>-</code>
+gives the file a name of its own, <code>unknown-&lt;time&gt;-&lt;pid&gt;.json</code>.</li>
 <li>When the transcript of a fresh agent has no <code>SubagentHandback</code> call
 yet, the hook reads it again every 0.2 seconds, for up to 2 seconds.
 Claude Code can run the hook before it writes that call. A block in the
