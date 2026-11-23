@@ -23,7 +23,7 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 STEPS = ["release-check", "ci-gate", "lint", "package-lint", "stack-rebase-lab", "install-test", "source-archive", "docs-check", "diff-check"]
 # The steps of the job verify that set up a clone or a program, and the step that runs just check.
 SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs",
-         "Install jlog v0.3.0, which the jnterfaces installer needs",
+         "Install jlog v0.4.0, which the jnterfaces installer needs",
          "Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs"}
 CHECK = "Check the release, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff"
 # The actions of the job verify. A check in an action would be a check that just check does not run.
@@ -39,7 +39,7 @@ RELEASE_STEPS = [
     {"name": "Tag the release", "id": "release", "run": "just release"},
 ]
 # The tag of jlog that the CI of jnterfaces pins.
-JLOG = "v0.3.0"
+JLOG = "v0.4.0"
 # The line that installs jlog in CI: install.sh from the tag, for the release of the tag.
 JLOG_INSTALL = (f"curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/{JLOG}/scripts/install.sh"
                 f" | sh -s -- --tag {JLOG}")
@@ -153,7 +153,7 @@ INSTALLER = re.compile(r"rahuldave/jlog/\S*install\.sh")
 DOWNLOAD = re.compile(r"rahuldave/jlog/\S*releases|gh release download\b.*\bjlog\b")
 PINNED_INSTALLER = re.compile(r"rahuldave/jlog/(v[0-9]+\.[0-9]+\.[0-9]+)/scripts/install\.sh \| sh -s -- --tag \1$")
 # The commit of the tag of jlog, which the comment next to each install names.
-JLOG_COMMIT = "d4b712b"
+JLOG_COMMIT = "6078806"
 TAG_COMMIT = re.compile(r"\bis the commit ([0-9a-f]{7,40})\b")
 
 
@@ -222,11 +222,11 @@ class JlogPinTests(unittest.TestCase):
                      "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0",
                      "run: cargo install --git https://github.com/rahuldave/jlog --rev 8febdf1 jlog",
                      "run: cargo install jlog --version 0.2.0",
-                     "# The tag v0.3.0 of jlog is the commit abc1234.",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.3.0",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.2.0/scripts/install.sh | sh -s -- --tag v0.3.0",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/d4b712b/scripts/install.sh | sh -s -- --tag v0.3.0",
+                     "# The tag v0.4.0 of jlog is the commit abc1234.",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.4.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.2.0/scripts/install.sh | sh -s -- --tag v0.4.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/6078806/scripts/install.sh | sh -s -- --tag v0.4.0",
                      "curl -fsSL https://github.com/rahuldave/jlog/raw/main/scripts/install.sh | sh",
                      "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/refs/heads/main/scripts/install.sh | sh",
                      "curl -fsSLO https://github.com/rahuldave/jlog/releases/latest/download/jlog-x86_64-unknown-linux-musl.tar.gz",
