@@ -29,6 +29,8 @@ To run `grv` by hand is to run `just review`:
    record of the review, and the commit gate needs that record for each
    commit.
 4. Fix each finding with a test, and run `just review` again on the new tree.
+   While you fix, run `just quick` when `just --list` shows it. Run
+   `just check` once on the final tree, before the commit.
 
 When the repository has no `just check`, run `gsu` first. It installs the
 recipes.

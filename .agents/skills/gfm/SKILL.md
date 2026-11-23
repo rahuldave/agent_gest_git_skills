@@ -21,7 +21,10 @@ run the tests or check the docs. `gte` and `gdo` do that.
    just diff-check
    ```
 
-3. Fix what they find, and run the failing step again.
+3. Fix what they find, and run the failing step again. In a fix round after a
+   review, run `just quick` when `just --list` shows it. It runs the format
+   check, the lint, the type check and the unit tests, with no coverage. Run
+   `just check` once on the final tree.
 4. Report each step that you ran, and whether it passed.
 
 Each step is a recipe, so the run log has it. Do not call the tools of a
