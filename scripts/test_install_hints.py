@@ -14,13 +14,13 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 # The release that each install line names with --tag.
 RELEASES = {
-    "jlog": "v0.3.0",
+    "jlog": "v0.4.0",
     "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
 # The ref of install.sh for each program.
 REFS = {
-    "jlog": "v0.3.0",
+    "jlog": "v0.4.0",
     "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
@@ -31,7 +31,7 @@ HINT = URL + PIPE
 ANY_PROGRAM = re.compile(r"rahuldave/([\w.-]+)/\S*?$", re.IGNORECASE)
 # A program that the line names, for an install.sh without the URL of its owner.
 PROGRAM_NAME = re.compile(r"\b(jlog|jagt|gest)\b", re.IGNORECASE)
-# The tag ends at the end of the line, a space or a mark. So v0.3.0-rc1 and v0.3.0.1 fail.
+# The tag ends at the end of the line, a space or a mark. So v0.4.0-rc1 and v0.4.0.1 fail.
 TAG_END = re.compile(r"(?:$|[\s`\"');<]|[.,](?!\d))")
 
 
@@ -108,30 +108,30 @@ class InstallHintTests(unittest.TestCase):
         self.assertEqual(found, set(REFS))
 
     def test_the_pin_check_catches_each_unpinned_line(self):
-        good = HINT.format(name="jlog", ref="v0.3.0", tag="v0.3.0")
+        good = HINT.format(name="jlog", ref="v0.4.0", tag="v0.4.0")
         self.assertEqual(pin_problems(f"Run `{good}`, then put ~/.local/bin on PATH."), ([], {"jlog"}))
         jagt = HINT.format(name="jagt", ref=REFS["jagt"], tag="v0.6.4")
         self.assertEqual(pin_problems(f"Run `{jagt}`. To build it, run `cargo install --tag v0.6.4 jagt`."),
                          ([], {"jagt"}))
-        for bad in (good.replace("/v0.3.0/", "/main/"),
-                    good.replace("/v0.3.0/", "/refs/heads/main/"),
+        for bad in (good.replace("/v0.4.0/", "/main/"),
+                    good.replace("/v0.4.0/", "/refs/heads/main/"),
                     # The name comes in by format, so the pin check of test_ci_check.py does not read this probe as a hint.
-                    "curl -fsSL https://github.com/rahuldave/{}/raw/main/scripts/install.sh | sh -s -- --tag v0.3.0".format("jlog"),
+                    "curl -fsSL https://github.com/rahuldave/{}/raw/main/scripts/install.sh | sh -s -- --tag v0.4.0".format("jlog"),
                     good.replace("rahuldave", "RahulDave"),
                     good + "-rc1",
                     good + " --tag v0.2.0",
-                    good.replace("--tag v0.3.0", "--tag v0.2.0"),
+                    good.replace("--tag v0.4.0", "--tag v0.2.0"),
                     jagt.replace(REFS["jagt"], "7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a"),
                     jagt.replace("--tag v0.6.4", "--tag v0.6.3"),
                     jagt.replace(REFS["jagt"], "main"),
                     good + ".1",
-                    f"{good} or {good.replace('/v0.3.0/', '/main/')}",
+                    f"{good} or {good.replace('/v0.4.0/', '/main/')}",
                     f"| `jlog` | `{good}` |",
-                    "Run its scripts/install.sh with --tag v0.3.0, as the README of jlog shows."):
+                    "Run its scripts/install.sh with --tag v0.4.0, as the README of jlog shows."):
             with self.subTest(line=bad):
                 self.assertNotEqual(pin_problems(bad)[0], [])
         # A URL that a line break splits is checked as one line.
-        unpinned = good.replace("/v0.3.0/", "/main/")
+        unpinned = good.replace("/v0.4.0/", "/main/")
         cut = unpinned.index("install.sh")
         self.assertNotEqual(line_problems([unpinned[:cut], unpinned[cut:]])[1][1], [])
         cut = good.index("install.sh")

@@ -29,12 +29,12 @@ jobs:
       - uses: extractions/setup-just@v3
       - uses: astral-sh/setup-uv@v6
       - name: Install jlog
-        # The tag v0.3.0 of jlog is the commit d4b712b, as in the CI of jnterfaces. install.sh comes from the tag. It
+        # The tag v0.4.0 of jlog is the commit 6078806, as in the CI of jnterfaces. install.sh comes from the tag. It
         # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
         # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed download fails.
         shell: bash
         run: |
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
+          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: CI
         env:
