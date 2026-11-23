@@ -100,13 +100,16 @@ gest search "Follow-up <feature/module>" --all --json --limit 20
 just test [target]          # the unit tests, or one file or test of them
 just integration [flow]     # the slower end-to-end checks
 just coverage-check         # the lines that no test ran
+just quick [args]           # a fix round: format, lint, types and unit tests, with no coverage
 ```
 
 7. For frontend, UI or interaction changes, run `just visual-check`, and give
    its packet to a fresh agent. Before it, start the app with `just dev
    [port]`, or confirm that a server already runs.
 8. Run `just test-review`, and give its packet to a fresh agent. Fix each
-   finding with a test, or give the reason not to fix it.
+   finding with a test, or give the reason not to fix it. While you fix, run
+   `just quick` when `just --list` shows it. Run `just check` once on the
+   final tree.
 9. Report the strategy, the red check when it applies, the recipes and the
    results. If a layer cannot run, say exactly why.
 

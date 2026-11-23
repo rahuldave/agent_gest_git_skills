@@ -58,10 +58,15 @@ Use for one concrete implementable Gest task.
     4. `just test-review`, when the change touches code
     `.agents/targets/required.txt` says which targets each path needs. Fix
     what their findings say, with a test for each fix, and run the targets
-    again until they give no open finding. Then run `just check` last, on the
+    again until they give no open finding. In these fix rounds, run
+    `just quick` instead of `just check` when `just --list` shows it. It runs the
+    format check, the lint, the type check and the unit tests, with no
+    coverage, and it records no pass. Then run `just check` once, last, on the
     tree that you commit, because the gate needs a pass for that tree.
 14. Run no check of your own beside these. A check outside the recipes leaves
-    no trace in the run log, so the gate cannot count it.
+    no trace in the run log, so the gate cannot count it. When the project
+    has `just quick`, it is the set of checks for a fix round, so do not choose
+    a set of your own.
 15. Commit with `gcm`. The commit gate checks the pass and the records.
 16. For non-trivial leaf tasks, add a completion note before completion. Preserve
    the task description as intent; record what actually happened in the note:
@@ -103,6 +108,7 @@ Every check goes through a recipe, so the run log has it:
 
 ```bash
 just check            # every step, and the pass for the tree
+just quick [args]     # a fix round: format, lint, types and unit tests, with no coverage and no pass
 just fmt [path]       # changes the format of the files
 just test [target]    # one step of just check, while you work
 just dev [port]       # the app, for a visual check

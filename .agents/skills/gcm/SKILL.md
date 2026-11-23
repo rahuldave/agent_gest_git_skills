@@ -107,6 +107,10 @@ both, so a commit without them stops.
    and the others when the change touches their files.
 2. Run `just check` last, on the tree that you commit. The gate needs a pass
    for that tree, and `update-docs` and the fixes of findings change the tree.
+   A fix round is the pass of fixes after the findings of a target. In a fix
+   round, run `just quick` when `just --list` shows it. It runs the format
+   check, the lint, the type check and the unit tests, with no coverage. It
+   records no pass, so run `just check` once on the final tree.
 3. Commit with plain git. The hooks do the rest:
    - The pre-commit hook runs the gate on the tree.
    - The commit-msg hook adds the trailer `Commit-Gate: patch:<id>` to the
@@ -161,7 +165,8 @@ This table gives the effect of a change of each kind on each record:
   globs `code` or `tests` of `.agents/stack.json`.
 - A target of the project has every kind in its scope.
 - The pass of `just check` must still be for the commit tree. Run
-  `just check` after each change.
+  `just check` again after the last change. Between the fixes, `just quick`
+  is enough when the project has it.
 - When `update-docs` runs again and changes a page, `prose` must run again.
   The gate tells you.
 
@@ -174,7 +179,8 @@ The message of the gate names what is missing. Do what it says, then commit
 again:
 
 - **No pass for this tree.** Run `just check`, and fix what fails. A change
-  after the pass makes a new tree, so run it again after each change. Under
+  after the pass makes a new tree, so run it again after the last change.
+  While you fix, run `just quick` when the project has it. Under
   pre-commit, an unstaged edit of a tracked file gives this stop too, because
   pre-commit puts it aside. The stop then also gives the stash fix below.
 - **No record of a target.** Run the targets in the order that the message
