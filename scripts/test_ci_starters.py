@@ -1,9 +1,11 @@
 """Check the Rust steps of the CI starters of gsu: github-check.yml and github-release.yml.
 
-The Rust steps run only in a project with a toolchain file, rust-toolchain.toml or rust-toolchain, as the docs-publish
-workflow of jnterfaces does. They read the toolchain from the file and name no channel, restore a cache of the build,
-and save it only on a push to main. A project in another language skips each Rust step. The tests parse the YAML with PyYAML, and run the shell of the toolchain steps with bash, a fake rustup and
-Python 3.11 or later, for tomllib.
+The Rust steps run only in a project with a toolchain file, rust-toolchain.toml or rust-toolchain. They read the
+toolchain from the file and name no channel, restore a cache of the build, and save it only on a push to main. The key
+of the cache holds the compiler that rustc -V prints, the word check that each job of just check shares, the hash of
+each Cargo.lock and the commit. A project with a Cargo.toml and no toolchain file fails with a message that names the
+fix. A project in another language skips each Rust step. The tests parse the YAML with PyYAML, and run the shell of
+the toolchain steps with bash, a fake rustup and rustc, and Python 3.11 or later, for tomllib.
 """
 
 from __future__ import annotations
@@ -24,11 +26,15 @@ STARTERS = ("github-check.yml", "github-release.yml")
 # The job of each starter that runs the checks, and so has the cache.
 CHECK_JOBS = {"github-check.yml": "ci", "github-release.yml": "check"}
 INSTALL = "Install the Rust toolchain of rust-toolchain.toml"
+STOP = "Stop a Rust project that has no toolchain file"
 # The condition of the install, as in the docs-publish workflow of jnterfaces.
 HAS_TOOLCHAIN = "hashFiles('rust-toolchain.toml', 'rust-toolchain') != ''"
+NO_TOOLCHAIN = "hashFiles('Cargo.toml') != '' && hashFiles('rust-toolchain.toml', 'rust-toolchain') == ''"
 PATHS = ["~/.cargo/registry/index", "~/.cargo/registry/cache", "~/.cargo/git/db", "target/"]
-PREFIX = "${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-${{ github.job }}-"
-KEY = PREFIX + "${{ hashFiles('**/Cargo.lock') }}"
+# The word check stands for the build of just check, so the jobs of a pull request and of main share the cache.
+PREFIX = "${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-"
+LOCK = PREFIX + "${{ hashFiles('**/Cargo.lock') }}-"
+KEY = LOCK + "${{ github.sha }}"
 RUST = "steps.rust.outputs.toolchain != ''"
 SAVE_IF = (f"{RUST} && github.event_name == 'push' && github.ref == 'refs/heads/main' && "
            "steps.rust-cache.outputs.cache-hit != 'true'")
@@ -94,7 +100,7 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(save["with"]["key"], "${{ steps.rust-cache.outputs.cache-primary-key }}")
         self.assertEqual(save["if"], SAVE_IF)
 
-    def test_each_check_job_restores_with_the_key_of_jnterfaces(self) -> None:
+    def test_each_check_job_restores_with_the_shared_key(self) -> None:
         for name, job_name in CHECK_JOBS.items():
             with self.subTest(starter=name):
                 job = starter(name)["jobs"][job_name]
@@ -106,7 +112,39 @@ class CacheTests(unittest.TestCase):
                 self.assertLess(names.index(INSTALL), names.index("Restore the Rust cache"))
                 self.assertEqual(paths(restore), PATHS)
                 self.assertEqual(restore["with"]["key"], KEY)
-                self.assertEqual(restore["with"]["restore-keys"].strip(), PREFIX)
+                # The newest cache with the same Cargo.lock first, then the newest of the same compiler.
+                self.assertEqual(restore["with"]["restore-keys"].strip().splitlines(), [LOCK, PREFIX])
+
+    def test_the_key_has_its_parts_in_order(self) -> None:
+        key = step(starter("github-check.yml")["jobs"]["ci"], "Restore the Rust cache")["with"]["key"]
+        parts = re.findall(r"\$\{\{ ([^}]+) \}\}|-(check)-", key)
+        self.assertEqual([expr or word for expr, word in parts],
+                         ["runner.os", "runner.arch", "steps.rust.outputs.toolchain", "check",
+                          "hashFiles('**/Cargo.lock')", "github.sha"])
+
+    def test_a_pull_request_and_main_share_the_key_with_no_name_of_a_job(self) -> None:
+        # The job of check.yml is ci, and the job of release.yml is check: a key with github.job would part them.
+        keys = set()
+        for name, job_name in CHECK_JOBS.items():
+            text = (TEMPLATES / name).read_text()
+            with self.subTest(starter=name):
+                self.assertNotIn("github.job", text)
+                restore = step(starter(name)["jobs"][job_name], "Restore the Rust cache")
+                keys.add((restore["with"]["key"], restore["with"]["restore-keys"]))
+        self.assertEqual(len(keys), 1)
+
+    def test_the_commit_is_only_in_the_key_and_never_in_a_variable(self) -> None:
+        for name in STARTERS:
+            data = starter(name)
+            with self.subTest(starter=name):
+                for job in data["jobs"].values():
+                    for each in job["steps"]:
+                        found = "github.sha" in yaml.safe_dump(each)
+                        is_restore = each.get("name") == "Restore the Rust cache"
+                        self.assertEqual(found, is_restore, each.get("name"))
+                        if is_restore:
+                            self.assertNotIn("github.sha", each["with"]["restore-keys"])
+                            self.assertNotIn("env", each)
 
     def test_check_yml_runs_only_on_pull_requests_and_saves_nothing(self) -> None:
         flow = starter("github-check.yml")
@@ -180,6 +218,11 @@ class ToolchainTests(unittest.TestCase):
                     self.assertEqual(install["id"], "rust")
                     # A project without a toolchain file, in any language, skips each Rust step.
                     self.assertEqual(install["if"], HAS_TOOLCHAIN)
+                    # A Rust project without one stops first, with the fix.
+                    stop = step(job, STOP)
+                    self.assertEqual(stop["if"], NO_TOOLCHAIN)
+                    self.assertEqual(names.index(STOP) + 1, names.index(INSTALL))
+                    self.assertEqual(stop, step(starter("github-release.yml")["jobs"]["check"], STOP))
                     for each in job["steps"][names.index(INSTALL) + 1:]:
                         label = (each.get("name") or "").lower()
                         if "rust" in label or "llvm-cov" in label:
@@ -188,9 +231,51 @@ class ToolchainTests(unittest.TestCase):
                     self.assertEqual(install, step(starter("github-release.yml")["jobs"]["check"], INSTALL))
 
 
+class ConditionTests(unittest.TestCase):
+    """Evaluate the conditions of the toolchain steps as GitHub does: hashFiles gives '' when no file matches."""
+
+    @staticmethod
+    def runs_in(condition: str, files: set[str]) -> bool:
+        def part(text: str) -> bool:
+            match = re.fullmatch(r"hashFiles\(([^)]*)\) (==|!=) ''", text.strip())
+            assert match, text
+            names = re.findall(r"'([^']+)'", match.group(1))
+            hit = any(name in files for name in names)
+            return hit if match.group(2) == "!=" else not hit
+        return all(part(each) for each in condition.split("&&"))
+
+    def test_only_a_rust_project_with_no_toolchain_file_stops(self) -> None:
+        cases = {
+            frozenset(): (False, False),
+            frozenset({"pyproject.toml"}): (False, False),
+            frozenset({"Cargo.toml"}): (True, False),
+            frozenset({"Cargo.toml", "rust-toolchain.toml"}): (False, True),
+            frozenset({"Cargo.toml", "rust-toolchain"}): (False, True),
+            # A toolchain file alone still installs, as before.
+            frozenset({"rust-toolchain.toml"}): (False, True),
+        }
+        for name, job_name in CHECK_JOBS.items():
+            job = starter(name)["jobs"][job_name]
+            for files, (stops, installs) in cases.items():
+                with self.subTest(starter=name, files=sorted(files)):
+                    self.assertEqual(self.runs_in(step(job, STOP)["if"], files), stops)
+                    self.assertEqual(self.runs_in(step(job, INSTALL)["if"], files), installs)
+
+    def test_the_stop_fails_and_names_the_fix(self) -> None:
+        run = step(starter("github-check.yml")["jobs"]["ci"], STOP)["run"]
+        done = subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", run],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertRegex(done.stdout, r"^::error::.*Cargo\.toml and no rust-toolchain\.toml")
+        self.assertIn("Run just install, which writes rust-toolchain.toml", done.stdout)
+
+
 @unittest.skipUnless(sys.version_info >= (3, 11), "needs tomllib, Python 3.11 or later")
 class ToolchainShellTests(unittest.TestCase):
-    """Run the shell of the install step, as GitHub runs it: bash -e -o pipefail, with a fake rustup."""
+    """Run the shell of the install step, as GitHub runs it: bash -e -o pipefail, with a fake rustup and rustc."""
+
+    RUSTC = "rustc 1.95.0 (59807616e 2026-04-14)"
+    TOOLCHAIN = "1.95.0-59807616e-2026-04-14"
 
     def setUp(self) -> None:
         scratch = tempfile.TemporaryDirectory(prefix="ci-starter-test-")
@@ -204,57 +289,114 @@ class ToolchainShellTests(unittest.TestCase):
         self.log = self.base / "rustup.log"
         (self.tools / "rustup").write_text(f'#!/bin/sh\necho "$*" >> "{self.log}"\nexit 0\n')
         (self.tools / "rustup").chmod(0o755)
+        # rustc -V prints the line of FAKE_RUSTC, as the rustc of the toolchain file would.
+        (self.tools / "rustc").write_text('#!/bin/sh\n[ "$1" = -V ] || exit 2\nprintf \'%s\\n\' "$FAKE_RUSTC"\n')
+        (self.tools / "rustc").chmod(0o755)
         self.output = self.base / "output"
         self.install = step(starter("github-release.yml")["jobs"]["check"], INSTALL)["run"]
 
-    def bash(self, **env: str) -> subprocess.CompletedProcess[str]:
+    def bash(self, rustc: str = RUSTC, **env: str) -> subprocess.CompletedProcess[str]:
         self.output.write_text("")
         full = {key: value for key, value in os.environ.items() if not key.startswith(("RUSTUP", "CARGO"))}
-        full.update(PATH=f"{self.tools}{os.pathsep}{os.environ['PATH']}", GITHUB_OUTPUT=str(self.output), **env)
+        full.update(PATH=f"{self.tools}{os.pathsep}{os.environ['PATH']}", GITHUB_OUTPUT=str(self.output),
+                    FAKE_RUSTC=rustc, **env)
         return subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", self.install],
                               cwd=self.project, capture_output=True, text=True, env=full)
 
-    def test_an_exact_version_is_the_toolchain_with_no_warning(self) -> None:
+    def write(self, channel: str) -> None:
+        (self.project / "rust-toolchain.toml").write_text(f'[toolchain]\nchannel = "{channel}"\n')
+
+    def test_the_key_holds_the_version_that_rustc_prints(self) -> None:
         for channel in ("1.95.0", "nightly-2026-11-12", "beta-2026-11-01"):
-            (self.project / "rust-toolchain.toml").write_text(f'[toolchain]\nchannel = "{channel}"\n')
+            self.write(channel)
             done = self.bash()
             with self.subTest(channel=channel):
                 self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-                self.assertEqual(self.output.read_text(), f"toolchain={channel}\n")
+                self.assertEqual(self.output.read_text(), f"toolchain={self.TOOLCHAIN}\n")
                 self.assertNotIn("::warning::", done.stdout)
         # No name after install: rustup reads the toolchain file.
         calls = self.log.read_text().splitlines()
         self.assertEqual(calls[:2], ["toolchain install", "component add clippy rustfmt llvm-tools-preview"])
 
-    def test_a_channel_that_moves_gets_a_warning(self) -> None:
+    def test_a_nightly_keeps_its_commit_and_date(self) -> None:
+        self.write("nightly-2026-11-12")
+        self.bash(rustc="rustc 1.97.0-nightly (abc123def 2026-11-11)")
+        self.assertEqual(self.output.read_text(), "toolchain=1.97.0-nightly-abc123def-2026-11-11\n")
+
+    def test_a_channel_that_moves_gets_a_new_key_with_each_compiler(self) -> None:
+        self.write("stable")
+        keys = []
+        for rustc in ("rustc 1.95.0 (59807616e 2026-04-14)", "rustc 1.96.0 (aaaaaaaaa 2026-05-26)"):
+            done = self.bash(rustc=rustc)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn("::warning::The toolchain file names no exact version (stable)", done.stdout)
+            keys.append(self.output.read_text())
+        self.assertEqual(keys, ["toolchain=1.95.0-59807616e-2026-04-14\n", "toolchain=1.96.0-aaaaaaaaa-2026-05-26\n"])
+
+    def test_each_channel_that_moves_gets_a_warning(self) -> None:
         for channel in ("stable", "1.95", "nightly"):
-            (self.project / "rust-toolchain.toml").write_text(f'[toolchain]\nchannel = "{channel}"\n')
+            self.write(channel)
             done = self.bash()
             with self.subTest(channel=channel):
                 self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-                self.assertIn(f"::warning::The toolchain file names the channel {channel}, which moves", done.stdout)
-                self.assertEqual(self.output.read_text(), f"toolchain={channel}\n")
+                self.assertIn(f"::warning::The toolchain file names no exact version ({channel})", done.stdout)
+                self.assertEqual(self.output.read_text(), f"toolchain={self.TOOLCHAIN}\n")
 
     def test_the_old_file_rust_toolchain_comes_first(self) -> None:
+        (self.project / "rust-toolchain").write_text("stable\n")
+        self.write("1.95.0")
+        self.assertIn("no exact version (stable)", self.bash().stdout)
         (self.project / "rust-toolchain").write_text("1.94.0\n")
-        done = self.bash()
-        self.assertEqual(self.output.read_text(), "toolchain=1.94.0\n", done.stderr)
-        (self.project / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.95.0"\n')
-        self.bash()
-        self.assertEqual(self.output.read_text(), "toolchain=1.94.0\n")
+        self.write("stable")
+        self.assertNotIn("::warning::", self.bash().stdout)
 
-    def test_a_channel_that_no_key_can_hold_fails(self) -> None:
+    def test_a_file_with_no_plain_channel_warns_without_its_text(self) -> None:
+        # The key comes from rustc, not from the file. The warning never prints the text of the file, so a line of it
+        # cannot become a command of the workflow. (A real rustup cannot install a toolchain of path, so such a
+        # project fails at rustup toolchain install; the fake here only shows that the warning stays clean.)
         for text in ('[toolchain]\npath = "/opt/rust"\n', '[toolchain]\nchannel = "1.95.0 x"\n',
-                     '[toolchain]\nchannel = "1.95.0\\nx"\n', '[toolchain]\nchannel = "a/b"\n'):
+                     '[toolchain]\nchannel = "1.95.0\\n::error::x"\n', '[toolchain]\nchannel = "a/b"\n'):
             (self.project / "rust-toolchain.toml").write_text(text)
             done = self.bash()
             with self.subTest(text=text):
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertIn("::warning::The toolchain file names no exact version (no channel)", done.stdout)
+                self.assertNotIn("::error::", done.stdout)
+                self.assertEqual(self.output.read_text(), f"toolchain={self.TOOLCHAIN}\n")
+
+    def test_an_exact_version_with_a_host_triple_gets_no_warning(self) -> None:
+        for channel in ("1.95.0-x86_64-unknown-linux-gnu", "1.95.0-aarch64-apple-darwin",
+                        "nightly-2026-11-12-x86_64-unknown-linux-gnu"):
+            self.write(channel)
+            done = self.bash()
+            with self.subTest(channel=channel):
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertNotIn("::warning::", done.stdout)
+        self.write("stable-x86_64-unknown-linux-gnu")
+        self.assertIn("::warning::", self.bash().stdout)
+
+    def test_a_failed_read_of_the_channel_only_warns(self) -> None:
+        # An old python3 without tomllib, or a file that is not UTF-8, must not stop the step.
+        self.write("1.95.0")
+        (self.tools / "python3").unlink()
+        (self.tools / "python3").write_text("#!/bin/sh\necho 'ModuleNotFoundError: tomllib' >&2\nexit 1\n")
+        (self.tools / "python3").chmod(0o755)
+        done = self.bash()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("::warning::The toolchain file names no exact version (no channel)", done.stdout)
+        self.assertEqual(self.output.read_text(), f"toolchain={self.TOOLCHAIN}\n")
+
+    def test_a_rustc_with_no_version_fails(self) -> None:
+        self.write("1.95.0")
+        for rustc in ("", "rustc", "error: no toolchain", "rustc 1.95 (x)"):
+            done = self.bash(rustc=rustc)
+            with self.subTest(rustc=rustc):
                 self.assertEqual(done.returncode, 1, done.stdout)
-                self.assertIn("names no channel that a cache key can hold", done.stdout)
+                self.assertIn("::error::rustc -V printed no version of Rust", done.stdout)
                 self.assertEqual(self.output.read_text(), "")
 
     def test_rustup_toolchain_fails_without_its_value(self) -> None:
-        (self.project / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.95.0"\n')
+        self.write("1.95.0")
         done = self.bash(RUSTUP_TOOLCHAIN="secret-stable")
         self.assertEqual(done.returncode, 1)
         self.assertIn("RUSTUP_TOOLCHAIN is set", done.stdout)
