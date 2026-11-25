@@ -31,7 +31,8 @@ jobs:
       - name: Install jlog
         # The tag v0.4.0 of jlog is the commit 6078806, as in the CI of jnterfaces. install.sh comes from the tag. It
         # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
-        # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed download fails.
+        # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed
+        # download fails.
         shell: bash
         run: |
           curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
@@ -93,8 +94,18 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov@0.9.1
-      # The cache keeps the crates that cargo downloads and the build folder, target/ with target/llvm-cov-target,
-      # the warm build of coverage. The key is the runner, the compiler, the word check, the hash of each Cargo.lock
+      # With JNPROFILE_RUST_NEXTEST=1, jnprofile-rust runs its integration tests with cargo llvm-cov nextest, which
+      # needs cargo-nextest. It comes as a release binary too, only when the env of the workflow or of this job sets
+      # the variable to 1, as in: env: {JNPROFILE_RUST_NEXTEST: "1"}. Set it in check.yml and in release.yml alike.
+      - name: Install cargo-nextest
+        if: steps.rust.outputs.toolchain != '' && env.JNPROFILE_RUST_NEXTEST == '1'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.151
+      # The cache keeps the crates that cargo downloads and the whole build folder, target/ with
+      # target/llvm-cov-target, the warm build of coverage. Keep all of target/: the new build layout of cargo puts
+      # files under target/debug/build/<pkg>/<hash>/out/, so a cache of only target/debug/deps misses them. The
+      # key is the runner, the compiler, the word check, the hash of each Cargo.lock
       # and the commit. Each job that runs just check uses the word check, on a pull request and on main, so a pull
       # request restores the cache of main. A restore takes the newest cache with the same Cargo.lock, else the
       # newest cache of the same compiler. A run reads the caches of its own branch and of the default branch only.
