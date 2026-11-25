@@ -173,6 +173,32 @@ class CacheTests(unittest.TestCase):
                 self.assertEqual(found["if"], RUST)
                 self.assertNotRegex((TEMPLATES / name).read_text(), r"cargo b?install")
 
+    def test_cargo_nextest_is_a_pinned_release_binary_only_with_the_variable(self) -> None:
+        for name, job_name in CHECK_JOBS.items():
+            with self.subTest(starter=name):
+                job = starter(name)["jobs"][job_name]
+                names = [each.get("name") for each in job["steps"]]
+                found = step(job, "Install cargo-nextest")
+                self.assertEqual(found["uses"], "taiki-e/install-action@v2")
+                self.assertRegex(found["with"]["tool"], r"^cargo-nextest@[0-9]+\.[0-9]+\.[0-9]+$")
+                self.assertEqual(found["if"], f"{RUST} && env.JNPROFILE_RUST_NEXTEST == '1'")
+                # After cargo-llvm-cov, and before the restore and the checks.
+                self.assertEqual(names.index("Install cargo-nextest"), names.index("Install cargo-llvm-cov") + 1)
+                self.assertNotIn("JNPROFILE_RUST_NEXTEST", str(job.get("env")) + str(starter(name).get("env")))
+        self.assertNotIn("Install cargo-nextest",
+                         [each.get("name") for each in starter("github-release.yml")["jobs"]["release"]["steps"]])
+
+    def test_the_cache_keeps_the_whole_build_folder(self) -> None:
+        # The new build layout of cargo writes target/debug/build/<pkg>/<hash>/out/, so a narrower path misses files.
+        for name in STARTERS:
+            for job in starter(name)["jobs"].values():
+                for each in job["steps"]:
+                    if each.get("uses", "").startswith("actions/cache"):
+                        with self.subTest(starter=name, step=each.get("name")):
+                            # No narrower path and no exclusion such as !target/debug/build.
+                            self.assertEqual(paths(each), PATHS)
+                            self.assertFalse([path for path in paths(each) if path.startswith("!")])
+
     def test_each_third_party_action_is_pinned_to_a_major_tag(self) -> None:
         for name in STARTERS:
             for job in starter(name)["jobs"].values():

@@ -136,10 +136,19 @@ projects skip them.
 - The step stops when `RUSTUP_TOOLCHAIN` is set, and when `rustc -V` prints
   no version.
 - `cargo-llvm-cov` 0.9.1 comes as a release binary, so no run compiles it.
+- With `JNPROFILE_RUST_NEXTEST=1`, jnprofile-rust runs its integration tests
+  with `cargo llvm-cov nextest`. Then the starters also install
+  `cargo-nextest` 0.9.151 as a release binary. Set `JNPROFILE_RUST_NEXTEST:
+  "1"` in the `env` at the top of both `check.yml` and `release.yml`, or in
+  the job `ci` of `check.yml` and the job `check` of `release.yml`. The
+  value must be exactly `1`. An `env` of only one step, or a repository
+  variable, does not turn on the install.
 
 **The Rust cache.** A cache keeps `~/.cargo/registry/index`,
 `~/.cargo/registry/cache`, `~/.cargo/git/db` and `target/`. `target/` holds
-`target/llvm-cov-target`, the warm build of the coverage step. The key has
+`target/llvm-cov-target`, the warm build of the coverage step. The cache keeps all
+of `target/`, because cargo also writes files under
+`target/debug/build/<pkg>/<hash>/out/`. The key has
 five parts:
 
 1. the runner, such as `Linux-X64`;
