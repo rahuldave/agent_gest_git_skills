@@ -21,11 +21,10 @@ throughout this skill; the repository default is not an implicit PR target.
 
 ## Core Job
 
-Use GTW before any code-writing turn in a Gest-managed workspace. If a request
-may edit code, templates, styles, tests, docs, workflow files, generated project
-artifacts, or other repo files, first make the Gest tracking decision visible:
-inspect or create the relevant task, claim it when needed, and record scope
-changes before editing. Treat a user typo such as "gtx" as "gtw" unless a
+Use GTW before any code-writing turn in a Gest-managed workspace. When a
+request may edit code, templates, styles, tests, docs, workflow files or other
+repo files, first make the Gest tracking decision visible. Inspect or create the relevant task, claim it when needed, and
+record scope changes before editing. Treat a user typo such as "gtx" as "gtw" unless a
 separate named skill is actually available.
 
 Before editing files, decide:
@@ -47,8 +46,8 @@ Before editing files, decide:
 Everything substantial should become a Gest task/issue with appropriate
 dependencies.
 
-For multi-stage substantial work, create a small GTW-owned treelet: one parent
-task for the user request, with child leaves for separately verifiable stages
+For multi-stage substantial work, create a small GTW-owned treelet. It has one
+parent task for the user request, with child leaves for separately verifiable stages
 such as `gsp`, `gpl`, `gim`, `gfm`, `gte`, `gdo`, `grv`, `gpr`, and `gcm`.
 Small tactical work may combine mechanical stages in one leaf, but the
 completion note must still say which verification/review/promotion stages ran
@@ -67,7 +66,7 @@ not need sandbox escalation just to reach SQLite.
 
 Legacy or stock system Gest builds may still store the canonical database at
 `~/Library/Application Support/gest/gest.db`, outside the workspace writable
-roots. Keep the compatibility workaround for those installations: run Gest
+roots. Keep the compatibility workaround for those installations. Run Gest
 mutations with `require_escalated`; if a read-looking command emits
 `attempt to write a readonly database` or a sync-import readonly warning, retry
 it with `require_escalated`; use a narrow approval prefix such as `["gest"]`.
@@ -237,8 +236,8 @@ The worktree commands:
   `just worktree-sync` does not seed.
 - `just worktree-sync` sets up a worktree that another tool made, such as
   Claude Code or Codex.
-- `just worktrees` lists the worktrees: clean or dirty, merged or not, and the
-  ignored files that a removal deletes.
+- `just worktrees` lists the worktrees. For each one, it shows clean or dirty,
+  merged or not, and the ignored files that a removal deletes.
 - `just worktrees-prune` removes each worktree that is clean, merged and idle
   for 2 hours, with `git worktree remove` and no `--force`. Branches stay. A
   worktree with ignored files that setup did not put there, such as outputs,
@@ -309,7 +308,7 @@ lenses while preserving the safety and VCS rules in these skills.
 
 If a Just command emits an `AGENT_TASK v1` block, it is not ordinary dynamic
 context. Validate the block as an agentic Just target and delegate the parsed
-task to a subagent. This is a mandatory subagent handoff boundary. Apply the
+task to a subagent. The packet is a mandatory subagent handoff boundary. Apply the
 same rule recursively when the packet comes from a nested agentic Just call, an
 agentic dependency, a hook-triggered packet, or an agentic verification target.
 Concrete Just targets that do not emit `AGENT_TASK v1` remain normal commands.
@@ -378,11 +377,12 @@ trigger applies, route through `gcm` before completing the handoff. If `gcm` is
 intentionally skipped despite a dirty worktree, record the concrete no-commit
 reason in the Gest note and final response.
 
-Development work should be committed at verified durable checkpoints: after a
+Commit development work at verified durable checkpoints, for example after a
 depth-1 workstream or coherent depth-2 subtree, before switching product areas,
 before handoff, after risky bug/migration work, or before GitHub issue/PR sync.
 Use `gcm`, stage explicit files, and never put Gest IDs in commit messages.
-When Codex creates a commit, make a separate push/sync decision: verify
+
+When Codex creates a commit, make a separate push/sync decision. Verify
 `git status --short --branch`, then push unless local-only work was explicitly
 requested or the push is blocked. If the branch has no upstream, set one with
 the normal repository command such as `git push -u origin <branch>`; "no
@@ -403,8 +403,8 @@ each verified coherent depth-2 leaf or tightly related set of leaves. Prefer a
 commit before claiming the next implementation slice when the completed work
 changes schema, persistence, query semantics, public APIs, user-visible UI, or
 non-trivial verification. Use the completed Gest notes to write detailed commit
-bodies: `Done`, `Verification`, and real `Follow-up` details should become the
-source material. The goal is useful bisect granularity, not one giant feature
+bodies. The `Done`, `Verification` and real `Follow-up` details are the source
+material. The goal is useful bisect granularity, not one giant feature
 commit.
 
 ## Checkpoint Hygiene
@@ -413,7 +413,7 @@ At every durable checkpoint, run the cleanup that future agents need:
 
 - let Gest maintain graphs automatically; inspect native graphs when useful
 - for every development depth-1 parent and development iteration, run the
-  explicit `gpr` decision: create/sync the GitHub issue and record
+  explicit `gpr` decision. Create/sync the GitHub issue and record
   `github.issue`/`github.url`, or record why it was not promoted
 - verify push state for each Codex-created commit; do not finish a checkpoint
   with an unmentioned `ahead` branch
@@ -460,8 +460,8 @@ machine-queryable facts, not prose summaries.
 Update parent notes/status when useful, but leave outline parents open unless
 the whole subtree is done.
 
-Before final response for any substantial task, perform a dirty-worktree gate:
-`git status --short --branch` for every repo you edited. If a repo has
+Before final response for any substantial task, perform a dirty-worktree gate.
+Run `git status --short --branch` for every repo you edited. If a repo has
 Codex-owned changes and any commit-required checkpoint trigger applies, do not
 finalize yet; run `gcm` or record a specific no-commit reason. A completed Gest
 leaf is not a substitute for a Git checkpoint.

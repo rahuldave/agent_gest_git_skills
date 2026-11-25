@@ -119,31 +119,54 @@ the bump into the version files, commits it as `github-actions[bot]`, and
 tags the release. Both files are yours from then on. Add the setup of the
 tools of your languages to them when the runner lacks them.
 
-**Rust in CI.** Both starters have Rust steps, the same as the docs-publish
-workflow of jnterfaces. They run only when the project has a toolchain file,
-`rust-toolchain.toml` or `rust-toolchain`. Other projects skip them.
+**Rust in CI.** Both starters have Rust steps. They run only when the project
+has a toolchain file, `rust-toolchain.toml` or `rust-toolchain`. Other
+projects skip them.
 
+- `just install` of jnterfaces writes `rust-toolchain.toml` with the exact
+  version of the Rust of your machine. No template of this package gives the
+  file, because a version in a template goes stale. Commit the file.
+- A project with a `Cargo.toml` and no toolchain file fails at the first Rust
+  step. The message says to run `just install` and commit the file.
 - `rustup toolchain install` reads the toolchain file. No step names a
   channel such as `stable`, so CI runs the same compiler and clippy as your
   machine.
 - A channel that moves, such as `stable` or `1.95`, gets a warning. Pin an
   exact version, such as `1.95.0`.
-- The step stops when `RUSTUP_TOOLCHAIN` is set, and when the channel cannot
-  go into a cache key.
+- The step stops when `RUSTUP_TOOLCHAIN` is set, and when `rustc -V` prints
+  no version.
 - `cargo-llvm-cov` 0.9.1 comes as a release binary, so no run compiles it.
-- A cache keeps `~/.cargo/registry/index`, `~/.cargo/registry/cache`,
-  `~/.cargo/git/db` and `target/`. Its key holds the runner, the toolchain,
-  the job and the hash of each `Cargo.lock`. A pull request only reads the
-  cache. A push to `main` writes it.
-- `target/` holds `target/llvm-cov-target`, the warm build of the coverage
-  step. A `CARGO*` or `RUST*` variable that changes on each run, such as one
-  from `github.run_id`, makes that build clean itself on each run. Do not set
-  one.
 
-A cache can hold some gigabytes, and GitHub keeps 10 GB for each repository.
-The workflow `check.yml` runs only on pull requests, so it saves no cache.
-Its job is `ci`, and the key holds the name of the job. So it reads only a
-cache that a job `ci` saved on `main`.
+**The Rust cache.** A cache keeps `~/.cargo/registry/index`,
+`~/.cargo/registry/cache`, `~/.cargo/git/db` and `target/`. `target/` holds
+`target/llvm-cov-target`, the warm build of the coverage step. The key has
+five parts:
+
+1. the runner, such as `Linux-X64`;
+2. the compiler, as `rustc -V` prints it, such as `1.95.0-59807616e-2026-04-14`.
+   A channel that moves gets a new key with each new compiler;
+3. the word `check`, which each job that runs `just check` uses, so a pull
+   request restores the cache of `main`;
+4. the hash of each `Cargo.lock`;
+5. the commit, `github.sha`.
+
+A restore first takes the newest cache with the same `Cargo.lock`, then the
+newest cache of the same compiler. A pull request only restores. Each push to
+`main` that passes `just check` saves a new cache, so the cache of `main`
+stays up to date. Each save uploads the whole cache, which can take some
+gigabytes, so the job `check` on `main` takes longer by the time of that
+upload. The job `release` waits for it.
+
+GitHub keeps 10 GB of caches for each repository. When the caches pass that
+size, GitHub removes the caches that no run used for the longest time. It
+also removes a cache that no run used for 7 days. The restore takes only the
+newest cache, so an old cache that GitHub removes costs nothing. The 10 GB
+also hold the other caches of the repository, such as the cache of uv. Look at
+the caches under Actions, Caches, when the Rust cache is big.
+
+A `CARGO*` or `RUST*` variable that changes on each run, such as one from
+`github.run_id`, makes the coverage build clean itself on each run. Do not set
+one. The commit in the key is no variable, so it does not change the build.
 
 It reports each workflow executable that is missing, such as `gest`. It checks for
 conflicts before it writes, and it keeps the instructions and the other settings that the

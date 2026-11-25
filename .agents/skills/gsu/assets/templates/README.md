@@ -12,15 +12,16 @@ with existing project files so local conventions are preserved.
   coverage, `.cx` runtime state, and editor/OS files.
 - `env/envrc.local-bin`: `direnv` snippet for adding `.local/bin` to PATH.
 - `env/env.example`: minimal committed `.env.example` placeholder.
-- `env/python-uv.envrc`, `env/typescript-npm.envrc`, `env/go.envrc`, and
-  `env/rust-cargo.envrc`: profile-specific `direnv` environment snippets.
+- The profile-specific `direnv` environment snippets `env/python-uv.envrc`,
+  `env/typescript-npm.envrc`, `env/go.envrc` and `env/rust-cargo.envrc`.
 
 ## Profiles
 
 - `gitignore/python-uv.gitignore`
 - `gitignore/typescript-npm.gitignore`
 - `gitignore/go.gitignore`
-- `gitignore/rust-cargo.gitignore` and `rust/rust-toolchain.toml`
+- `gitignore/rust-cargo.gitignore`. For `rust-toolchain.toml`, see the section
+  "The Rust toolchain".
 - `gitignore/browser-agent.gitignore`
 
 The Justfile templates are in the `just` skill of jnterfaces, in
@@ -28,6 +29,18 @@ The Justfile templates are in the `just` skill of jnterfaces, in
 `typescript-npm.just`, `go.just`, `rust-cargo.just`, `browser-agent.just`,
 `npm-local-cache.just` and `agent-contract.just`. If the just skill is not
 installed, run `just install` first. jnterfaces always installs that skill.
+
+## The Rust toolchain
+
+No template gives `rust-toolchain.toml`. A version in a template goes stale,
+and it can differ from the compiler of the machine. `just install` of
+jnterfaces writes the file for the rust profile, when the project has no
+toolchain file. The channel is the exact version of the stable Rust of the
+machine, such as `channel = "1.95.0"`.
+
+Commit the file, because the CI starters read it.
+`JN_RUST_TOOLCHAIN=1.95.0 just install` writes another version. The installer
+never changes a toolchain file that the project has.
 
 `gsu` should record the final command contract in `AGENTS.md` after composing
 or adapting these snippets.
