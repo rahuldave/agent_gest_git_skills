@@ -461,6 +461,210 @@ class WorktreeScriptTests(unittest.TestCase):
         self.assertTrue((self.shelf / "via-just").is_dir())
 
 
+FAKE_CP = """#!/bin/sh
+# A cp for the tests: it writes its arguments to FAKE_CP_LOG. With FAKE_CP_FAIL it makes half a copy and fails, else
+# it copies with the cp of the system, without the flags of copy-on-write. With FAKE_CP_BUILD it gives each copied
+# file the time of now, as a build during the copy would.
+printf '%s\\n' "$*" >> "$FAKE_CP_LOG"
+for last; do :; done
+for arg; do [ "$arg" = "$last" ] && break; source="$arg"; done
+if [ -n "$FAKE_CP_FAIL" ]; then mkdir -p "$last"; echo half > "$last/half"; echo "cp: clonefile failed" >&2; exit 1; fi
+/bin/cp -p -R "$source" "$last" || exit 1
+if [ -n "$FAKE_CP_BUILD" ]; then sleep 1; find "$last" -type f -exec touch {} +; fi
+"""
+
+
+class SeedTests(unittest.TestCase):
+    """Setup seeds the build folders of .worktreeseed, by default target in a Rust project, with copy-on-write."""
+
+    def setUp(self) -> None:
+        scratch = tempfile.TemporaryDirectory(prefix="gest-seed-test-")
+        self.addCleanup(scratch.cleanup)
+        self.base = Path(scratch.name).resolve()
+        self.repo = self.base / "proj"
+        self.shelf = self.base / "proj.worktrees"
+        git("init", "-qb", "main", str(self.repo), cwd=self.base)
+        git("config", "user.name", "seed-test", cwd=self.repo)
+        git("config", "user.email", "seed-test@example.invalid", cwd=self.repo)
+        (self.repo / ".gitignore").write_text("/target/\n/build/\n")
+        (self.repo / "Cargo.toml").write_text("[package]\nname = \"x\"\n")
+        git("add", ".", cwd=self.repo)
+        git("commit", "-qm", "init", cwd=self.repo)
+        (self.repo / "target/debug/deps").mkdir(parents=True)
+        (self.repo / "target/debug/deps/libdep.rlib").write_bytes(b"compiled")
+        (self.repo / "target/debug/link").symlink_to("deps/libdep.rlib")
+        tools = self.base / "tools"
+        tools.mkdir()
+        (tools / "cp").write_text(FAKE_CP)
+        (tools / "cp").chmod(0o755)
+        self.log = self.base / "cp.log"
+        self.env = dict(os.environ, PATH=f"{tools}{os.pathsep}{os.environ['PATH']}", FAKE_CP_LOG=str(self.log))
+        self.env.pop("FAKE_CP_FAIL", None)
+
+    def run_script(self, *args: str, cwd: Path | None = None, check: bool = True,
+                   env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        done = subprocess.run([sys.executable, str(SCRIPT), *args], cwd=cwd or self.repo, capture_output=True,
+                              text=True, env=env or self.env)
+        if check:
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return done
+
+    def calls(self) -> list[str]:
+        return self.log.read_text().splitlines() if self.log.exists() else []
+
+    def leftovers(self, folder: Path) -> list[str]:
+        """The folders of a seed that stay in the worktree or in its Git folder."""
+        admin = Path(git("rev-parse", "--absolute-git-dir", cwd=folder).strip())
+        return [item.name for place in (folder, admin) for item in place.iterdir() if "seed-" in item.name]
+
+    def test_a_rust_worktree_gets_a_copy_of_target_with_copy_on_write(self) -> None:
+        out = self.run_script("new", "t", "--no-setup").stdout
+        folder = self.shelf / "t"
+        self.assertIn("seeded 1 build folder(s)", out)
+        self.assertEqual((folder / "target/debug/deps/libdep.rlib").read_bytes(), b"compiled")
+        # A copy, never a link: a shared build folder gives false passes of clippy.
+        self.assertFalse((folder / "target").is_symlink())
+        self.assertNotEqual((folder / "target").resolve(), (self.repo / "target").resolve())
+        self.assertTrue((folder / "target/debug/link").is_symlink())
+        flags = ["-c", "-p", "-R"] if sys.platform == "darwin" else ["--reflink=auto", "-p", "-R"]
+        [call] = self.calls()
+        self.assertEqual(call.split()[:3], flags)
+        self.assertEqual(call.split()[3], str(self.repo / "target"))
+        self.assertEqual(self.leftovers(folder), [])
+        self.assertEqual(git("status", "--porcelain", cwd=folder), "")
+
+    def test_the_system_cp_seeds_target(self) -> None:
+        env = dict(self.env, PATH=os.environ["PATH"])
+        self.run_script("new", "real", "--no-setup", env=env)
+        folder = self.shelf / "real"
+        self.assertEqual((folder / "target/debug/deps/libdep.rlib").read_bytes(), b"compiled")
+        self.assertTrue((folder / "target/debug/link").is_symlink())
+        self.assertEqual(self.leftovers(folder), [])
+
+    def test_a_failed_copy_leaves_no_half_folder(self) -> None:
+        out = self.run_script("new", "t", "--no-setup", env=dict(self.env, FAKE_CP_FAIL="1")).stdout
+        folder = self.shelf / "t"
+        self.assertIn("Skipped the seed target: cp failed: cp: clonefile failed", out)
+        self.assertFalse(os.path.lexists(folder / "target"))
+        self.assertEqual(self.leftovers(folder), [])
+        self.assertEqual(git("status", "--porcelain", cwd=folder), "")
+
+    def test_sync_never_seeds(self) -> None:
+        # A worktree that is older than the build of the main checkout has sources older than that build, and cargo
+        # would take the copy as up to date. So only new seeds.
+        self.run_script("new", "t", "--no-setup", env=dict(self.env, FAKE_CP_FAIL="1"))
+        folder = self.shelf / "t"
+        self.log.unlink()
+        out = self.run_script("sync", cwd=folder).stdout
+        self.assertEqual(self.calls(), [])
+        self.assertFalse(os.path.lexists(folder / "target"))
+        self.assertNotIn("seeded", out)
+
+    def test_the_seed_is_older_than_the_sources_so_cargo_builds_the_project_again(self) -> None:
+        then = time.time() - 3600
+        for item in (self.repo / "target").rglob("*"):
+            os.utime(item, (then, then), follow_symlinks=False)
+        self.run_script("new", "t", "--no-setup")
+        folder = self.shelf / "t"
+        self.assertLess((folder / "target/debug/deps/libdep.rlib").stat().st_mtime,
+                        (folder / "Cargo.toml").stat().st_mtime - 60)
+
+    def test_a_build_during_the_copy_is_not_newer_than_the_sources(self) -> None:
+        # FAKE_CP_BUILD gives each copied file the time of the copy, as a build in the main checkout during the copy
+        # would. That is after git worktree add wrote the sources.
+        out = self.run_script("new", "t", "--no-setup", env=dict(self.env, FAKE_CP_BUILD="1")).stdout
+        self.assertIn("seeded 1", out)
+        folder = self.shelf / "t"
+        built = (folder / "target/debug/deps/libdep.rlib").stat().st_mtime
+        for name in (".gitignore", "Cargo.toml"):
+            self.assertGreaterEqual((folder / name).stat().st_mtime, built)
+
+    def test_a_branch_that_tracks_the_folder_keeps_its_own(self) -> None:
+        git("checkout", "-qb", "tracks", cwd=self.repo)
+        (self.repo / "build").mkdir()
+        (self.repo / "build/kept").write_text("tracked\n")
+        git("add", "-f", "build/kept", cwd=self.repo)
+        git("commit", "-qm", "tracked build", cwd=self.repo)
+        git("checkout", "-q", "main", cwd=self.repo)
+        (self.repo / "build").mkdir()
+        (self.repo / "build/other").write_text("main\n")
+        (self.repo / ".worktreeseed").write_text("build\n")
+        self.run_script("new", "tracks", "--no-setup")
+        self.assertEqual(sorted(p.name for p in (self.shelf / "tracks/build").iterdir()), ["kept"])
+        self.assertEqual(self.calls(), [])
+
+    def test_no_seed_without_a_build_folder_in_the_main_checkout_or_without_cargo(self) -> None:
+        shutil.rmtree(self.repo / "target")
+        self.run_script("new", "t1", "--no-setup")
+        self.assertFalse((self.shelf / "t1/target").exists())
+        (self.repo / "target").mkdir()
+        git("rm", "-q", "Cargo.toml", cwd=self.repo)
+        git("commit", "-qm", "no cargo", cwd=self.repo)
+        self.run_script("new", "t2", "--no-setup")
+        self.assertFalse((self.shelf / "t2/target").exists())
+        self.assertEqual(self.calls(), [])
+
+    def test_no_setup_still_seeds_and_just_setup_runs_after_the_seed(self) -> None:
+        if not shutil.which("just"):
+            self.skipTest("just is not installed")
+        (self.repo / "Justfile").write_text("setup:\n    test -f target/debug/deps/libdep.rlib\n    touch target/set-up\n")
+        git("add", "Justfile", cwd=self.repo)
+        git("commit", "-qm", "justfile", cwd=self.repo)
+        self.run_script("new", "a", "--no-setup")
+        self.assertTrue((self.shelf / "a/target/debug/deps/libdep.rlib").is_file())
+        self.assertFalse((self.shelf / "a/target/set-up").exists())
+        self.run_script("new", "b")
+        self.assertTrue((self.shelf / "b/target/set-up").exists())
+
+    def test_worktreeseed_names_the_build_folders(self) -> None:
+        (self.repo / "build/out").mkdir(parents=True)
+        (self.repo / "build/out/a.o").write_text("o\n")
+        (self.repo / ".worktreeseed").write_text("# the folders to seed\nbuild/\n")
+        self.run_script("new", "t1", "--no-setup")
+        self.assertTrue((self.shelf / "t1/build/out/a.o").is_file())
+        self.assertFalse((self.shelf / "t1/target").exists())
+        (self.repo / ".worktreeseed").write_text("# none\n")
+        self.run_script("new", "t2", "--no-setup")
+        self.assertFalse((self.shelf / "t2/target").exists())
+        self.assertFalse((self.shelf / "t2/build").exists())
+        for bad in ("../outside", "~/x", "*", "."):
+            (self.repo / ".worktreeseed").write_text(bad + "\n")
+            with self.subTest(line=bad):
+                self.assertIn(".worktreeseed line 1", self.run_script("new", "bad", "--no-setup",
+                                                                       check=False).stderr)
+
+    def test_a_folder_that_git_tracks_or_does_not_ignore_is_not_seeded(self) -> None:
+        (self.repo / "kept").mkdir()
+        (self.repo / "kept/file").write_text("tracked\n")
+        git("add", "kept", cwd=self.repo)
+        git("commit", "-qm", "kept", cwd=self.repo)
+        (self.repo / "loose").mkdir()
+        (self.repo / "loose/file").write_text("x\n")
+        (self.repo / ".worktreeseed").write_text("kept\nloose\n")
+        out = self.run_script("new", "t", "--no-setup").stdout
+        self.assertIn("Skipped the seed loose: git does not ignore it", out)
+        self.assertFalse((self.shelf / "t/loose").exists())
+        self.assertEqual(self.calls(), [])
+
+    def test_a_seeded_target_does_not_keep_a_merged_worktree(self) -> None:
+        self.run_script("new", "t", "--no-setup")
+        folder = self.shelf / "t"
+        (folder / "target/debug/new.rlib").write_bytes(b"built here")
+        age_worktree(folder, 5)
+        self.run_script("prune")
+        self.assertFalse(folder.exists())
+
+    def test_the_copy_command_of_each_platform(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(sys.path.remove, str(SCRIPT.parent))
+        import worktree
+        from unittest import mock
+        with mock.patch.object(worktree.sys, "platform", "darwin"):
+            self.assertEqual(worktree.copy_command(), ["cp", "-c", "-p", "-R"])
+        with mock.patch.object(worktree.sys, "platform", "linux"):
+            self.assertEqual(worktree.copy_command(), ["cp", "--reflink=auto", "-p", "-R"])
+
+
 class TaskerHookTests(unittest.TestCase):
     def setUp(self) -> None:
         scratch = tempfile.TemporaryDirectory(prefix="gest-tasker-hook-test-")

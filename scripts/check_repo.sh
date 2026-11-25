@@ -386,6 +386,7 @@ done
   "${python[@]}" -m unittest scripts/test_release_tag.py -q
   uv run --no-project --quiet --with pyyaml python -m unittest scripts/test_record_result.py -q
   uv run --no-project --quiet --with pyyaml==6.0.2 python -m unittest scripts/test_ci_check.py -q
+  uv run --no-project --quiet --python '>=3.11' --with pyyaml==6.0.2 python -m unittest scripts/test_ci_starters.py -q
 )
 
 echo "repository checks passed"

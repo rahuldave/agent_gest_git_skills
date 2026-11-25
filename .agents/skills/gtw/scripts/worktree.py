@@ -16,9 +16,15 @@ that git ignores is copied, as Claude Code and Conductor do. .worktreelink has o
 symbolic link to the path in the main checkout, as PostHog does. Copy small inputs, such as .env. Link large shared
 inputs, such as a data folder. Keep outputs in each worktree.
 
+A third file, .worktreeseed, has one build folder on each line. When a new worktree has no such folder and the main
+checkout has one, new copies it with copy-on-write: cp -c on macOS, cp --reflink=auto on Linux. So the first build
+uses the compiled dependencies again. With no .worktreeseed, a project with a Cargo.toml seeds target. The copy is
+never a link: a build folder that two worktrees share gives false passes. A seeded folder does not keep a worktree at
+prune.
+
 Merged means that a merge of the worktree into the base branch would change nothing, so rebased and squashed work
 counts. A worktree stays when it holds ignored files other than the copies and links of setup, such as outputs or
-an edited .env; --with-ignored removes it too. A third file in the main checkout, .worktreedisposable, has gitignore
+an edited .env; --with-ignored removes it too. A fourth file in the main checkout, .worktreedisposable, has gitignore
 patterns for the ignored files that a command can make again, such as .venv/ and __pycache__/: those do not keep a
 worktree. A detached worktree stays unless a branch has its commits. A removal
 uses `git worktree remove` without --force. Branches stay.
@@ -38,6 +44,8 @@ import tempfile
 import time
 
 RECORD = Path('.agents/stack.json')
+# The build folder of cargo, which a worktree of a Rust project seeds when the project has no .worktreeseed.
+RUST_BUILD = 'target'
 VARIANTS = ('git', 'gitwt')
 
 
@@ -132,20 +140,110 @@ def include_files(main):
     return sorted(path for path in done.stdout.split('\0') if path)
 
 
-def link_paths(main):
-    """The paths of .worktreelink: one on each line, # starts a note."""
-    listing = main / '.worktreelink'
-    if not listing.is_file():
-        return []
+def path_list(listing):
+    """The paths of the list file LISTING: one on each line, # starts a note. Each one is a plain path inside the
+    project."""
     paths = []
     for number, line in enumerate(listing.read_text().splitlines(), 1):
         line = line.split('#', 1)[0].strip().strip('/')
         if not line:
             continue
-        if line.startswith('~') or '..' in Path(line).parts or '*' in line:
-            raise WorktreeError(f'.worktreelink line {number}: {line} must be a plain path inside the project')
+        if line.startswith('~') or '..' in Path(line).parts or '*' in line or line == '.':
+            raise WorktreeError(f'{listing.name} line {number}: {line} must be a plain path inside the project')
         paths.append(line)
     return paths
+
+
+def link_paths(main):
+    """The paths of .worktreelink."""
+    listing = main / '.worktreelink'
+    return path_list(listing) if listing.is_file() else []
+
+
+def seed_paths(main):
+    """The build folders of .worktreeseed. With no such file, target when the main checkout has a Cargo.toml, as
+    cargo builds into target. An empty file seeds nothing."""
+    listing = main / '.worktreeseed'
+    if listing.is_file():
+        return path_list(listing)
+    return [RUST_BUILD] if (main / 'Cargo.toml').is_file() else []
+
+
+def copy_command():
+    """The cp that copies a folder with copy-on-write and keeps the times of its files. On macOS, cp -c clones each
+    file on APFS. On Linux, cp --reflink=auto shares the blocks on Btrfs and XFS, and makes a full copy on ext4."""
+    if sys.platform == 'darwin':
+        return ['cp', '-c', '-p', '-R']
+    return ['cp', '--reflink=auto', '-p', '-R']
+
+
+def touch_tracked(top):
+    """Give each file that git tracks in top the time of now, so that no build in the worktree is newer."""
+    now = time.time()
+    for name in git('ls-files', '-z', cwd=top).stdout.split('\0'):
+        path = top / name
+        if name and path.is_file() and not path.is_symlink():
+            try:
+                os.utime(path, (now, now))
+            except OSError:
+                continue
+
+
+def seed(top, main):
+    """Copy each build folder of seed_paths from the main checkout into top, with copy-on-write, when top has none.
+
+    Only new seeds, right after git worktree add wrote each file of top. cargo takes a build as up to date when it is
+    newer than its sources. A build in the main checkout during the copy can be newer than the sources of top, so
+    after a seed each file that git tracks in top gets the time of now. Then cargo builds the crates of the project
+    again, and it reuses only the builds of the dependencies.
+
+    The copy goes into a folder in the Git folder of the worktree first, which git status does not show, and a
+    rename puts it in place. So a failed copy leaves no half folder. It is a copy, never a link or a shared folder:
+    two worktrees that share one build folder see each other's builds, and a lint can pass on code that it did not
+    check. Returns the number of folders seeded.
+    """
+    seeded = 0
+    admin = Path(git('rev-parse', '--absolute-git-dir', cwd=top).stdout.strip())
+    for relative in seed_paths(main):
+        source, target = main / relative, top / relative
+        if source.is_symlink() or not source.is_dir():
+            continue
+        if os.path.lexists(target) or under_link(top, relative):
+            continue
+        if git('ls-files', '--error-unmatch', '--', relative, cwd=main, check=False).returncode == 0:
+            say(f'Skipped the seed {relative}: git tracks it.')
+            continue
+        if git('check-ignore', '-q', '--', relative + '/', cwd=main, check=False).returncode != 0:
+            say(f'Skipped the seed {relative}: git does not ignore it. Add /{relative}/ to .gitignore.')
+            continue
+        say(f'Seeding {relative} from the main checkout, with copy-on-write.')
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # The Git folder is in the main checkout. When the worktree is on another volume, the rename fails and the
+            # seed is skipped, so the first build makes the folder.
+            work = Path(tempfile.mkdtemp(prefix='seed-', dir=admin))
+        except OSError as error:
+            say(f'Skipped the seed {relative}: {error.strerror}.')
+            continue
+        try:
+            copy = work / target.name
+            done = subprocess.run([*copy_command(), str(source), str(copy)], capture_output=True, text=True)
+            if done.returncode != 0 or not copy.is_dir():
+                lines = done.stderr.strip().splitlines()
+                say(f'Skipped the seed {relative}: cp failed{": " + lines[-1] if lines else ""}. '
+                    'The first build makes it.')
+                continue
+            if os.path.lexists(target):
+                say(f'Kept {relative}: the worktree made one during the copy.')
+                continue
+            os.rename(copy, target)
+            seeded += 1
+            touch_tracked(top)
+        except OSError as error:
+            say(f'Skipped the seed {relative}: {error.strerror}.')
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+    return seeded
 
 
 def under_link(top, relative):
@@ -160,7 +258,7 @@ def under_link(top, relative):
 
 def sync(top, main):
     """Copy the files of .worktreeinclude and link the paths of .worktreelink from the main checkout into top.
-    A path that is already in the worktree stays as it is."""
+    A path that is already in the worktree stays as it is. Returns the numbers of files copied and paths linked."""
     if top == main:
         raise WorktreeError('this is the main checkout; run it in a worktree, or use just worktree-new')
     copied = linked = 0
@@ -205,7 +303,7 @@ def sync(top, main):
             say(f'Skipped {relative}: {error.strerror}.')
             continue
         copied += 1
-    say(f'Set up {top}: copied {copied} file(s), linked {linked} path(s).')
+    return copied, linked
 
 
 def has_recipe(name, cwd):
@@ -219,6 +317,8 @@ def new(cwd, name, base=None, setup=True):
     if git('check-ref-format', '--branch', name, cwd=cwd, check=False).returncode != 0:
         raise WorktreeError(f'{name} is not a valid branch name')
     folder = folder_of(main, name)
+    # A bad line of .worktreeseed stops new before it makes the worktree.
+    seed_paths(main['path'])
     if os.path.lexists(folder):
         raise WorktreeError(f'{folder} is there already')
     if ref_exists(f'refs/heads/{name}', main['path']):
@@ -232,7 +332,9 @@ def new(cwd, name, base=None, setup=True):
             raise WorktreeError(f'found no base {base}')
         git('worktree', 'add', '-b', name, str(folder), base, cwd=main['path'])
         say(f'Made the worktree {folder} with the new branch {name} from {base}.')
-    sync(folder.resolve(), main['path'])
+    copied, linked = sync(folder.resolve(), main['path'])
+    seeded = seed(folder.resolve(), main['path'])
+    say(f'Set up {folder}: copied {copied} file(s), linked {linked} path(s), seeded {seeded} build folder(s).')
     if setup and has_recipe('setup', folder):
         say('Running just setup in the worktree.')
         if subprocess.run(['just', 'setup'], cwd=folder).returncode != 0:
@@ -325,11 +427,12 @@ def disposable(relative, paths):
 
 
 def setup_only(path, main, entries):
-    """True when each ignored file is a link of .worktreelink, a copy of .worktreeinclude that nobody changed, or a
-    file that .worktreedisposable names."""
+    """True when each ignored file is a link of .worktreelink, a copy of .worktreeinclude that nobody changed, a
+    file in a build folder of .worktreeseed, or a file that .worktreedisposable names."""
     links = {main / relative for relative in link_paths(main)}
     included = set(include_files(main))
-    remade = disposable_paths(path, main)
+    # A seeded build folder is an output that a build makes again.
+    remade = disposable_paths(path, main) | set(seed_paths(main))
     for name in entries:
         item = path / name
         # A whole folder that .worktreedisposable names, such as .venv, needs no walk through its files.
@@ -489,7 +592,9 @@ def main(argv):
     elif command == 'new' and 1 <= len(words) <= 2:
         new(cwd, *words, setup='--no-setup' not in flags)
     elif command == 'sync' and not words:
-        sync(toplevel(cwd), worktrees(cwd)[0]['path'])
+        top = toplevel(cwd)
+        copied, linked = sync(top, worktrees(cwd)[0]['path'])
+        say(f'Set up {top}: copied {copied} file(s), linked {linked} path(s).')
     elif command == 'list' and not words:
         show(cwd, report='--report' in flags, min_age=min_age, with_ignored='--with-ignored' in flags)
     elif command == 'prune' and not words:
