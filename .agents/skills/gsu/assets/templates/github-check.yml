@@ -36,6 +36,65 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # The Rust steps run only in a project with a toolchain file, so the workflow works for any language. rustup
+      # reads the file, so the workflow names no channel, and CI runs the compiler of each machine of the project.
+      # The steps are the ones of the docs-publish workflow of jnterfaces. Do not set RUSTUP_TOOLCHAIN: it would take
+      # the place of the file, so the step stops when it is set.
+      - name: Install the Rust toolchain of rust-toolchain.toml
+        id: rust
+        if: hashFiles('rust-toolchain.toml', 'rust-toolchain') != ''
+        shell: bash
+        run: |
+          if [ -n "${RUSTUP_TOOLCHAIN:-}" ]; then
+            echo "::error::RUSTUP_TOOLCHAIN is set. Remove it, so that the toolchain file names the toolchain."
+            exit 1
+          fi
+          rustup toolchain install
+          # just check needs clippy, rustfmt and llvm-tools-preview. rustup adds them to the toolchain of the file.
+          rustup component add clippy rustfmt llvm-tools-preview
+          # The channel of the file, for the key of the cache. rustup reads rust-toolchain first when both are there.
+          channel="$(python3 -I -c '
+          import pathlib, tomllib
+          names = [pathlib.Path(name) for name in ("rust-toolchain", "rust-toolchain.toml")]
+          text = next(path for path in names if path.is_file()).read_text()
+          try:
+              print(tomllib.loads(text)["toolchain"]["channel"])
+          except (tomllib.TOMLDecodeError, KeyError, TypeError):
+              print(text.strip())
+          ')"
+          if [[ ! "$channel" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::The toolchain file names no channel that a cache key can hold. Write an exact version, such as channel = \"1.95.0\"."
+            exit 1
+          fi
+          # An exact version, or a nightly or beta of one day, stays the same compiler. Any other channel moves.
+          if [[ ! "$channel" =~ ^([0-9]+\.[0-9]+\.[0-9]+|(nightly|beta)-[0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
+            echo "::warning::The toolchain file names the channel $channel, which moves. Pin an exact version, such as 1.95.0, so that CI and each machine run the same compiler."
+          fi
+          echo "toolchain=$channel" >> "$GITHUB_OUTPUT"
+      # cargo-llvm-cov comes as a release binary, so no run compiles it. Keep the version as the profile pins it.
+      - name: Install cargo-llvm-cov
+        if: steps.rust.outputs.toolchain != ''
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.9.1
+      # The cache keeps the crates that cargo downloads and the build folder, target/ with target/llvm-cov-target,
+      # the warm build of coverage. A new toolchain or a new Cargo.lock makes a new key. A run reads the caches of its
+      # own branch and of the default branch only. This workflow runs only on pull requests, so it saves no cache. Set no CARGO* or RUST* variable from a value that changes on each
+      # run, such as github.run_id: the coverage build keeps a fingerprint of these variables, and a new value makes
+      # it clean the whole build.
+      - name: Restore the Rust cache
+        id: rust-cache
+        if: steps.rust.outputs.toolchain != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target/
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-${{ github.job }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-${{ github.job }}-
       - name: CI
         env:
           JN_CI_BASE: ${{ github.event.pull_request.base.sha }}

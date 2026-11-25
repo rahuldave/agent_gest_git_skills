@@ -227,6 +227,14 @@ The worktree commands:
   such as `.env`. It makes a symbolic link for each path in `.worktreelink`,
   such as a large `data` folder. So scripts with relative paths find their
   inputs. Outputs stay in each worktree.
+- `just worktree-new` seeds each build folder of `.worktreeseed` that the
+  new worktree lacks.
+  It copies the folder from the main checkout with copy-on-write, with
+  `cp -c` on macOS and `cp --reflink=auto` on Linux. With no `.worktreeseed`,
+  a project with a `Cargo.toml` seeds `target`. It never links a build folder
+  or shares one `CARGO_TARGET_DIR`. A shared build folder lets a lint pass on
+  code that it did not check. `--no-setup` does not skip the seed.
+  `just worktree-sync` does not seed.
 - `just worktree-sync` sets up a worktree that another tool made, such as
   Claude Code or Codex.
 - `just worktrees` lists the worktrees: clean or dirty, merged or not, and the

@@ -119,6 +119,32 @@ the bump into the version files, commits it as `github-actions[bot]`, and
 tags the release. Both files are yours from then on. Add the setup of the
 tools of your languages to them when the runner lacks them.
 
+**Rust in CI.** Both starters have Rust steps, the same as the docs-publish
+workflow of jnterfaces. They run only when the project has a toolchain file,
+`rust-toolchain.toml` or `rust-toolchain`. Other projects skip them.
+
+- `rustup toolchain install` reads the toolchain file. No step names a
+  channel such as `stable`, so CI runs the same compiler and clippy as your
+  machine.
+- A channel that moves, such as `stable` or `1.95`, gets a warning. Pin an
+  exact version, such as `1.95.0`.
+- The step stops when `RUSTUP_TOOLCHAIN` is set, and when the channel cannot
+  go into a cache key.
+- `cargo-llvm-cov` 0.9.1 comes as a release binary, so no run compiles it.
+- A cache keeps `~/.cargo/registry/index`, `~/.cargo/registry/cache`,
+  `~/.cargo/git/db` and `target/`. Its key holds the runner, the toolchain,
+  the job and the hash of each `Cargo.lock`. A pull request only reads the
+  cache. A push to `main` writes it.
+- `target/` holds `target/llvm-cov-target`, the warm build of the coverage
+  step. A `CARGO*` or `RUST*` variable that changes on each run, such as one
+  from `github.run_id`, makes that build clean itself on each run. Do not set
+  one.
+
+A cache can hold some gigabytes, and GitHub keeps 10 GB for each repository.
+The workflow `check.yml` runs only on pull requests, so it saves no cache.
+Its job is `ci`, and the key holds the name of the job. So it reads only a
+cache that a job `ci` saved on `main`.
+
 It reports each workflow executable that is missing, such as `gest`. It checks for
 conflicts before it writes, and it keeps the instructions and the other settings that the
 project already has. The source revision and a hash of each file are in
@@ -388,7 +414,7 @@ is `.agents/just/roles/agent_gest_git_skills.just`. The scripts are
 | `just stack-prs BASE BRANCH...` | Opens the PRs of a stack in order, from the bottom branch up, each on the branch below it. Pushes a branch with no upstream or ahead of it, never with force. Takes `--dry-run` first |
 | `just release` | Tags the next release `vX.Y.Z` by semver, pushes the tag and checks it on the remote. The number comes from the commits since the last tag. When the version files of the language profiles are lower, it writes the bump into them, commits it as `chore(release): vX.Y.Z` and tags that commit. A run on a released commit, or on the parent of its version commit, prints `already released` and gives the tag again. Never moves or deletes a tag. Takes `--dry-run` first |
 
-Setup follows two files in the main checkout, as other tools do:
+Setup follows three files in the main checkout:
 
 - `.worktreeinclude` has gitignore patterns. Each file that matches and that
   Git ignores is copied, for example `.env`. Claude Code and Conductor read
@@ -398,8 +424,39 @@ Setup follows two files in the main checkout, as other tools do:
   sees a link as a file, so the pattern `data/` does not ignore it. Write
   `/data` in `.gitignore`. The recipe warns when Git does not ignore a link.
 
+- `.worktreeseed` has one build folder on each line. When a new worktree has
+  no such folder and the main checkout has one, `just worktree-new` copies it
+  with copy-on-write. So the first build uses the compiled dependencies again.
+  With no `.worktreeseed`, a project with a `Cargo.toml` seeds `target`. An
+  empty file seeds nothing.
+
 Copy small inputs, link large shared inputs, and keep outputs in each
 worktree.
+
+**The seed of a build folder.** `just worktree-new` seeds a folder only when
+Git ignores it. It copies with `cp -c -p -R` on macOS and `cp --reflink=auto -p -R` on
+Linux:
+
+- On APFS, Btrfs and XFS, the copy takes seconds. It uses no more disk space
+  until a file changes.
+- On ext4, `--reflink=auto` makes a full copy. It is correct, but it takes
+  the time and the disk space of the whole folder, which can be some
+  gigabytes. Delete `target` in the worktree, or write an empty
+  `.worktreeseed`, if you do not want this.
+- A failed copy leaves no folder, and the first build makes it. The copy goes
+  into a folder in the Git folder of the worktree, and a rename puts it in
+  place.
+- cargo takes a build as up to date when it is newer than its sources. So
+  after the seed, each file that Git tracks in the worktree gets the time of
+  now. Then cargo builds the crates of the project again and reuses only the
+  builds of the dependencies.
+- `just worktree-sync` does not seed. Only a new worktree gets a seed.
+
+The seed is always a copy. It is never a link, and the worktrees never share
+one `CARGO_TARGET_DIR`. Two worktrees that share a build folder see each
+other's builds, so clippy can pass on code that it did not check. A seeded
+folder does not keep a worktree at prune, since a build makes it again.
+`--no-setup` skips only `just setup`, so the seed still takes place.
 
 **What prune keeps.** Merged means that a merge of the worktree into the base
 would change nothing. So rebased and squashed work counts as merged, and reverted work
@@ -410,7 +467,7 @@ A detached worktree stays when no branch has its commits.
 **Files that a command makes again.** Commands in a worktree make ignored
 files. For example, `just setup` makes `.venv`, and the tests make
 `__pycache__` and `.pytest_cache`. These files would keep every worktree. So prune reads a
-third file in the main checkout, `.worktreedisposable`. It has gitignore
+fourth file in the main checkout, `.worktreedisposable`. It has gitignore
 patterns for the ignored files that a command can make again, for example:
 
 ```gitignore

@@ -122,7 +122,10 @@ class WorkflowTests(unittest.TestCase):
                 self.assertLess(uv, job_steps.index(steps[0]))
                 self.assertEqual(steps[0].get("shell"), "bash")
                 self.assertIn(GITHUB_PATH, steps[0]["run"])
-                self.assertNotIn("cargo", (ROOT / ".agents/skills/gsu/assets/templates" / name).read_text())
+                # jlog comes from install.sh, so no cargo builds it. The Rust steps of the starters name cargo, but
+                # no cargo install.
+                self.assertNotRegex((ROOT / ".agents/skills/gsu/assets/templates" / name).read_text(),
+                                    r"cargo b?install")
 
     def test_verify_uploads_the_archive_of_just_check(self) -> None:
         upload = self.jobs["verify"]["steps"][-1]

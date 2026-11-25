@@ -12,7 +12,7 @@ tasker-mode:
 worktree-new NAME *args:
     @{{jn_worktree}} new "$@"
 
-# Set up this worktree from the main checkout: copy the files of .worktreeinclude, link the paths of .worktreelink
+# Set up this worktree from the main checkout: copy the files of .worktreeinclude, link the paths of .worktreelink, seed the build folders of .worktreeseed
 worktree-sync:
     @{{jn_worktree}} sync
 

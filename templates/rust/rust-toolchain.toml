@@ -1,2 +1,4 @@
+# Write the exact version that rustc --version prints, so that CI runs the same compiler and clippy as your
+# machine. The CI starters warn on a name such as stable, since its version changes with each Rust release.
 [toolchain]
-channel = "stable"
+channel = "1.95.0"
