@@ -53,7 +53,7 @@ The parts of a solution exist, but they are not joined:
 | Agent hook | A hook of a harness that runs before or after a tool call. |
 | smalldocs | The program that builds the docs websites of the stack. |
 | Docments | The comments beside the arguments of a Python function. smalldocs reads them for the API pages. In TypeScript, the same comments come after each parameter. |
-| API pages | The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.12 makes them for Python, TypeScript and Rust. |
+| API pages | The pages of a docs website that smalldocs makes from the code of a package. smalldocs 0.5.12 and later make them for Python, TypeScript and Rust. |
 
 ## The threat model
 
@@ -131,7 +131,7 @@ The install lines of jlog, jagt and gest put the release binary in `~/.local/bin
 Each line takes the script from the tag of its release.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.5.0/scripts/install.sh | sh -s -- --tag v0.5.0
 curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
 curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
 ```

@@ -177,7 +177,7 @@ diff-check:
 verify: lint test diff-check
 
 # The documentation site, from docs/, with smalldocs.
-smalldocs := "uvx --quiet smalldocs@0.5.12"
+smalldocs := "uvx --quiet smalldocs@0.5.13"
 
 docs-check:
   {{smalldocs}} check docs

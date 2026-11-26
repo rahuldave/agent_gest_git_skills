@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -36,7 +37,9 @@ NO_TOOLCHAIN = "hashFiles('Cargo.toml') != '' && hashFiles('rust-toolchain.toml'
 PATHS = ["~/.cargo/registry/index", "~/.cargo/registry/cache", "~/.cargo/git/db", "target/"]
 # The word check stands for the build of just check, so the jobs of a pull request and of main share the cache.
 # Each level of the key holds the hash of the path dependencies, so no restore takes a build of other files of them.
-PREFIX = ("${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-"
+# The image of runs-on, so no run restores a build of another image.
+IMAGE = "ubuntu-26.04"
+PREFIX = ("${{ runner.os }}-${{ runner.arch }}-" + IMAGE + "-rust-${{ steps.rust.outputs.toolchain }}-check-paths-"
           "${{ steps.path-deps.outputs.hash }}-")
 LOCK = PREFIX + "${{ hashFiles('**/Cargo.lock') }}-"
 KEY = LOCK + "${{ github.sha }}"
@@ -131,10 +134,22 @@ class CacheTests(unittest.TestCase):
 
     def test_the_key_has_its_parts_in_order(self) -> None:
         key = step(starter("github-check.yml")["jobs"]["ci"], "Restore the Rust cache")["with"]["key"]
-        parts = re.findall(r"\$\{\{ ([^}]+) \}\}|-(check)-", key)
-        self.assertEqual([expr or word for expr, word in parts],
-                         ["runner.os", "runner.arch", "steps.rust.outputs.toolchain", "check",
+        parts = re.findall(r"\$\{\{ ([^}]+) \}\}|-(check)-|-(ubuntu-[0-9]{2}\.[0-9]{2})-", key)
+        self.assertEqual([expr or word or image for expr, word, image in parts],
+                         ["runner.os", "runner.arch", IMAGE, "steps.rust.outputs.toolchain", "check",
                           "steps.path-deps.outputs.hash", "hashFiles('**/Cargo.lock')", "github.sha"])
+
+    def test_the_image_of_the_key_is_the_image_of_each_job(self) -> None:
+        # A cache that ubuntu-24.04 built has other system libraries, so a job on ubuntu-26.04 must not restore it.
+        for name in STARTERS:
+            for job_name, job in starter(name)["jobs"].items():
+                with self.subTest(starter=name, job=job_name):
+                    self.assertEqual(job["runs-on"], IMAGE)
+                    for each in job["steps"]:
+                        if each.get("uses", "").startswith("actions/cache/restore@"):
+                            levels = [each["with"]["key"]] + each["with"]["restore-keys"].strip().splitlines()
+                            for level in levels:
+                                self.assertIn(f"-{IMAGE}-rust-", level)
 
     def test_each_level_of_the_key_holds_the_hash_of_the_path_dependencies(self) -> None:
         # A level without the hash could restore a build of other files of a path dependency, whose old times would
@@ -421,48 +436,156 @@ class ToolchainShellTests(unittest.TestCase):
         self.assertFalse(self.log.exists())
 
 
-# A pin of an action: the full SHA of a commit, then a note with the version, as in
-# uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-USES = re.compile(r"\buses:\s*(\S+)(.*)$")
-SHA_PIN = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
-VERSION_NOTE = re.compile(r"^\s*# v[0-9]+\.[0-9]+\.[0-9]+\s*$")
-EXACT = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-# A download of a release of just or uv. The version after download/ must be exact.
-RELEASE = re.compile(r"github\.com/(casey/just|astral-sh/uv)/releases/(?:download/([^/\s\"']+)|latest)")
-PIPED = re.compile(r"\b(?:curl|wget)\b[^|]*\|\s*(?:sudo\s+)?(?:ba|z|da)?sh\b|\bsh\s+-c\s+\"?\$\((?:curl|wget)\b|"
-                   r"\b(?:pipx|pip|cargo)\s+(?:b?install)\s+(?:--\S+\s+)*(?:uv|just)\b")
 INSTALL_TOOLS = "Install the pinned tools"
 TARGETS = ("x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl")
 FETCH = re.compile(r'^\s*fetch\s+"?([^"\s]+)"?\s+"?([^"\s]+)"?\s*$')
 PIN_LINE = re.compile(r"^([0-9a-f]{64})  (\S+)$")
 
 
+# --- The scan of the missing pins. Keep it the same as in tests/test_workflow_pins.py of jnterfaces. ---
+# uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+# The key may be quoted, and the step may be a flow mapping: {uses: a/b@SHA} # v1.2.3.
+USES = re.compile(r"""(?:^|[\s{,\-])["']?uses["']?\s*:\s*["']?([^\s"'{}\[\],]+)["']?\s*[}\],]*\s*(.*)$""")
+SHA_PIN = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
+# An action of the repository itself, or an image pinned by its digest, needs no SHA of a commit and no note.
+LOCAL_OR_IMAGE = re.compile(r"^(?:\./\S+|docker://\S+@sha256:[0-9a-f]{64})$")
+VERSION_NOTE = re.compile(r"^\s*# v[0-9]+\.[0-9]+\.[0-9]+\s*$")
+EXACT = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+# The runner image of a job, by an exact version, such as ubuntu-26.04. ubuntu-latest moves to a new image.
+RUNNER = re.compile(r"^ubuntu-[0-9]{2}\.[0-9]{2}$")
+# A download of a release of just or uv. The version after download/ must be exact.
+RELEASE = re.compile(r"github\.com/(casey/just|astral-sh/uv)/releases/(?:download/([^/\s\"']+)|latest)")
+SHELLS = r"(?:(?:ba|z|da|k)?sh|python3?|perl|ruby)"
+# A shell that reads its script from stdin: a shell, or python, perl or ruby with no script or code of its own.
+STDIN_SHELL = (r"(?:(?:ba|z|da|k)?sh\b|(?:python3?|perl|ruby)(?:\s+-(?![cmeE]\b)[A-Za-z]+)*"
+               r"(?:\s+-(?=\s|$)|\s*(?:$|[;&|)])))")
+# A shell at any stage after a pipe, also by its path, through env or sudo, as after tee or gunzip.
+PIPE_SHELL = (r"\|\s*(?:[^|]*\|\s*)*(?:sudo\s+(?:-\S+\s+)*)?(?:env\s+(?:-\S+\s+|\w+=\S*\s+)*)?(?:/\S*/)?"
+              + STDIN_SHELL)
+# A script that a download pipes into a shell, that a shell runs from $(...) or <(...), and an install of just or uv
+# with pip, pipx, cargo or brew. No pin checks any of them.
+PIPED = re.compile(r"\b(?:curl|wget)\b[^|]*" + PIPE_SHELL + r"|"
+                   r"\b(?:" + SHELLS + r"\s+-c|eval)\s+[\"']?(?:\$\(|`)\s*(?:curl|wget)\b|"
+                   r"<\(\s*(?:curl|wget)\b|"
+                   r"\b(?:pipx|pip3?|uv\s+pip|uv\s+tool|cargo)\s+(?:b?install)\s+(?:-\S+\s+)*(?:rust-just|uv|just)(?![\w.-])|"
+                   r"\b(?:apt-get|apt|snap)\s+install\b.*\b(?:just|uv)\b")
+# An install with brew, and a download with gh, which no pin checks.
+BREW = re.compile(r"\bbrew\s+(?:install|reinstall|upgrade|bundle)\b|\bgh\s+release\s+download\b")
+DOWNLOAD = re.compile(r"\b(curl|wget)\b([^|;&\n]*)")
+# A run of a file by a shell, source, exec, ., or by its path.
+RUN_BY = r"(?:(?:sudo\s+)?(?:" + SHELLS + r"|source|exec|\.)\s+(?:-\S+\s+)*(?:<\s*)?[\"']?[^\s\"']*|\./[^\s\"']*|chmod\s+\S+\s+[\"']?[^\s\"']*)"
+
+
+def downloaded_files(args: str, tool: str) -> list[str]:
+    """The name of each file that a curl or wget with the words ARGS writes, without its folder."""
+    try:
+        words = shlex.split(args, comments=False)
+    except ValueError:
+        words = args.split()
+    names, urls, saved = [], [w for w in words if re.match(r"^[a-z]+://", w)], False
+    for index, word in enumerate(words):
+        value = None
+        if word in ("-o", "--output", "--output-document") or (tool == "wget" and word == "-O"):
+            value = words[index + 1] if index + 1 < len(words) else None
+        elif word.startswith(("--output=", "--output-document=")):
+            value = word.split("=", 1)[1]
+        elif tool == "curl" and re.match(r"^-[A-Za-z]*o$", word):
+            value = words[index + 1] if index + 1 < len(words) else None
+        elif tool == "curl" and re.match(r"^-[A-Za-z]*o.+", word):
+            value = word[word.index("o") + 1:]
+        elif tool == "wget" and re.match(r"^-[A-Za-z]*O.+", word):
+            value = word[word.index("O") + 1:]
+        elif re.fullmatch(r"[12]?>>?", word):
+            value = words[index + 1] if index + 1 < len(words) else None
+        elif re.match(r"^[12]?>", word):
+            value = re.sub(r"^[12]?>+", "", word)
+        elif tool == "wget" and re.match(r"^-[A-Za-z]*O$", word):
+            value = words[index + 1] if index + 1 < len(words) else None
+        elif tool == "curl" and (word in ("-O", "--remote-name") or re.match(r"^-[A-Za-z]*O[A-Za-z]*$", word)):
+            names += [url.rstrip("/").rsplit("/", 1)[-1] for url in urls]
+            saved = True
+        if value:
+            saved = True
+            if value != "-":
+                names.append(value.rstrip("/").rsplit("/", 1)[-1])
+    if tool == "wget" and not saved:
+        names += [url.rstrip("/").rsplit("/", 1)[-1] for url in urls]
+    return [name for name in names if name]
+
+
 def pin_findings(text: str) -> list[str]:
     """The missing pins of the workflow TEXT: an action, also in a note, not pinned by the full SHA of a commit with
     its version in a note after it; a setup of just or uv with no exact version; a download of a release of just or
-    uv with no exact version; and a script that curl pipes into a shell, which no pin checks."""
+    uv with no exact version; a script that a download pipes into a shell, or that a shell runs from $(...) or <(...);
+    a file that curl or wget writes and a later line runs; and an install with brew. No pin checks these."""
     findings = []
-    for number, line in enumerate(text.splitlines(), 1):
+    data = yaml.safe_load(text) or {}
+    steps = [each for job in (data.get("jobs") or {}).values() for each in job.get("steps") or []]
+    findings += lines_findings(text.splitlines(), "line")
+    # The run of each step as the shell gets it, so a quoted YAML string with \\n cannot hide a line.
+    for index, each in enumerate(steps, 1):
+        findings += lines_findings(str(each.get("run") or "").splitlines(), f"step {index}, line")
+    # Each uses of a step or of a job as YAML reads it, so no spelling of the key can hide an action.
+    jobs = [job for job in (data.get("jobs") or {}).values() if isinstance(job, dict)]
+    for name, job in (data.get("jobs") or {}).items():
+        if isinstance(job, dict) and "uses" not in job and not RUNNER.match(str(job.get("runs-on", ""))):
+            findings.append(f"job {name}: runs-on {job.get('runs-on')!r} is not an exact image such as ubuntu-26.04")
+    for each in steps + jobs:
+        uses = str(each.get("uses") or "")
+        if uses and not (SHA_PIN.match(uses) or LOCAL_OR_IMAGE.match(uses)):
+            findings.append(f"{uses} is not pinned by the full SHA of a commit")
+    for each in steps:
+        uses, given = each.get("uses") or "", each.get("with") or {}
+        if uses.startswith("extractions/setup-just@") and not EXACT.match(str(given.get("just-version", ""))):
+            findings.append(f"{uses}: no exact just-version")
+        if uses.startswith("astral-sh/setup-uv@") and not EXACT.match(str(given.get("version", ""))):
+            findings.append(f"{uses}: no exact version of uv")
+    return findings
+
+
+def lines_findings(lines: list[str], where: str) -> list[str]:
+    """The missing pins of LINES, each named as WHERE and its number."""
+    findings = []
+    # A line that ends in a backslash goes on with the next line, as the shell reads it.
+    joined, start = [], None
+    for line in lines:
+        if start is not None:
+            joined[start] = joined[start][:-1] + " " + line.strip()
+            joined.append("")
+        else:
+            start = len(joined)
+            joined.append(line)
+        if not joined[start].endswith("\\"):
+            start = None
+    lines = joined
+    for number, line in enumerate(lines, 1):
         match = USES.search(line)
-        if match:
+        if match and not LOCAL_OR_IMAGE.match(match.group(1)):
             if not SHA_PIN.match(match.group(1)):
-                findings.append(f"line {number}: {match.group(1)} is not pinned by the full SHA of a commit")
+                findings.append(f"{where} {number}: {match.group(1)} is not pinned by the full SHA of a commit")
             if not VERSION_NOTE.match(match.group(2)):
-                findings.append(f"line {number}: {match.group(1)} has no note # vX.Y.Z with its version")
+                findings.append(f"{where} {number}: {match.group(1)} has no note # vX.Y.Z with its version")
         for repo, version in RELEASE.findall(line):
             if not EXACT.match(version):
-                findings.append(f"line {number}: a download of {repo} with no exact version")
+                findings.append(f"{where} {number}: a download of {repo} with no exact version")
         if PIPED.search(line):
-            findings.append(f"line {number}: curl pipes a script into a shell, and no pin checks it")
-    data = yaml.safe_load(text) or {}
-    for job in (data.get("jobs") or {}).values():
-        for each in job.get("steps") or []:
-            uses, given = each.get("uses") or "", each.get("with") or {}
-            if uses.startswith("extractions/setup-just@") and not EXACT.match(str(given.get("just-version", ""))):
-                findings.append(f"{uses}: no exact just-version")
-            if uses.startswith("astral-sh/setup-uv@") and not EXACT.match(str(given.get("version", ""))):
-                findings.append(f"{uses}: no exact version of uv")
+            findings.append(f"{where} {number}: a shell runs a downloaded script, and no pin checks it")
+        if BREW.search(line):
+            findings.append(f"{where} {number}: brew installs a tool, and no pin checks it")
+        for download in DOWNLOAD.finditer(line):
+            for name in downloaded_files(download.group(2), download.group(1)):
+                if name.startswith("$"):
+                    continue
+                later = "\n".join([line[download.end():]] + lines[number:])
+                if re.search(RUN_BY + re.escape(name) + r"(?![\w.-])", later):
+                    findings.append(f"{where} {number}: a later line runs {name}, which a download wrote and no pin checks")
     return findings
+# --- The end of the scan. ---
+
+
+def without_runner(findings: list[str]) -> list[str]:
+    """The findings of a probe with no runs-on, without the one about runs-on."""
+    return [finding for finding in findings if "runs-on" not in finding]
 
 
 def install_run(name: str = "github-check.yml", job: str | None = None) -> str:
@@ -511,14 +634,73 @@ class PinTests(unittest.TestCase):
             "jobs: {j: {steps: [{run: 'sh -c \"$(curl -fsSL https://just.systems/install.sh)\"'}]}}",
             "jobs: {j: {steps: [{run: 'pipx install uv'}]}}",
             "jobs: {j: {steps: [{run: 'cargo install --locked just'}]}}",
+            # The forms that the review of v0.10.0 found: a saved script that a later line runs, <(...), wget | sh
+            # and brew.
+            "jobs: {j: {steps: [{run: 'wget -O - https://x.example/i.sh | sudo -E bash'}]}}",
+            "jobs: {j: {steps: [{run: 'bash -c \"$(wget -qO- https://x.example/i.sh)\"'}]}}",
+            "jobs: {j: {steps: [{run: 'eval \"$(curl -fsSL https://x.example/env)\"'}]}}",
+            "jobs: {j: {steps: [{run: 'bash <(curl -fsSL https://x.example/i.sh)'}]}}",
+            "jobs: {j: {steps: [{run: 'source <(wget -qO- https://x.example/i.sh)'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL -o i.sh https://x.example/install.sh && sh i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSLo i.sh https://x.example/install.sh; bash ./i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl --output=/tmp/i.sh https://x.example/install.sh && sh /tmp/i.sh'}]}}",
+            "jobs: {j: {steps: [{run: \"curl -fsSL -o \\\"$RUNNER_TEMP/i.sh\\\" https://x.example/a\\nsh \\\"$RUNNER_TEMP/i.sh\\\"\"}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSLO https://x.example/install.sh\nchmod +x install.sh\n./install.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'wget https://x.example/install.sh && sh install.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'wget -O i.sh https://x.example/a && . ./i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'brew install just uv'}]}}",
+            # The forms that the first review of this scan found.
+            'jobs:\n  j:\n    steps:\n      - "uses": actions/checkout@main\n',
+            'jobs:\n  j:\n    steps:\n      - uses : actions/checkout@v4\n',
+            'jobs:\n  j:\n    uses: o/r/.github/workflows/w.yml@main\n',
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/i.sh | tee i.sh | sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/i.sh | /bin/bash'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/i.sh | env bash'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/i.sh > i.sh && sh i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/i.sh \\\n  | sh'}]}}",
+            "jobs: {j: {steps: [{run: 'pip install rust-just'}]}}",
+            "jobs: {j: {steps: [{run: 'cargo install -y just'}]}}",
+            "jobs: {j: {steps: [{run: 'gh release download v1 -R casey/just'}]}}",
+            "jobs: {j: {steps: [{run: 'sudo apt-get install -y just'}]}}",
+            # The forms that the second review found.
+            "jobs: {j: {steps: [{run: 'wget -qO i.sh https://x.example/a && sh i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a.gz | gunzip | sh'}]}}",
+            "jobs: {j: {steps: [{run: 'sh -c \"`curl -fsSL https://x.example/a`\"'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a 1>i.sh && sh i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | python3'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | python3 -'}]}}",
+            # The forms that the third review found.
+            "jobs: {j: {steps: [{run: 'curl -fsSL \\\n  https://x.example/i.sh \\\n  | sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | python3 - --version 1.8'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | python3 -I'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | perl -w'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL -o i.sh https://x.example/a\nsh < i.sh'}]}}",
+            "jobs: {j: {steps: [{run: 'curl -fsSL -o i.sh https://x.example/a\nbash -s < i.sh'}]}}",
         ]
         for probe in probes:
             with self.subTest(probe=probe):
-                self.assertNotEqual(pin_findings(probe), [])
+                self.assertNotEqual(without_runner(pin_findings(probe)), [])
+        for runner in ("", "runs-on: ubuntu-latest", "runs-on: ubuntu-24", "runs-on: [self-hosted, linux]",
+                       "runs-on: ${{ matrix.os }}", "runs-on: macos-15"):
+            with self.subTest(runner=runner):
+                self.assertNotEqual(pin_findings(f"jobs:\n  j:\n    {runner}\n    steps: []\n"), [])
+        self.assertEqual(pin_findings("jobs:\n  j:\n    runs-on: ubuntu-26.04\n    steps: []\n"), [])
         good = (f"jobs:\n  j:\n    steps:\n      - uses: astral-sh/setup-uv@{sha} # v6.8.0\n"
                 "        with: {version: 0.13.7}\n"
                 "      - run: curl -O https://github.com/casey/just/releases/download/1.59.0/just.tar.gz\n")
-        self.assertEqual(pin_findings(good), [])
+        self.assertEqual(without_runner(pin_findings(good)), [])
+        # An action of the repository, an image by its digest, a quoted value and a flow step are pinned forms.
+        fine = (f"jobs:\n  j:\n    steps:\n      - uses: ./.github/actions/x\n"
+                f"      - uses: docker://alpine@sha256:{'a' * 64}\n"
+                f"      - uses: 'actions/checkout@{sha}' # v4.4.0\n"
+                f"      - {{uses: actions/checkout@{sha}}} # v4.4.0\n")
+        self.assertEqual(without_runner(pin_findings(fine)), [])
+        # python that runs its own code reads the download as data.
+        self.assertEqual(without_runner(pin_findings(
+            "jobs: {j: {steps: [{run: 'curl -fsSL https://x.example/a | python3 -c pass'}]}}")), [])
+        # A package whose name starts with uv- or just- is not uv or just.
+        package = "jobs: {j: {steps: [{run: 'pip install uv-dynamic-versioning'}]}}"
+        self.assertEqual(without_runner(pin_findings(package)), [])
 
     def test_no_action_installs_a_tool(self) -> None:
         # The step that installs the tools checks each download against a pin in the file. An action that installs
@@ -556,7 +738,7 @@ class PinTests(unittest.TestCase):
         job = starter("github-release.yml")["jobs"]["release"]
         names = [each.get("name") for each in job["steps"]]
         self.assertLess(names.index(INSTALL_TOOLS), names.index("Release"))
-        self.assertIn("jlog-v0.4.0-$target.tar.gz", [name for name, _ in fetches(step(job, INSTALL_TOOLS)["run"])])
+        self.assertIn("jlog-v0.5.0-$target.tar.gz", [name for name, _ in fetches(step(job, INSTALL_TOOLS)["run"])])
 
     def test_each_download_has_a_pin_for_each_machine_and_names_its_version(self) -> None:
         run = install_run()
@@ -595,8 +777,8 @@ class PinTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("JN_TEST_NETWORK") == "1", "set JN_TEST_NETWORK=1 to read each tag")
     def test_each_action_sha_is_the_commit_of_its_tag(self) -> None:
-        for name in STARTERS:
-            for line in (TEMPLATES / name).read_text().splitlines():
+        for path in [TEMPLATES / name for name in STARTERS] + [ROOT / ".github/workflows/verify.yml"]:
+            for line in path.read_text().splitlines():
                 match = USES.search(line)
                 if not match:
                     continue
@@ -614,13 +796,199 @@ class PinTests(unittest.TestCase):
     def test_each_pin_is_the_sha256_of_its_download(self) -> None:
         import hashlib
         import urllib.request
+        # Each download of each install step of the starters and of verify.yml, once.
+        seen = set()
+        for place, run in own_steps().items():
+            pins = pinned(run)
+            for name, url in fetches(run):
+                for file, link in files_of(name, url):
+                    if file in seen:
+                        continue
+                    seen.add(file)
+                    with self.subTest(place=place, file=file), urllib.request.urlopen(link, timeout=60) as response:
+                        self.assertEqual(hashlib.sha256(response.read()).hexdigest(), pins[file])
+
+
+
+VERIFY = ROOT / ".github/workflows/verify.yml"
+# The tools that each job of verify.yml installs, and no other.
+VERIFY_TOOLS = {"verify": {"just", "uv", "jlog", "gest", "jagt", "smalldocs"}, "release": {"just", "uv"},
+                "docs": {"just", "uv", "smalldocs"}}
+# The tool and the version in the name of a download, such as just-1.59.0-$target.tar.gz or
+# smalldocs-0.5.13-py3-none-any.whl.
+TOOL_NAME = re.compile(r"^([a-z-]+?)-v?([0-9]+\.[0-9]+\.[0-9]+)-")
+# The one curl of each install step, in the function fetch, which checks the SHA-256 of each download.
+FETCH_CURL = 'curl -fsSL --retry 3 -o "$work/$1" "$2"'
+# The workflows of jnterfaces that pin the same tools.
+JNTERFACES_WORKFLOWS = (".github/workflows/verify.yml", ".agents/skills/docs/assets/docs-publish.yml")
+
+
+def files_of(name: str, url: str) -> list[tuple[str, str]]:
+    """Each file and link of a fetch: one for each machine, or one when the name has no $target."""
+    if "$target" not in name + url:
+        return [(name, url)]
+    return [(name.replace("$target", target), url.replace("$target", target)) for target in TARGETS]
+
+
+def install_steps(data: dict) -> dict[str, str]:
+    """The run of the step that installs the pinned tools, for each job of the workflow DATA that has one."""
+    found = {}
+    for job_name, job in (data.get("jobs") or {}).items():
+        runs = [each["run"] for each in job.get("steps") or [] if each.get("name") == INSTALL_TOOLS]
+        assert len(runs) <= 1, job_name
+        if runs:
+            found[job_name] = runs[0]
+    return found
+
+
+def own_steps() -> dict[str, str]:
+    """The run of each install step of this repository, by the file and the job."""
+    found = {}
+    for name in STARTERS:
+        found |= {f"{name} {job}": run for job, run in install_steps(starter(name)).items()}
+    found |= {f"verify.yml {job}": run for job, run in install_steps(yaml.safe_load(VERIFY.read_text())).items()}
+    return found
+
+
+def jnterfaces_folder(file: str) -> Path:
+    """The jnterfaces clone that the checks use, which must have FILE. A clone that is too old fails with the message
+    of find_jnterfaces.sh, which names each folder that it tried."""
+    found = subprocess.run(["bash", str(ROOT / "scripts/find_jnterfaces.sh"), file], capture_output=True, text=True)
+    if found.returncode != 0:
+        raise AssertionError(f"{found.stderr.strip()} The commit of scripts/jnterfaces_commit has it, so set "
+                             "JNTERFACES_DIR to a clone of that commit, or update your clone.")
+    return Path(found.stdout.strip())
+
+
+def jnterfaces_steps() -> dict[str, str]:
+    """The run of each install step of the workflows of the jnterfaces clone that the checks use."""
+    folder = jnterfaces_folder(JNTERFACES_WORKFLOWS[1])
+    found = {}
+    for name in JNTERFACES_WORKFLOWS:
+        data = yaml.safe_load((Path(folder) / name).read_text())
+        found |= {f"jnterfaces {name} {job}": run for job, run in install_steps(data).items()}
+    return found
+
+
+def drift(steps: dict[str, str]) -> list[str]:
+    """Each download with two SHA-256 values, and each tool with two versions, in the install STEPS."""
+    digests, versions = {}, {}
+    for place, run in steps.items():
+        for name, digest in pinned(run).items():
+            digests.setdefault(name, {})[digest] = place
+            tool, version = TOOL_NAME.match(name).groups()
+            versions.setdefault(tool, {})[version] = place
+    return ([f"{name}: {places}" for name, places in digests.items() if len(places) > 1] +
+            [f"{tool}: {places}" for tool, places in versions.items() if len(places) > 1])
+
+
+class VerifyPinTests(unittest.TestCase):
+    """verify.yml pins its tools as the starters do: the same step, the same versions and the same SHA-256 values."""
+
+    def setUp(self) -> None:
+        self.data = yaml.safe_load(VERIFY.read_text())
+
+    def test_verify_yml_has_no_missing_pin(self) -> None:
+        self.assertEqual(pin_findings(VERIFY.read_text()), [])
+
+    def test_no_action_installs_a_tool(self) -> None:
+        actions = {each["uses"].split("@")[0] for job in self.data["jobs"].values() for each in job["steps"]
+                   if "uses" in each}
+        self.assertEqual(actions, {"actions/checkout", "actions/upload-artifact"})
+
+    def test_each_job_installs_its_tools_right_after_the_checkout(self) -> None:
+        self.assertEqual(set(self.data["jobs"]), set(VERIFY_TOOLS))
+        for job_name, tools in VERIFY_TOOLS.items():
+            steps = self.data["jobs"][job_name]["steps"]
+            with self.subTest(job=job_name):
+                self.assertTrue(steps[0]["uses"].startswith("actions/checkout@"))
+                self.assertEqual(steps[1]["name"], INSTALL_TOOLS)
+                self.assertEqual(steps[1]["shell"], "bash")
+                self.assertNotIn("if", steps[1])
+                self.assertEqual({TOOL_NAME.match(name).group(1) for name, _ in fetches(steps[1]["run"])}, tools)
+                # Only a fetch or a tar names just. A word after just on another line would run a recipe.
+                for line in steps[1]["run"].splitlines():
+                    if not re.match(r"\s*(fetch|tar)\s", line):
+                        self.assertNotRegex(line, r"\bjust\b[\"')]*(\s+\S|\s*$)")
+
+    def test_each_download_goes_through_fetch_and_has_its_pins(self) -> None:
+        others = [line for line in VERIFY.read_text().splitlines()
+                  if re.search(r"\b(curl|wget)\b", line) and line.strip() != FETCH_CURL]
+        self.assertEqual(others, [])
+        for job, run in install_steps(self.data).items():
+            pins, used = pinned(run), set()
+            for name, url in fetches(run):
+                for file, link in files_of(name, url):
+                    with self.subTest(job=job, file=file):
+                        self.assertIn(file, pins)
+                        self.assertNotIn("$", link)
+                        used.add(file)
+            self.assertEqual(set(pins), used, job)
+
+    def test_each_tool_has_one_version_and_each_download_one_sha256_in_this_repository(self) -> None:
+        self.assertEqual(drift(own_steps()), [])
+
+    def test_the_smalldocs_of_ci_is_the_smalldocs_of_the_justfile(self) -> None:
+        names = [name for run in install_steps(self.data).values() for name, _ in fetches(run)]
+        [version] = {TOOL_NAME.match(name).group(2) for name in names if name.startswith("smalldocs-")}
+        self.assertIn(f'smalldocs := "uvx --quiet smalldocs@{version}"', (ROOT / "Justfile").read_text())
+
+    def test_the_drift_check_finds_two_versions_and_two_sha256_values(self) -> None:
         run = install_run()
-        pins = pinned(run)
-        for name, url in fetches(run):
-            for target in TARGETS:
-                file, link = name.replace("$target", target), url.replace("$target", target)
-                with self.subTest(file=file), urllib.request.urlopen(link, timeout=60) as response:
-                    self.assertEqual(hashlib.sha256(response.read()).hexdigest(), pins[file])
+        jlog = next(name for name in pinned(run) if name.startswith("jlog-"))
+        other = run.replace(pinned(run)[jlog], "0" * 64)
+        self.assertTrue(any(jlog in finding for finding in drift({"a": run, "b": other})))
+        newer = run.replace("just-1.59.0-", "just-1.60.0-")
+        self.assertTrue(any(finding.startswith("just:") for finding in drift({"a": run, "b": newer})))
+
+    def test_the_scan_is_the_scan_of_jnterfaces(self) -> None:
+        folder = jnterfaces_folder("tests/test_workflow_pins.py")
+
+        def scan(text: str) -> str:
+            body = text.split("# --- The scan of the missing pins.", 1)[1].split("\n", 1)[1]
+            return body.split("# --- The end of the scan. ---", 1)[0].replace('YAML(typ="safe").load(text)',
+                                                                             "yaml.safe_load(text)")
+
+        theirs = (Path(folder) / "tests/test_workflow_pins.py").read_text()
+        self.assertEqual(scan(Path(__file__).read_text()), scan(theirs),
+                         f"the scan of the jnterfaces clone at {folder} is not this scan; update one of them")
+
+    def test_the_pins_are_the_pins_of_jnterfaces(self) -> None:
+        # The CI of jnterfaces and the docs-publish workflow of its docs role pin the same tools. The clone is the one
+        # that the checks use, in CI the commit of scripts/jnterfaces_commit.
+        theirs = jnterfaces_steps()
+        folder = jnterfaces_folder(JNTERFACES_WORKFLOWS[1])
+        self.assertTrue(theirs, f"the jnterfaces clone at {folder} has no step that installs the pinned tools. Set "
+                                "JNTERFACES_DIR to a clone of the commit of scripts/jnterfaces_commit, or update it.")
+        self.assertEqual(drift(own_steps() | theirs), [], f"the pins of the jnterfaces clone at {folder}")
+
+    def test_each_job_runs_on_the_image_of_jnterfaces(self) -> None:
+        # The starters, this CI and the CI of jnterfaces run on one image, the image of the key of the Rust cache.
+        folder = jnterfaces_folder(JNTERFACES_WORKFLOWS[1])
+        data = [starter(name) for name in STARTERS] + [self.data]
+        data += [yaml.safe_load((folder / name).read_text()) for name in JNTERFACES_WORKFLOWS]
+        images = {job.get("runs-on") for each in data for job in each["jobs"].values()}
+        self.assertEqual(images, {IMAGE}, f"the images of this repository and of the jnterfaces clone at {folder}")
+
+    def test_each_download_is_what_the_step_installs(self) -> None:
+        # A tar of a file that no fetch checked, a URL of another version, or an install of smalldocs from PyPI, would
+        # install a file that no pin checks.
+        for place, run in own_steps().items():
+            names = [name for name, _ in fetches(run)]
+            with self.subTest(place=place):
+                tars = re.findall(r'^\s*tar -xzf "\$work/([^"]+)" -C "\$bin" ', run, re.M)
+                self.assertEqual(len(tars), len(re.findall(r"^\s*tar\s", run, re.M)))
+                self.assertEqual(sorted(tars), sorted(name for name in names if name.endswith(".tar.gz")
+                                                      and not name.startswith("jlog-")))
+                installs = [line.strip() for line in run.splitlines()
+                            if re.search(r"\buv\s+tool\b|\bpip3?\b|\bpipx\b", line)]
+                self.assertEqual(installs, [f'uv tool install --quiet "$work/{name}"' for name in names
+                                            if name.endswith(".whl")])
+                for name, url in fetches(run):
+                    version = TOOL_NAME.match(name).group(2)
+                    if not name.endswith("install.sh"):
+                        self.assertIn(version, url, name)
+                self.assertEqual(run.rstrip().splitlines()[-1], 'echo "$bin" >> "$GITHUB_PATH"')
 
 
 FAKE_CURL = """#!/bin/sh
@@ -643,11 +1011,11 @@ cp "$FAKE_RELEASES/${url##*/}" "$out" 2>/dev/null || { echo "curl: (22) 404 $url
 FAKE_JLOG_INSTALL = """#!/bin/sh
 set -eu
 printf '%s\\n' "$*" > "$FAKE_JLOG_ARGS"
-dir=${JLOG_RELEASE_BASE#file://}/v0.4.0
+dir=${JLOG_RELEASE_BASE#file://}/v0.5.0
 for f in "$dir"/jlog-*.tar.gz; do
   [ "$(awk '{ print $1 }' "$f.sha256")" = "$(shasum -a 256 "$f" | awk '{ print $1 }')" ] || exit 9
 done
-printf '#!/bin/sh\\necho jlog 0.4.0\\n' > "$4/jlog"
+printf '#!/bin/sh\\necho jlog 0.5.0\\n' > "$4/jlog"
 chmod 755 "$4/jlog"
 """
 
@@ -733,7 +1101,7 @@ class InstallShellTests(unittest.TestCase):
         self.assertNotIn("cargo-llvm-cov", " ".join(self.downloads()))
         # install.sh of jlog takes the pinned archive from the local release, never from the server.
         args = (self.base / "jlog.args").read_text().split()
-        self.assertEqual(args[:2], ["--tag", "v0.4.0"])
+        self.assertEqual(args[:2], ["--tag", "v0.5.0"])
         self.assertEqual(sum("/rahuldave/jlog/" in line for line in self.log.read_text().splitlines()), 2)
 
     def test_the_tools_of_rust_install_only_when_asked(self) -> None:

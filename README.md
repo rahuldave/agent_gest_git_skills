@@ -162,19 +162,40 @@ action, such as `actions/checkout`, is pinned by the full SHA of its commit,
 with its version in a note after it. A tag can move to another commit, but a
 SHA cannot.
 
+The CI of this repository, `.github/workflows/verify.yml`, installs its
+tools with the same step, at the same versions and with the same SHA-256
+values. Its job `verify` also gets `gest`, `jagt` and the wheel of smalldocs,
+and its job `docs` gets smalldocs. uv takes the dependencies of smalldocs from
+PyPI. The CI of jnterfaces and the workflow of its docs role pin the same
+tools too. `scripts/test_ci_starters.py` fails when a tool has two versions or
+a download has two SHA-256 values, in these files or in the jnterfaces clone
+that the checks use.
+
+The scan of the tests also fails on a script that a download gives to a
+shell. It finds `curl URL | sh`, `wget URL | sh`, `bash <(curl URL)`, and a
+file that `curl -o` saves and a later line runs. It also fails on an install
+with `brew`.
+
 To bump a pin:
 
-1. Pick a version that is at least two weeks old.
+1. Pick a version that is at least two weeks old. The tools of
+   `rahuldave/*`, such as jlog, gest, jagt and smalldocs, are part of this
+   stack, so take their new release when it is out.
 2. For an action, find the commit of the tag with
    `git ls-remote https://github.com/actions/checkout 'refs/tags/v4.4.0' 'refs/tags/v4.4.0^{}'`.
    If the output has a line that ends in `^{}`, the tag is annotated, so take
    the SHA of that line, which is the commit. Write the SHA, then the note
    `# v4.4.0`.
 3. For a tool, change the version in its `fetch` line and in its two pins.
+   For jlog, also change the `--tag`, the folder `release/vX.Y.Z`, the
+   commit of the tag in the note and in the URL of its install script, and the
+   constants of `scripts/test_ci_check.py` and `scripts/test_install_hints.py`.
+   For smalldocs, also change the `Justfile`.
    Then download both archives and run `sha256sum` on each, or read the
    digest of each with `gh release view TAG -R OWNER/REPO --json assets`.
 4. Write each SHA-256 in the list `pins` of the step, in each job of both
-   files.
+   starters and of `verify.yml`. Make the same change in jnterfaces, then
+   move `scripts/jnterfaces_commit` to the commit that has it.
 5. Run `JN_TEST_NETWORK=1 just lint` in a clone of this package after you
    change a starter here. The test downloads each pin and checks its SHA-256,
    and it checks that the SHA of each action is the commit of its tag.
@@ -235,7 +256,10 @@ of `target/`, because cargo also writes files under
 `target/debug/build/<pkg>/<hash>/out/`. The key has
 six parts:
 
-1. the runner, such as `Linux-X64`;
+1. the runner and its image, such as `Linux-X64-ubuntu-26.04`. Each job
+   runs on `ubuntu-26.04`, not on `ubuntu-latest`, which moves to each new
+   image. So no run restores a build of another image. When you change
+   `runs-on`, change the image in each level of the key too;
 2. the compiler, as `rustc -V` prints it, such as `1.95.0-59807616e-2026-04-14`.
    A channel that moves gets a new key with each new compiler;
 3. the word `check`, which each job that runs `just check` uses, so a pull

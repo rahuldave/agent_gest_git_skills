@@ -14,20 +14,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 # The release that each install line names with --tag.
 RELEASES = {
-    "jlog": "v0.4.0",
+    "jlog": "v0.5.0",
     "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
 # The ref of install.sh for each program.
 REFS = {
-    "jlog": "v0.4.0",
+    "jlog": "v0.5.0",
     "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
 # The full SHA of the commit of each release tag. The CI starters fetch install.sh from it, under the local name
 # NAME-TAG-install.sh, and check it against a SHA-256 that they pin.
 COMMITS = {
-    "jlog": "6078806eb493630b9e7e8d817e50b99f3753c847",
+    "jlog": "224a622a27920256e3d6ad6a8363c9ea96078a20",
 }
 FETCH = "fetch {name}-{tag}-install.sh https://raw.githubusercontent.com/rahuldave/{name}/{commit}/scripts/install.sh"
 # An older tag, on its own line, so the pin scan of test_ci_check.py does not read a probe as a pin of jlog.
@@ -124,35 +124,35 @@ class InstallHintTests(unittest.TestCase):
         self.assertEqual(found, set(REFS))
 
     def test_the_pin_check_catches_each_unpinned_line(self):
-        good = HINT.format(name="jlog", ref="v0.4.0", tag="v0.4.0")
+        good = HINT.format(name="jlog", ref="v0.5.0", tag="v0.5.0")
         self.assertEqual(pin_problems(f"Run `{good}`, then put ~/.local/bin on PATH."), ([], {"jlog"}))
         jagt = HINT.format(name="jagt", ref=REFS["jagt"], tag="v0.6.4")
         self.assertEqual(pin_problems(f"Run `{jagt}`. To build it, run `cargo install --tag v0.6.4 jagt`."),
                          ([], {"jagt"}))
-        for bad in (good.replace("/v0.4.0/", "/main/"),
-                    good.replace("/v0.4.0/", "/refs/heads/main/"),
+        for bad in (good.replace("/v0.5.0/", "/main/"),
+                    good.replace("/v0.5.0/", "/refs/heads/main/"),
                     # The name comes in by format, so the pin check of test_ci_check.py does not read this probe as a hint.
-                    "curl -fsSL https://github.com/rahuldave/{}/raw/main/scripts/install.sh | sh -s -- --tag v0.4.0".format("jlog"),
+                    "curl -fsSL https://github.com/rahuldave/{}/raw/main/scripts/install.sh | sh -s -- --tag v0.5.0".format("jlog"),
                     good.replace("rahuldave", "RahulDave"),
                     good + "-rc1",
                     good + " --tag v0.2.0",
-                    good.replace("--tag v0.4.0", "--tag v0.2.0"),
+                    good.replace("--tag v0.5.0", "--tag v0.2.0"),
                     jagt.replace(REFS["jagt"], "7ea80a99492fe5eed5d7fa9b9a4e1ba08599463a"),
                     jagt.replace("--tag v0.6.4", "--tag v0.6.3"),
                     jagt.replace(REFS["jagt"], "main"),
                     good + ".1",
-                    f"{good} or {good.replace('/v0.4.0/', '/main/')}",
+                    f"{good} or {good.replace('/v0.5.0/', '/main/')}",
                     f"| `jlog` | `{good}` |",
-                    "Run its scripts/install.sh with --tag v0.4.0, as the README of jlog shows.",
-                    FETCH.format(name="jlog", tag="v0.4.0", commit="1" * 40),
+                    "Run its scripts/install.sh with --tag v0.5.0, as the README of jlog shows.",
+                    FETCH.format(name="jlog", tag="v0.5.0", commit="1" * 40),
                     FETCH.format(name="jlog", tag=OLD_TAG, commit=COMMITS["jlog"]),
-                    FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"]) + " | sh",
-                    FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"]).replace("/scripts/", "/x/"),
-                    f'sh "$work/jlog-{OLD_TAG}-install.sh" --tag v0.4.0'):
+                    FETCH.format(name="jlog", tag="v0.5.0", commit=COMMITS["jlog"]) + " | sh",
+                    FETCH.format(name="jlog", tag="v0.5.0", commit=COMMITS["jlog"]).replace("/scripts/", "/x/"),
+                    f'sh "$work/jlog-{OLD_TAG}-install.sh" --tag v0.5.0'):
             with self.subTest(line=bad):
                 self.assertNotEqual(pin_problems(bad)[0], [])
         # A URL that a line break splits is checked as one line.
-        unpinned = good.replace("/v0.4.0/", "/main/")
+        unpinned = good.replace("/v0.5.0/", "/main/")
         cut = unpinned.index("install.sh")
         self.assertNotEqual(line_problems([unpinned[:cut], unpinned[cut:]])[1][1], [])
         cut = good.index("install.sh")
@@ -165,10 +165,10 @@ class InstallHintTests(unittest.TestCase):
         for tail in ("</code>", "; echo ok", " && jlog --version"):
             self.assertEqual(pin_problems(f"<code>{good}{tail}"), ([], {"jlog"}), tail)
         # The pinned fetch of the CI starters, its pin and the run of its local file pass.
-        self.assertEqual(pin_problems(FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"])), ([], {"jlog"}))
+        self.assertEqual(pin_problems(FETCH.format(name="jlog", tag="v0.5.0", commit=COMMITS["jlog"])), ([], {"jlog"}))
         self.assertEqual(pin_problems("ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  "
-                                      "jlog-v0.4.0-install.sh"), ([], set()))
-        self.assertEqual(pin_problems('sh "$work/jlog-v0.4.0-install.sh" --tag v0.4.0 --dir "$bin"'), ([], set()))
+                                      "jlog-v0.5.0-install.sh"), ([], set()))
+        self.assertEqual(pin_problems('sh "$work/jlog-v0.5.0-install.sh" --tag v0.5.0 --dir "$bin"'), ([], set()))
         # A comment of a workflow may say where install.sh comes from.
         self.assertEqual(pin_problems("        # install.sh of jlog comes from the tag."), ([], set()))
 
