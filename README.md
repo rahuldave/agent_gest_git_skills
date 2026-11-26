@@ -146,23 +146,108 @@ projects skip them.
   value must be exactly `1`. An `env` of only one step, or a repository
   variable, does not turn on the install.
 
+**The pins of the starters.** Each job installs its tools in one step, "Install
+the pinned tools". The step downloads `just` 1.59.0 and `uv` 0.13.7. It
+also downloads the jlog that the CI of jnterfaces pins, and in a Rust job
+`cargo-llvm-cov` and `cargo-nextest`.
+
+Each download must have the SHA-256 that the step itself pins, for Linux on x86_64
+and on aarch64. The server of a download keeps its own `.sha256` file, but a
+person who can change the download can change that file too. So a changed
+download stops the job.
+
+The install script of jlog comes from the full SHA of the commit of its tag,
+and the step checks it against a pin too. No action installs a tool. Each
+action, such as `actions/checkout`, is pinned by the full SHA of its commit,
+with its version in a note after it. A tag can move to another commit, but a
+SHA cannot.
+
+To bump a pin:
+
+1. Pick a version that is at least two weeks old.
+2. For an action, find the commit of the tag with
+   `git ls-remote https://github.com/actions/checkout 'refs/tags/v4.4.0' 'refs/tags/v4.4.0^{}'`.
+   If the output has a line that ends in `^{}`, the tag is annotated, so take
+   the SHA of that line, which is the commit. Write the SHA, then the note
+   `# v4.4.0`.
+3. For a tool, change the version in its `fetch` line and in its two pins.
+   Then download both archives and run `sha256sum` on each, or read the
+   digest of each with `gh release view TAG -R OWNER/REPO --json assets`.
+4. Write each SHA-256 in the list `pins` of the step, in each job of both
+   files.
+5. Run `JN_TEST_NETWORK=1 just lint` in a clone of this package after you
+   change a starter here. The test downloads each pin and checks its SHA-256,
+   and it checks that the SHA of each action is the commit of its tag.
+   `just lint` without the variable checks that each action has a full SHA
+   and that `just` and `uv` have exact versions.
+
+**Path dependencies in the cache.** A path dependency is a package in the
+repository that is not a member of the workspace, such as a crate with C code
+in `vendor/`. cargo makes each path dependency under the root of a workspace
+a member, unless `workspace.exclude` names it. A package with no
+`[workspace]` has no such members.
+
+A fresh checkout gives each of its files the time of now. cargo
+takes a build as up to date only when the build is newer than its sources, so
+it builds each path dependency again on each run, also with a warm cache. Set
+`JN_CI_PATH_DEP_TIMES: "1"` in the `env` of both workflows, or of the job `ci`
+of `check.yml` and the job `check` of `release.yml`, to turn on the step "Set
+the times of the path dependencies":
+
+- `cargo metadata --no-deps --offline` names the members of the workspace and
+  their path dependencies, with no network. The step also reads the `[patch]`
+  and `[replace]` of `Cargo.toml`, and the path dependencies of each path
+  dependency.
+- Each file that Git tracks in a path dependency gets a fixed time in the
+  year 2000, and so does each folder that holds such a file. A member keeps
+  the time of the checkout, so cargo builds it again.
+- The step hashes the path, the mode and the bytes on the disk of each of
+  those files, the target of each link, and the commit of each submodule.
+  Each level of the key of the cache holds this hash.
+- When the variable is 1 and the step finds no path dependency, it gives a
+  warning.
+
+An old time is a danger. If a cache holds a build of other files, cargo takes
+that build as up to date, and the check passes on code that it did not build.
+The hash in each level of the key stops this, because a run restores only a
+cache that a run with the same files built. A level without the hash could
+restore a build of an older version of the vendored code. The job `check` of
+`release.yml` also saves no cache when the check changed a file of a path
+dependency. A path dependency that the step does not find keeps the time of
+the checkout, so cargo builds it again, and the result is correct.
+
+Do not turn on the step when a build script of a path dependency reads a file
+outside its folder and names no `rerun-if-changed` for it. Without the step,
+such a build ran again on each run. With the step, cargo can keep an old
+build of it.
+
+The step is off by default, because it has a cost. Each change of a file of a path
+dependency starts a new cache from nothing, with a cold build of each crate.
+A project whose vendored code changes often can lose more time than it saves.
+And a fault in the step would give a false pass, not a slow run. So turn it
+on only when CI builds a path dependency for a long time on each run, and
+compare the time of the job before and after.
+
 **The Rust cache.** A cache keeps `~/.cargo/registry/index`,
 `~/.cargo/registry/cache`, `~/.cargo/git/db` and `target/`. `target/` holds
 `target/llvm-cov-target`, the warm build of the coverage step. The cache keeps all
 of `target/`, because cargo also writes files under
 `target/debug/build/<pkg>/<hash>/out/`. The key has
-five parts:
+six parts:
 
 1. the runner, such as `Linux-X64`;
 2. the compiler, as `rustc -V` prints it, such as `1.95.0-59807616e-2026-04-14`.
    A channel that moves gets a new key with each new compiler;
 3. the word `check`, which each job that runs `just check` uses, so a pull
    request restores the cache of `main`;
-4. the hash of each `Cargo.lock`;
-5. the commit, `github.sha`.
+4. the word `paths`, then the hash of the path dependencies, or `none` when
+   the step for path dependencies is off or finds none;
+5. the hash of each `Cargo.lock`;
+6. the commit, `github.sha`.
 
 A restore first takes the newest cache with the same `Cargo.lock`, then the
-newest cache of the same compiler. A pull request only restores. Each push to
+newest cache of the same compiler. Each level also holds the hash of the path
+dependencies. A pull request only restores. Each push to
 `main` that passes `just check` saves a new cache, so the cache of `main`
 stays up to date. Each save uploads the whole cache, which can take some
 gigabytes, so the job `check` on `main` takes longer by the time of that
@@ -480,10 +565,18 @@ Linux:
 - A failed copy leaves no folder, and the first build makes it. The copy goes
   into a folder in the Git folder of the worktree, and a rename puts it in
   place.
+- The copy keeps the time of each file, on macOS and on Linux. A test of the
+  package checks this with the `cp` of each system.
+- The copy leaves out `target/llvm-cov-target/jnprofile-rust-build.txt`. This
+  stamp of jnprofile-rust records a coverage build of the commit of the main
+  checkout. A worktree of another commit must not trust that build, so the
+  first coverage run in the worktree builds again.
 - cargo takes a build as up to date when it is newer than its sources. So
   after the seed, each file that Git tracks in the worktree gets the time of
   now. Then cargo builds the crates of the project again and reuses only the
-  builds of the dependencies.
+  builds of the dependencies. A test builds a worktree of another commit with
+  cargo, while a build in the main checkout runs during the seed, and checks
+  that the program of the worktree prints the text of its own commit.
 - `just worktree-sync` does not seed. Only a new worktree gets a seed.
 
 The seed is always a copy. It is never a link, and the worktrees never share

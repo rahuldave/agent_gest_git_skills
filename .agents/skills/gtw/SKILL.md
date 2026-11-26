@@ -232,8 +232,10 @@ The worktree commands:
   `cp -c` on macOS and `cp --reflink=auto` on Linux. With no `.worktreeseed`,
   a project with a `Cargo.toml` seeds `target`. It never links a build folder
   or shares one `CARGO_TARGET_DIR`. A shared build folder lets a lint pass on
-  code that it did not check. `--no-setup` does not skip the seed.
-  `just worktree-sync` does not seed.
+  code that it did not check. The copy keeps the times of the files, and it
+  leaves out `target/llvm-cov-target/jnprofile-rust-build.txt`, the stamp of a
+  coverage build of the commit of the main checkout. `--no-setup` does not
+  skip the seed. `just worktree-sync` does not seed.
 - `just worktree-sync` sets up a worktree that another tool made, such as
   Claude Code or Codex.
 - `just worktrees` lists the worktrees. For each one, it shows clean or dirty,

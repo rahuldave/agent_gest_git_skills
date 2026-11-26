@@ -654,6 +654,66 @@ class SeedTests(unittest.TestCase):
         self.run_script("prune")
         self.assertFalse(folder.exists())
 
+    def test_the_seed_leaves_out_the_stamp_of_the_coverage_build(self) -> None:
+        # jnprofile-rust trusts a warm coverage build that its stamp names. The stamp records a build of the commit
+        # of the main checkout, so a worktree of another commit must not get it. The rest of the build stays.
+        cov = self.repo / "target/llvm-cov-target"
+        (cov / "debug/deps").mkdir(parents=True)
+        (cov / "debug/deps/libdep.rlib").write_bytes(b"covered")
+        (cov / "jnprofile-rust-build.txt").write_text("commit of main\n")
+        for env, name in ((self.env, "fake"), (dict(self.env, PATH=os.environ["PATH"]), "real")):
+            with self.subTest(cp=name):
+                self.run_script("new", name, "--no-setup", env=env)
+                folder = self.shelf / name
+                self.assertEqual((folder / "target/llvm-cov-target/debug/deps/libdep.rlib").read_bytes(), b"covered")
+                self.assertFalse(os.path.lexists(folder / "target/llvm-cov-target/jnprofile-rust-build.txt"))
+                self.assertEqual(self.leftovers(folder), [])
+        # The main checkout keeps its stamp.
+        self.assertTrue((cov / "jnprofile-rust-build.txt").is_file())
+
+    def test_a_seed_of_the_coverage_folder_alone_also_leaves_out_the_stamp(self) -> None:
+        cov = self.repo / "target/llvm-cov-target"
+        cov.mkdir(parents=True)
+        (cov / "kept").write_text("kept\n")
+        (cov / "jnprofile-rust-build.txt").write_text("commit of main\n")
+        (self.repo / ".worktreeseed").write_text("target/llvm-cov-target\n")
+        self.run_script("new", "t", "--no-setup")
+        folder = self.shelf / "t/target/llvm-cov-target"
+        self.assertTrue((folder / "kept").is_file())
+        self.assertFalse(os.path.lexists(folder / "jnprofile-rust-build.txt"))
+
+    def test_a_build_folder_of_another_name_also_loses_the_stamp(self) -> None:
+        # build.target-dir of cargo can name another folder, which .worktreeseed then names.
+        cov = self.repo / "build/llvm-cov-target"
+        cov.mkdir(parents=True)
+        (cov / "kept").write_text("kept\n")
+        (cov / "jnprofile-rust-build.txt").write_text("commit of main\n")
+        (self.repo / ".worktreeseed").write_text("build\n")
+        self.run_script("new", "t", "--no-setup")
+        folder = self.shelf / "t/build/llvm-cov-target"
+        self.assertTrue((folder / "kept").is_file())
+        self.assertFalse(os.path.lexists(folder / "jnprofile-rust-build.txt"))
+
+    def test_a_linked_coverage_folder_keeps_the_stamp_of_the_main_checkout(self) -> None:
+        # cp -R copies the link, so a removal through it would delete the stamp of the main checkout.
+        real = self.base / "real-cov"
+        real.mkdir()
+        (real / "jnprofile-rust-build.txt").write_text("commit of main\n")
+        (self.repo / "target/llvm-cov-target").symlink_to(real)
+        self.run_script("new", "t", "--no-setup", env=dict(self.env, PATH=os.environ["PATH"]))
+        self.assertTrue((real / "jnprofile-rust-build.txt").is_file())
+
+    def test_the_system_cp_keeps_the_times_of_the_build(self) -> None:
+        # cp -c -p -R on macOS and cp --reflink=auto -p -R on Linux keep the times, so a compiled dependency stays
+        # older than nothing that it was built from. This runs the cp of the system of the test, Linux in CI.
+        then = int(time.time()) - 7200
+        for item in (self.repo / "target").rglob("*"):
+            os.utime(item, (then, then), follow_symlinks=False)
+        self.run_script("new", "real", "--no-setup", env=dict(self.env, PATH=os.environ["PATH"]))
+        copied = self.shelf / "real/target/debug/deps/libdep.rlib"
+        self.assertEqual(int(copied.stat().st_mtime), then)
+        self.assertEqual(int((self.shelf / "real/target/debug/deps").stat().st_mtime), then)
+
     def test_the_copy_command_of_each_platform(self) -> None:
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(sys.path.remove, str(SCRIPT.parent))
@@ -663,6 +723,82 @@ class SeedTests(unittest.TestCase):
             self.assertEqual(worktree.copy_command(), ["cp", "-c", "-p", "-R"])
         with mock.patch.object(worktree.sys, "platform", "linux"):
             self.assertEqual(worktree.copy_command(), ["cp", "--reflink=auto", "-p", "-R"])
+
+
+
+CARGO_MAIN = 'fn main() {{ println!("{{}} {{}}", dep::NAME, "{text}"); }}\n'
+
+
+@unittest.skipUnless(shutil.which("cargo"), "cargo is not installed")
+class SeedCargoTests(unittest.TestCase):
+    """A real cargo build in a seeded worktree of another commit builds the crates of the project again, and reuses
+    the build of a dependency whose sources did not change."""
+
+    def setUp(self) -> None:
+        scratch = tempfile.TemporaryDirectory(prefix="gest-seed-cargo-")
+        self.addCleanup(scratch.cleanup)
+        self.base = Path(scratch.name).resolve()
+        self.repo = self.base / "proj"
+        self.shelf = self.base / "proj.worktrees"
+        # The dependency is outside the repository, so no worktree has its sources: they keep their times, and cargo
+        # can reuse its build.
+        dep = self.base / "dep"
+        (dep / "src").mkdir(parents=True)
+        (dep / "Cargo.toml").write_text('[package]\nname = "dep"\nversion = "0.1.0"\nedition = "2021"\n')
+        (dep / "src/lib.rs").write_text('pub const NAME: &str = "dep";\n')
+        git("init", "-qb", "main", str(self.repo), cwd=self.base)
+        git("config", "user.name", "seed-test", cwd=self.repo)
+        git("config", "user.email", "seed-test@example.invalid", cwd=self.repo)
+        (self.repo / ".gitignore").write_text("/target/\n")
+        (self.repo / "Cargo.toml").write_text(
+            '[package]\nname = "app"\nversion = "0.1.0"\nedition = "2021"\n\n'
+            f'[dependencies]\ndep = {{ path = "{dep}" }}\n')
+        (self.repo / "src").mkdir()
+        (self.repo / "src/main.rs").write_text(CARGO_MAIN.format(text="main"))
+        git("add", ".", cwd=self.repo)
+        git("commit", "-qm", "init", cwd=self.repo)
+        self.env = {key: value for key, value in os.environ.items()
+                    if not key.startswith(("CARGO_TARGET_DIR", "CARGO_BUILD", "RUSTFLAGS", "CARGO_INCREMENTAL"))}
+
+    def cargo(self, cwd: Path) -> subprocess.CompletedProcess[str]:
+        done = subprocess.run(["cargo", "build", "--offline", "-v"], cwd=cwd, capture_output=True, text=True,
+                              env=self.env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done
+
+    def built(self, cwd: Path) -> str:
+        return subprocess.run([str(cwd / "target/debug/app")], capture_output=True, text=True, check=True).stdout
+
+    def test_a_worktree_of_another_commit_builds_the_project_again_and_reuses_the_dependency(self) -> None:
+        git("checkout", "-qb", "other", cwd=self.repo)
+        (self.repo / "src/main.rs").write_text(CARGO_MAIN.format(text="other"))
+        git("commit", "-qam", "other", cwd=self.repo)
+        git("checkout", "-q", "main", cwd=self.repo)
+        self.cargo(self.repo)
+        self.assertEqual(self.built(self.repo), "dep main\n")
+        # The cp of this test builds main again before it copies, as a build in the main checkout during the seed
+        # would. So the build of main is newer than each source of the worktree, which git worktree add wrote first,
+        # and only the new times of the sources make cargo build the worktree again.
+        (self.repo / "src/main.rs").write_text(CARGO_MAIN.format(text="main again"))
+        tools = self.base / "tools"
+        tools.mkdir()
+        (tools / "cp").write_text(f'#!/bin/sh\n(cd "{self.repo}" && cargo build --offline -q) || exit 1\n'
+                                  f'exec {shutil.which("cp")} "$@"\n')
+        (tools / "cp").chmod(0o755)
+        env = dict(self.env, PATH=f"{tools}{os.pathsep}{self.env['PATH']}")
+        done = subprocess.run([sys.executable, str(SCRIPT), "new", "other", "--no-setup"], cwd=self.repo,
+                              capture_output=True, text=True, env=env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("seeded 1 build folder(s)", done.stdout)
+        folder = self.shelf / "other"
+        # The seed is the build of main, so without a new build the program prints main.
+        self.assertEqual(self.built(folder), "dep main again\n")
+        log = self.cargo(folder).stderr
+        self.assertRegex(log, r"Compiling app v0\.1\.0")
+        self.assertRegex(log, r"Fresh dep v0\.1\.0")
+        self.assertEqual(self.built(folder), "dep other\n")
+        # The main checkout keeps its own build.
+        self.assertEqual(self.built(self.repo), "dep main again\n")
 
 
 class TaskerHookTests(unittest.TestCase):
