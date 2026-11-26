@@ -264,7 +264,7 @@ anything. When one is missing, it stops and prints the install line.</p>
 </div>
 <p>The install lines of jlog, jagt and gest put the release binary in <code>~/.local/bin</code>.
 Each line takes the script from the tag of its release.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.3.0/scripts/install.sh | sh -s -- --tag v0.3.0
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash">curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
 curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
 curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <ul>
@@ -940,12 +940,49 @@ prose        T1 -&gt; T2
 test-review  T2 -&gt; T2
 review       T2 -&gt; T2
 check        T2</code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Each record must start at the output tree of the record before it. The last
-tree must be the commit tree. An <code>update-docs</code> record comes before a <code>prose</code> record,
-because <code>prose</code> checks the text that <code>update-docs</code> wrote. <code>test-review</code> and <code>review</code>
-come after the last record that changes files. When a review leads to fixes, the fixes make a
-new tree, and the review runs again on it. <code>test-review</code> and <code>review</code> change
+<p>An <code>update-docs</code> record comes before a <code>prose</code> record, because <code>prose</code>
+checks the text that <code>update-docs</code> wrote. <code>test-review</code> and <code>review</code> change
 no files, so they can run in either order on the same tree.</p>
+</li>
+<li>
+<p><strong>The scopes.</strong> A record of tree T1 counts for the commit tree T2 when no
+path that differs between T1 and T2 is in the scope of its target.
+<code>SCOPES</code> in <code>commit_gate.py</code> gives each scope, in one place. A target of
+the project has every path in its scope.</p>
+<ul>
+<li><strong>The paths.</strong> The gate finds each path that differs between the two
+trees. Each side of a rename counts, and a deleted path counts.
+The gate compares the tree objects itself, so no diff setting of the
+config can hide a path. The trees of the records are not in <code>.git/objects</code>, so
+<code>agentic_target.py</code> and <code>record_result.py</code> keep their tree objects in
+<code>objects</code> of the shared log folder. The gate reads the trees itself. It
+checks that each object hashes to its ID, and it reads git with no
+replace refs, so neither <code>git replace</code> nor a forged object file can hide
+a change. A record whose tree the gate cannot read counts only for its
+own tree.</li>
+<li><strong>The kinds.</strong> A page is a plain Markdown file in <code>docs/</code>, but not a
+file such as <code>SKILL.md</code> or <code>CHANGELOG.md</code>, and not a file that the globs
+<code>code</code> or <code>tests</code> of <code>.agents/stack.json</code> name. <code>README.md</code> at the top is
+code, because a build can put it in the docs of a package and run its
+examples as tests. When either tree holds a link, each page is code,
+because a link can make a page the text of another file. A page that the
+code reads or runs, such as a doctest, must be in the globs <code>code</code> or
+<code>tests</code>. Data is a
+file such as a <code>.json</code> file, a <code>.lock</code> file or an image. Code is each other
+path. A path whose kind is in doubt is code, for example a link or a
+Markdown file in another folder.</li>
+<li><strong>The effect of a change.</strong> A change of a page alone keeps <code>review</code> and
+<code>test-review</code>. A change of data alone keeps <code>prose</code>. A change of code voids
+every record, because <code>prose</code> works on the docstrings too. Every change
+voids <code>update-docs</code>.</li>
+<li><strong>The trees of a record.</strong> A target that changes no file counts only by a
+record whose input tree is its output tree. <code>update-docs</code> and <code>prose</code>
+count by their output tree. Between the output tree of <code>update-docs</code> and
+the commit tree, <code>prose</code> records can come, because <code>prose</code> changes only
+what it checks. A skip counts only for its own tree.</li>
+<li><strong>The pass does not change.</strong> The pass of <code>just check</code> must be for the
+commit tree itself.</li>
+</ul>
 </li>
 <li>
 <p><strong>What a record must hold.</strong> A record counts only if its status is
@@ -1563,8 +1600,8 @@ gate does these checks:</p>
 gives the hook a <code>GIT_INDEX_FILE</code>, and tests that run git can write into
 it and break the commit. If there is no pass, the gate stops and says
 “run <code>just check</code>”.</li>
-<li>For a commit by an agent, it looks for a chain of records that ends at the
-tree. It knows an agent by the variables of the harnesses, for example
+<li>For a commit by an agent, it looks for a record of each required target
+that counts for the tree, by the scope of the target. It knows an agent by the variables of the harnesses, for example
 <code>CODEX_THREAD_ID</code> or <code>CLAUDE_CODE_SESSION_ID</code>.</li>
 <li>It stops the commit and says which target or step to run.</li>
 </ol>
@@ -1585,9 +1622,12 @@ tasker role has no gate and no framework.</p>
 <li><code>commit-gate-trailer</code> runs the gate again for the stage <code>commit-msg</code>.
 Then it runs <code>just release-check</code> on the message, and adds the
 trailer <code>Commit-Gate:</code> to the message.</li>
-<li><code>just-ci</code> runs <code>just ci</code> for the stage <code>pre-push</code>. So a push checks
+<li><code>just-ci</code> runs <code>pre_push.py</code> for the stage <code>pre-push</code>. So a push checks
 on your machine what CI checks, and a commit without a trailer stops
-before it reaches GitHub.</li>
+before it reaches GitHub. The script runs <code>just ci</code>, less each recipe
+that a pass of <code>just check</code> ran for the same tree. The section “The
+pre-push hook” tells how. An older config with the entry <code>just ci</code>
+still passes <code>--check-hooks</code>.</li>
 </ul>
 </li>
 <li>The config also has the checks of <code>pre-commit-hooks</code> that change no
@@ -1771,47 +1811,64 @@ the hooks.</li>
 <p><strong>The trailer and just ci.</strong> The gate stamps each commit that it passes,
 and CI checks the stamps:</p>
 <ul>
-<li><strong>The trailer.</strong> The <code>commit-msg</code> hook runs the gate once more, and then
+<li>
+<p><strong>The trailer.</strong> The <code>commit-msg</code> hook runs the gate once more, and then
 <code>just release-check</code> on the message. Then it adds
 <code>Commit-Gate: patch:&lt;patch-id&gt;</code> to the message. A merge gets
-<code>Commit-Gate: tree:&lt;tree&gt;</code>.</li>
-<li><strong>The patch ID</strong> is the hash of the change, from <code>git patch-id --verbatim</code>, which keeps the spaces of each line. The diff has no lines of
+<code>Commit-Gate: tree:&lt;tree&gt;</code>.</p>
+</li>
+<li>
+<p><strong>The patch ID</strong> is the hash of the change, from <code>git patch-id --verbatim</code>, which keeps the spaces of each line. The diff has no lines of
 context, so a rebase with no conflict keeps the ID, and a restacked branch
 still passes. An added line that moves within one part of a file keeps
 the ID too. The trailer is a claim, so that cost is fair. A file of <code>git add -N</code>
-is not in the ID, since the commit does not hold it.</li>
-<li><strong>One word.</strong> The trailer has one word. For an amend, the patch ID is
+is not in the ID, since the commit does not hold it.</p>
+</li>
+<li>
+<p><strong>One word.</strong> The trailer has one word. For an amend, the patch ID is
 against the parent of HEAD. When HEAD is a merge, the word is the tree,
-since the amend is a merge.</li>
-<li><strong>An amend that the gate cannot see.</strong> <code>ps</code> joins the words of each
+since the amend is a merge.</p>
+</li>
+<li>
+<p><strong>An amend that the gate cannot see.</strong> <code>ps</code> joins the words of each
 argument, so a word <code>--amend</code> after the text of <code>-m</code> can be a part of the
 message. Then the gate reads each argument whole, from <code>/proc</code> on Linux
 or from the <code>sysctl</code> value <code>KERN_PROCARGS2</code> on macOS. When neither one
 can tell, the gate stops the commit. Put <code>--amend</code> before <code>-m</code>, or give
-the message with <code>-F FILE</code>.</li>
-<li><strong>An old trailer.</strong> <code>git commit --amend -F FILE</code> can bring the old
+the message with <code>-F FILE</code>.</p>
+</li>
+<li>
+<p><strong>An old trailer.</strong> <code>git commit --amend -F FILE</code> can bring the old
 trailer back in FILE. The gate removes each old trailer of the gate in
-the last block of the message, so the commit has one trailer.</li>
-<li><strong>An empty message.</strong> When git can find the message empty, the gate adds
+the last block of the message, so the commit has one trailer.</p>
+</li>
+<li>
+<p><strong>An empty message.</strong> When git can find the message empty, the gate adds
 no trailer, so git stops the commit. Git finds a message empty when each
 line is blank or a <code>Signed-off-by:</code> line, after its cleanup removes the
 comment lines. In the mode <code>verbatim</code>, only a message with no characters
 is empty. With <code>--allow-empty-message</code>, the trailer is the whole message.
 Git reads that line as the subject, not as a trailer, so <code>ci-gate</code> names
-the commit.</li>
-<li><strong>A skip shows.</strong> <code>git commit -n</code> skips the <code>commit-msg</code> hook too. So a
-commit that went around the gate has no trailer.</li>
-<li><strong><code>just ci</code></strong> runs <code>ci-gate</code>, then the steps in the list <code>ci</code> of
+the commit.</p>
+</li>
+<li>
+<p><strong>A skip shows.</strong> <code>git commit -n</code> skips the <code>commit-msg</code> hook too. So a
+commit that went around the gate has no trailer.</p>
+</li>
+<li>
+<p><strong><code>just ci</code></strong> runs <code>ci-gate</code>, then the steps in the list <code>ci</code> of
 <code>.agents/stack.json</code>. jnterfaces writes the recipe <code>ci</code>, and the tasker
 role gives <code>ci-gate</code>. Without the role, <code>ci-gate</code> only says that there
-is no gate.</li>
-<li><strong><code>ci-gate</code></strong> runs <code>commit_gate.py --trailers</code> on each commit of a
+is no gate.</p>
+</li>
+<li>
+<p><strong><code>ci-gate</code></strong> runs <code>commit_gate.py --trailers</code> on each commit of a
 range. It is a step of <code>just check</code> too, so CI runs only steps of
 <code>just check</code>. A valid commit has one <code>Commit-Gate:</code> trailer with one
 word, <code>patch:&lt;id&gt;</code>, and the ID is the patch ID of the commit. <code>ci-gate</code>
 computes the ID again from the commit. It needs no file of
 <code>.agents/log</code>, which CI does not have. Range selection follows these
-rules:
+rules:</p>
 <ol>
 <li>For an existing remote branch, the pre-push hook sets
 <code>PRE_COMMIT_FROM_REF</code> and <code>PRE_COMMIT_TO_REF</code>. With an explicit
@@ -1844,7 +1901,36 @@ operator must verify that the supplied base is the PR target’s current
 remote tip; the gate does not establish PR acceptance.</li>
 </ol>
 </li>
-<li><strong>Limits of the pre-push hook.</strong>
+<li>
+<p><strong>The pre-push hook.</strong> <code>pre_push.py</code> does not run again what the commit
+gate proved for the pushed tree. It runs all of <code>just ci</code> unless it can
+prove each of these facts:</p>
+<ol>
+<li>The framework names the pushed commit in <code>PRE_COMMIT_TO_REF</code>.</li>
+<li>The worktree tree is the tree of that commit, so the Justfile is the
+Justfile of the commit.</li>
+<li>The run log holds a pass for that tree, with each step of the
+<code>.agents/stack.json</code> of the commit. The line <code>jlog pass</code> of the same
+run ran in <code>just check</code>.</li>
+<li>The recipe <code>ci</code> has no parameter and no line of its own.</li>
+</ol>
+<p>A dependency of <code>ci</code> is done when the same dependency, with no
+arguments, is a dependency of <code>check</code>, or a dependency of one. A pass
+means that just ran each dependency of <code>check</code>.</p>
+<p>The hook runs each other
+dependency as <code>just NAME</code>, in order, and prints one line that names
+what it skips. It always runs <code>ci-gate</code>, because the last commit came
+after the pass. A dependency of <code>ci</code> that runs <code>ci-gate</code> runs too. A
+dependency of <code>check</code> after <code>&amp;&amp;</code> runs after <code>jlog pass</code>, so it is not
+done. A recipe that names a recipe of a module, such as <code>sub::foo</code>, in
+the Justfile or in a file that it imports, makes the hook run all of
+<code>just ci</code>.</p>
+<p>The hook trusts the run log, as the gate does. It also trusts that a
+recipe gives the same result for the same files, so a recipe that reads
+the commits or the environment can differ. CI runs all of <code>just ci</code>.</p>
+</li>
+<li>
+<p><strong>Limits of the pre-push hook.</strong></p>
 <ul>
 <li>The framework reads only the first branch of a push. So
 <code>git push origin a b</code> checks the commits of <code>a</code>. CI checks each pull
@@ -1854,11 +1940,14 @@ repository with commits from before the gate needs
 <code>git push --no-verify</code> for that push.</li>
 </ul>
 </li>
-<li><strong>Commits that git makes without the hooks.</strong> <code>git revert --no-edit</code>
+<li>
+<p><strong>Commits that git makes without the hooks.</strong> <code>git revert --no-edit</code>
 runs no <code>commit-msg</code> hook, and a squash of <code>git rebase --autosquash</code>
-keeps the old trailer. Each one stops the push.</li>
-<li><strong>The exempt commits.</strong> <code>ci-gate</code> skips three kinds of commit, and names
-each one with the reason:
+keeps the old trailer. Each one stops the push.</p>
+</li>
+<li>
+<p><strong>The exempt commits.</strong> <code>ci-gate</code> skips three kinds of commit, and names
+each one with the reason:</p>
 <ul>
 <li><strong>A merge with no change of its own.</strong> It has two parents, and its
 tree is the tree that <code>git merge-tree --write-tree</code> makes from them.
@@ -1880,7 +1969,8 @@ also behind a merge that drops it.</li>
 button, is not exempt.</li>
 </ul>
 </li>
-<li><strong>The error.</strong> Each bad commit has a line with its hash, its subject and
+<li>
+<p><strong>The error.</strong> Each bad commit has a line with its hash, its subject and
 the problem. Then one line tells the fix. <code>just check</code> runs <code>ci-gate</code>,
 so the fix takes the bad commit off HEAD first. For the newest commit,
 run <code>git reset --soft HEAD~1</code>, then <code>just check</code>, then
@@ -1889,19 +1979,28 @@ its parent, and mark the commit <code>edit</code>. Do the same at the stop, then
 run <code>git rebase --continue</code>. The later commits keep their trailers when
 the rebase has no conflict. When the bad commits are not yours, the
 base is wrong, for a branch that starts from <code>develop</code>. Give the base,
-as <code>JN_CI_BASE=origin/develop just check</code>.</li>
-<li><strong>A shallow clone.</strong> <code>ci-gate</code> stops in a shallow clone, since it needs
-the parent of each commit. CI uses <code>fetch-depth: 0</code>.</li>
-<li><strong>CI is a part of <code>just check</code>.</strong> <code>ci-gate</code> is a step of <code>just check</code>,
+as <code>JN_CI_BASE=origin/develop just check</code>.</p>
+</li>
+<li>
+<p><strong>A shallow clone.</strong> <code>ci-gate</code> stops in a shallow clone, since it needs
+the parent of each commit. CI uses <code>fetch-depth: 0</code>.</p>
+</li>
+<li>
+<p><strong>CI is a part of <code>just check</code>.</strong> <code>ci-gate</code> is a step of <code>just check</code>,
 and a step in the list <code>ci</code> must be a step of <code>just check</code> too. The
 installer leaves out any other name and says so.
 The default list is empty. Put a step in it only when a clean machine
-tells you more than your own machine, for example a test on Linux.</li>
-<li><strong>No agent runs in CI.</strong> The fresh agents run before each commit, on
-the machine of the person. CI reads only their trailers.</li>
-<li><strong>The limit.</strong> A trailer is a claim of the gate, not a proof. An agent
+tells you more than your own machine, for example a test on Linux.</p>
+</li>
+<li>
+<p><strong>No agent runs in CI.</strong> The fresh agents run before each commit, on
+the machine of the person. CI reads only their trailers.</p>
+</li>
+<li>
+<p><strong>The limit.</strong> A trailer is a claim of the gate, not a proof. An agent
 can type one by hand, or the e-mail of a bot. The review of the pull
-request is the check of that.</li>
+request is the check of that.</p>
+</li>
 </ul>
 </li>
 <li>
@@ -2042,15 +2141,17 @@ profile gives. The rules are in “Release tags” of
 <li><strong>The step <code>release-check</code>.</strong> It is a step of <code>just check</code>, from the role
 file of the tasker role, so CI runs it only through <code>just check</code>. It runs
 <code>release_tag.py --check</code>, with no network and no remote. It fails when the
-profiles give different versions, or a version lower than the last tag or
-than the bump that the commits ask for. In a shallow checkout it passes and
+profiles give different versions, or a version lower than the last tag. A
+version equal to the last tag passes, because <code>just release</code> writes the
+bump on <code>main</code>. In a shallow checkout it passes and
 says that the tags are unknown. jnterfaces puts <code>release-check</code> in the
 steps of <code>just check</code>, with a no-op step where the role is not installed.</li>
 <li><strong>The release check at the commit.</strong> <code>just check</code> runs before the commit,
 so it cannot count the message of the commit. The <code>commit-msg</code> hook of the
 gate runs <code>just release-check</code> again, with the path of the message file in
-<code>JN_RELEASE_MESSAGE</code>. So a <code>fix:</code> commit with the tagged version stops at
-the commit, not at the release after the push. For an amend, the new
+<code>JN_RELEASE_MESSAGE</code>. So the check counts the message for the next tag,
+and a bump that the release cannot write stops at the commit, not at the
+release after the push. For an amend, the new
 message replaces the message of HEAD. The hook skips the check for a merge,
 for an amend of a merge, during a rebase, and when the Justfile has no
 recipe <code>release-check</code>. The check cleans up the message as git does, with
@@ -2289,6 +2390,11 @@ files.</li>
 <li>The chain update-docs, prose, test-review, review and check passes, and so does
 the chain with <code>review</code> before <code>test-review</code>. A chain with <code>prose</code> before
 <code>update-docs</code> stops.</li>
+<li>A change of a page alone keeps <code>review</code> and <code>test-review</code> and voids <code>prose</code>.
+A change of code voids each record. A rename across kinds, the deletion of
+a code file and a path whose kind is in doubt void <code>review</code>.</li>
+<li>A pushed tree with a pass runs only <code>ci-gate</code> and the dependencies of <code>ci</code>
+that <code>check</code> does not run. A pushed tree with no pass runs all of <code>just ci</code>.</li>
 <li>A record with status <code>failed</code>, or with a finding that is not fixed, does not
 count.</li>
 <li>A review by a fresh agent in another worktree gives a record that the gate
