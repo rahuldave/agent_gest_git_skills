@@ -22,17 +22,16 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 # The recipes that just check must run: each check that CI ran before just check, and the checks of the other repos.
 STEPS = ["release-check", "ci-gate", "lint", "package-lint", "stack-rebase-lab", "install-test", "source-archive", "docs-check", "diff-check"]
 # The steps of the job verify that set up a clone or a program, and the step that runs just check.
-SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs",
-         "Install jlog v0.5.0, which the jnterfaces installer needs",
-         "Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs"}
+PINNED_TOOLS = "Install the pinned tools"
+SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs", PINNED_TOOLS}
 CHECK = "Check the release, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff"
 # The actions of the job verify. A check in an action would be a check that just check does not run.
-VERIFY_ACTIONS = ["actions/checkout@v4", "astral-sh/setup-uv@v6", "extractions/setup-just@v3", "actions/upload-artifact@v4"]
+CHECKOUT = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
+VERIFY_ACTIONS = [CHECKOUT, "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"]
 # The steps of the job release, as they were before just check came: CI tags each release after verify passed.
 RELEASE_STEPS = [
-    {"uses": "actions/checkout@v4", "with": {"fetch-depth": 0}},
-    {"uses": "astral-sh/setup-uv@v6"},
-    {"uses": "extractions/setup-just@v3"},
+    {"uses": CHECKOUT, "with": {"fetch-depth": 0}},
+    {"name": PINNED_TOOLS, "shell": "bash"},
     {"name": "Name the author of the tag",
      "run": 'git config user.name "github-actions[bot]"\n'
             'git config user.email "41898282+github-actions[bot]@users.noreply.github.com"\n'},
@@ -40,10 +39,6 @@ RELEASE_STEPS = [
 ]
 # The tag of jlog that the CI of jnterfaces pins.
 JLOG = "v0.5.0"
-# The line that installs jlog in CI: install.sh from the tag, for the release of the tag.
-JLOG_INSTALL = (f"curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/{JLOG}/scripts/install.sh"
-                f" | sh -s -- --tag {JLOG}")
-GITHUB_PATH = 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
 # The lines that make github-actions[bot] the author of the commit of gh-pages, as in the job release.
 DOCS_AUTHOR = ['git config user.name "github-actions[bot]"',
                'git config user.email "41898282+github-actions[bot]@users.noreply.github.com"']
@@ -75,7 +70,8 @@ class WorkflowTests(unittest.TestCase):
         runs = {step["name"]: step["run"] for step in self.jobs["verify"]["steps"] if "run" in step}
         self.assertEqual(set(runs), SETUP | {CHECK})
         self.assertEqual(runs[CHECK].strip(), "just check")
-        for name in SETUP:
+        # The step that installs the pinned tools checks each download with sha256sum and installs just itself.
+        for name in SETUP - {PINNED_TOOLS}:
             # A URL names a file of another repository, such as the install.sh of jlog, not a script of this one.
             local = re.sub(r"https://\S+", "", runs[name])
             self.assertNotRegex(local, r"\bjust\b|scripts/\S+\.(sh|py)|git archive|sha256sum|shasum", name)
@@ -99,15 +95,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(checkout.get("with", {}).get("fetch-depth"), 0)
 
     def test_verify_pins_jlog_as_jnterfaces_does(self) -> None:
-        installs = [line for line in runs(self.jobs["verify"]) if "rahuldave/jlog" in line]
-        self.assertEqual(installs, [JLOG_INSTALL])
-        step = next(step for step in self.jobs["verify"]["steps"] if JLOG_INSTALL in (step.get("run") or ""))
-        # The default shell of a run step has no pipefail, so a failed curl would still pass through sh.
+        # CI fetches the archive of the release and the install.sh of the commit of the tag, each against a pin.
+        want = [f'fetch "jlog-{JLOG}-$target.tar.gz" '
+                f'"https://github.com/rahuldave/jlog/releases/download/{JLOG}/jlog-$target.tar.gz"',
+                f"fetch jlog-{JLOG}-install.sh https://raw.githubusercontent.com/rahuldave/jlog/{JLOG_FULL_COMMIT}"
+                "/scripts/install.sh"]
+        self.assertEqual([line for line in runs(self.jobs["verify"]) if "rahuldave/jlog" in line], want)
+        [step] = [step for step in self.jobs["verify"]["steps"] if "rahuldave/jlog" in (step.get("run") or "")]
         self.assertEqual(step.get("shell"), "bash")
-        self.assertIn(GITHUB_PATH, step["run"])
-        steps = self.jobs["verify"]["steps"]
-        uv = next(i for i, each in enumerate(steps) if each.get("uses", "").startswith("astral-sh/setup-uv@"))
-        self.assertLess(uv, steps.index(step))
+        self.assertIn('echo "$bin" >> "$GITHUB_PATH"', step["run"])
+        # uv comes first, so install.sh makes the environments of the plugins of jlog.
+        self.assertLess(step["run"].index('tar -xzf "$work/uv-0.13.7-$target.tar.gz"'),
+                        step["run"].index(f'sh "$work/jlog-{JLOG}-install.sh"'))
+        self.assertNotRegex(WORKFLOW.read_text(), r"\|\s*sh\b")
 
     def test_each_starter_installs_jlog_as_ci_does(self) -> None:
         # Each job of the starters installs the tag of jlog that CI pins, with the step that checks each download
@@ -145,7 +145,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("github.ref == 'refs/heads/main'", job["if"])
         self.assertEqual(job["permissions"], {"contents": "write"})
         self.assertEqual(job["steps"][-1]["run"], "just release")
-        self.assertEqual(job["steps"], RELEASE_STEPS)
+        # The run of the install step is the same as in the job verify, which the test above checks.
+        self.assertEqual([{k: v for k, v in step.items() if not (step.get("name") == PINNED_TOOLS and k == "run")}
+                          for step in job["steps"]], RELEASE_STEPS)
         # A later job checks out the tag that the release gives, which can be on the version commit.
         self.assertEqual(job["outputs"], {"tag": "${{ steps.release.outputs.tag }}"})
 
