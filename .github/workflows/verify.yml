@@ -16,11 +16,9 @@ jobs:
     timeout-minutes: 25
     steps:
       # The whole history and the tags, for just release-check.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
-      - uses: extractions/setup-just@v3
       - name: Get jnterfaces, whose link checker the lint runs and whose installer install-test runs
         shell: bash
         run: |
@@ -28,26 +26,65 @@ jobs:
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
           git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet "$(cat scripts/jnterfaces_commit)"
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
-      - name: Install jlog v0.5.0, which the jnterfaces installer needs
-        # The tag v0.5.0 of jlog is the commit 224a622, as in the CI of jnterfaces. install.sh comes from the tag. It
-        # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
-        # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed download fails.
+      # Each tool comes at an exact version, and each download must have the SHA-256 that this file pins, as in the CI of
+      # jnterfaces. So a changed file on the server of a download stops the job.
+      - name: Install the pinned tools
         shell: bash
         run: |
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.5.0/scripts/install.sh | sh -s -- --tag v0.5.0
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs
-        # jnterfaces 0.3.0 stops an install when a required program of a package is not on PATH, so install-test needs
-        # them. install.sh of gest comes from its tag v0.6.0, and install.sh of jagt from its tag
-        # v0.6.4, as in the CI of jnterfaces. Each one checks the SHA-256.
-        shell: bash
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+            aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+            *) echo "::error::No pinned tools for the machine $(uname -m)."; exit 1 ;;
+          esac
+          pins='
+          409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e  just-1.59.0-x86_64-unknown-linux-musl.tar.gz
+          23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
+          287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
+          2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
+          eb26088362a29ffee930d4ee1b55ff554073442421b0e61b7b60c8ebeed77c81  jlog-v0.5.0-x86_64-unknown-linux-musl.tar.gz
+          b22245c51c2fa2175fdefc2f44119b4ee04061548d4903abe17696c18e265716  jlog-v0.5.0-aarch64-unknown-linux-musl.tar.gz
+          ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  jlog-v0.5.0-install.sh
+          7f0842a3cdd5856f0302b7fdd53e83f93320330ef0be67e55d475a22e732443f  gest-v0.6.0-x86_64-unknown-linux-musl.tar.gz
+          3d57e33a0d3d05ddb08c75204f86bc53499b05d366e4b39592540246c5fdc701  gest-v0.6.0-aarch64-unknown-linux-musl.tar.gz
+          025f117ea8a37fa57d4e17adc2c5220868f840fcf54d2783b1ffc932957a23f6  jagt-v0.6.4-x86_64-unknown-linux-musl.tar.gz
+          fcf28faa38c28d794ba23196006cddae26f763b59408f12b3a2b226a102a5fc3  jagt-v0.6.4-aarch64-unknown-linux-musl.tar.gz
+          '
+          work="$(mktemp -d)"
+          bin="$HOME/.local/bin"
+          mkdir -p "$bin"
+          export PATH="$bin:$PATH"
+          # fetch NAME URL downloads URL as work/NAME and stops unless its SHA-256 is the pin of NAME.
+          fetch() {
+            local want got
+            want="$(printf '%s\n' "$pins" | awk -v name="$1" '$2 == name { print $1 }')"
+            if [[ ! "$want" =~ ^[0-9a-f]{64}$ ]]; then echo "::error::No pinned SHA-256 for $1."; exit 1; fi
+            curl -fsSL --retry 3 -o "$work/$1" "$2"
+            got="$(sha256sum "$work/$1" | awk '{ print $1 }')"
+            if [ "$got" != "$want" ]; then echo "::error::The SHA-256 of $1 is $got, not the pin $want."; exit 1; fi
+          }
+          fetch "just-1.59.0-$target.tar.gz" "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-$target.tar.gz"
+          tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
+          fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
+          tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
+          # The install.sh of jlog comes from the commit 224a622 of the tag v0.5.0, as in the CI of jnterfaces. It unpacks
+          # the pinned archive from a local release folder, and makes the environments of the plugins with uv.
+          fetch "jlog-v0.5.0-$target.tar.gz" "https://github.com/rahuldave/jlog/releases/download/v0.5.0/jlog-$target.tar.gz"
+          fetch jlog-v0.5.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/224a622a27920256e3d6ad6a8363c9ea96078a20/scripts/install.sh
+          mkdir -p "$work/release/v0.5.0"
+          cp "$work/jlog-v0.5.0-$target.tar.gz" "$work/release/v0.5.0/jlog-$target.tar.gz"
+          (cd "$work/release/v0.5.0" && sha256sum "jlog-$target.tar.gz" > "jlog-$target.tar.gz.sha256")
+          JLOG_RELEASE_BASE="file://$work/release" sh "$work/jlog-v0.5.0-install.sh" --tag v0.5.0 --dir "$bin"
+          fetch "gest-v0.6.0-$target.tar.gz" "https://github.com/rahuldave/gest/releases/download/v0.6.0/gest-$target.tar.gz"
+          tar -xzf "$work/gest-v0.6.0-$target.tar.gz" -C "$bin" gest
+          fetch "jagt-v0.6.4-$target.tar.gz" "https://github.com/rahuldave/jagt/releases/download/v0.6.4/jagt-$target.tar.gz"
+          tar -xzf "$work/jagt-v0.6.4-$target.tar.gz" -C "$bin" jagt
+          rm -rf "$work"
+          echo "$bin" >> "$GITHUB_PATH"
       # CI runs just check and no other check, so a developer finds each failure of CI with just check.
       - name: Check the release, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff
         run: just check
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: verified-source-package
           path: dist/
@@ -69,11 +106,45 @@ jobs:
       group: release
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
-      - uses: extractions/setup-just@v3
+      # Each tool comes at an exact version, and each download must have the SHA-256 that this file pins, as in the CI of
+      # jnterfaces. So a changed file on the server of a download stops the job.
+      - name: Install the pinned tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+            aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+            *) echo "::error::No pinned tools for the machine $(uname -m)."; exit 1 ;;
+          esac
+          pins='
+          409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e  just-1.59.0-x86_64-unknown-linux-musl.tar.gz
+          23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
+          287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
+          2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
+          '
+          work="$(mktemp -d)"
+          bin="$HOME/.local/bin"
+          mkdir -p "$bin"
+          export PATH="$bin:$PATH"
+          # fetch NAME URL downloads URL as work/NAME and stops unless its SHA-256 is the pin of NAME.
+          fetch() {
+            local want got
+            want="$(printf '%s\n' "$pins" | awk -v name="$1" '$2 == name { print $1 }')"
+            if [[ ! "$want" =~ ^[0-9a-f]{64}$ ]]; then echo "::error::No pinned SHA-256 for $1."; exit 1; fi
+            curl -fsSL --retry 3 -o "$work/$1" "$2"
+            got="$(sha256sum "$work/$1" | awk '{ print $1 }')"
+            if [ "$got" != "$want" ]; then echo "::error::The SHA-256 of $1 is $got, not the pin $want."; exit 1; fi
+          }
+          fetch "just-1.59.0-$target.tar.gz" "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-$target.tar.gz"
+          tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
+          fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
+          tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
+          rm -rf "$work"
+          echo "$bin" >> "$GITHUB_PATH"
       - name: Name the author of the tag
         run: |
           git config user.name "github-actions[bot]"
@@ -98,9 +169,43 @@ jobs:
       group: docs
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Each tool comes at an exact version, and each download must have the SHA-256 that this file pins, as in the CI of
+      # jnterfaces. So a changed file on the server of a download stops the job.
+      - name: Install the pinned tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+            aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+            *) echo "::error::No pinned tools for the machine $(uname -m)."; exit 1 ;;
+          esac
+          pins='
+          409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e  just-1.59.0-x86_64-unknown-linux-musl.tar.gz
+          23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
+          287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
+          2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
+          '
+          work="$(mktemp -d)"
+          bin="$HOME/.local/bin"
+          mkdir -p "$bin"
+          export PATH="$bin:$PATH"
+          # fetch NAME URL downloads URL as work/NAME and stops unless its SHA-256 is the pin of NAME.
+          fetch() {
+            local want got
+            want="$(printf '%s\n' "$pins" | awk -v name="$1" '$2 == name { print $1 }')"
+            if [[ ! "$want" =~ ^[0-9a-f]{64}$ ]]; then echo "::error::No pinned SHA-256 for $1."; exit 1; fi
+            curl -fsSL --retry 3 -o "$work/$1" "$2"
+            got="$(sha256sum "$work/$1" | awk '{ print $1 }')"
+            if [ "$got" != "$want" ]; then echo "::error::The SHA-256 of $1 is $got, not the pin $want."; exit 1; fi
+          }
+          fetch "just-1.59.0-$target.tar.gz" "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-$target.tar.gz"
+          tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
+          fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
+          tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
+          rm -rf "$work"
+          echo "$bin" >> "$GITHUB_PATH"
       - name: Name the author of the commit of gh-pages
         run: |
           git config user.name "github-actions[bot]"
