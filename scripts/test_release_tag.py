@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -1422,7 +1423,10 @@ class WorkflowTests(unittest.TestCase):
 
     def test_the_release_job_of_this_repository(self) -> None:
         text = (ROOT / ".github/workflows/verify.yml").read_text()
-        job = text[text.index("\n  release:\n"):]
+        # The job release ends at the next job, so a line of another job cannot stand for one of release.
+        start = text.index("\n  release:\n") + 1
+        after = re.search(r"\n  [A-Za-z0-9_-]+:\n", text[start:])
+        job = text[start:start + after.start()] if after else text[start:]
         for line in ("needs: verify", "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
                      "contents: write", "fetch-depth: 0", "run: just release", "id: release",
                      "tag: ${{ steps.release.outputs.tag }}"):

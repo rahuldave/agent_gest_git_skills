@@ -9,6 +9,8 @@ project does not have to write its own `gtw`, `gim`, `gpa`, `gcm` and related sk
 The documentation site is https://rahuldave.github.io/agent_gest_git_skills/. The site comes
 from `docs/`. `just docs` shows a preview of it, and `just docs-publish` publishes it to the
 branch `gh-pages`.
+After a push to `main` passes `verify`, the CI job `docs` runs. It publishes the site of the
+newest commit of `main`.
 
 ## What is included
 
