@@ -36,7 +36,7 @@ NO_TOOLCHAIN = "hashFiles('Cargo.toml') != '' && hashFiles('rust-toolchain.toml'
 PATHS = ["~/.cargo/registry/index", "~/.cargo/registry/cache", "~/.cargo/git/db", "target/"]
 # The word check stands for the build of just check, so the jobs of a pull request and of main share the cache.
 # Each level of the key holds the hash of the path dependencies, so no restore takes a build of other files of them.
-PREFIX = ("${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-"
+PREFIX = ("${{ runner.os }}-ubuntu-26.04-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-"
           "${{ steps.path-deps.outputs.hash }}-")
 LOCK = PREFIX + "${{ hashFiles('**/Cargo.lock') }}-"
 KEY = LOCK + "${{ github.sha }}"
@@ -556,7 +556,7 @@ class PinTests(unittest.TestCase):
         job = starter("github-release.yml")["jobs"]["release"]
         names = [each.get("name") for each in job["steps"]]
         self.assertLess(names.index(INSTALL_TOOLS), names.index("Release"))
-        self.assertIn("jlog-v0.4.0-$target.tar.gz", [name for name, _ in fetches(step(job, INSTALL_TOOLS)["run"])])
+        self.assertIn("jlog-v0.5.0-$target.tar.gz", [name for name, _ in fetches(step(job, INSTALL_TOOLS)["run"])])
 
     def test_each_download_has_a_pin_for_each_machine_and_names_its_version(self) -> None:
         run = install_run()
@@ -643,11 +643,11 @@ cp "$FAKE_RELEASES/${url##*/}" "$out" 2>/dev/null || { echo "curl: (22) 404 $url
 FAKE_JLOG_INSTALL = """#!/bin/sh
 set -eu
 printf '%s\\n' "$*" > "$FAKE_JLOG_ARGS"
-dir=${JLOG_RELEASE_BASE#file://}/v0.4.0
+dir=${JLOG_RELEASE_BASE#file://}/v0.5.0
 for f in "$dir"/jlog-*.tar.gz; do
   [ "$(awk '{ print $1 }' "$f.sha256")" = "$(shasum -a 256 "$f" | awk '{ print $1 }')" ] || exit 9
 done
-printf '#!/bin/sh\\necho jlog 0.4.0\\n' > "$4/jlog"
+printf '#!/bin/sh\\necho jlog 0.5.0\\n' > "$4/jlog"
 chmod 755 "$4/jlog"
 """
 
@@ -733,7 +733,7 @@ class InstallShellTests(unittest.TestCase):
         self.assertNotIn("cargo-llvm-cov", " ".join(self.downloads()))
         # install.sh of jlog takes the pinned archive from the local release, never from the server.
         args = (self.base / "jlog.args").read_text().split()
-        self.assertEqual(args[:2], ["--tag", "v0.4.0"])
+        self.assertEqual(args[:2], ["--tag", "v0.5.0"])
         self.assertEqual(sum("/rahuldave/jlog/" in line for line in self.log.read_text().splitlines()), 2)
 
     def test_the_tools_of_rust_install_only_when_asked(self) -> None:

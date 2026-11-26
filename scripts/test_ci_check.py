@@ -23,7 +23,7 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 STEPS = ["release-check", "ci-gate", "lint", "package-lint", "stack-rebase-lab", "install-test", "source-archive", "docs-check", "diff-check"]
 # The steps of the job verify that set up a clone or a program, and the step that runs just check.
 SETUP = {"Get jnterfaces, whose link checker the lint runs and whose installer install-test runs",
-         "Install jlog v0.4.0, which the jnterfaces installer needs",
+         "Install jlog v0.5.0, which the jnterfaces installer needs",
          "Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs"}
 CHECK = "Check the release, the gate trailers, the lint, the manifest, the labs, the install, the source archive, the docs site and the diff"
 # The actions of the job verify. A check in an action would be a check that just check does not run.
@@ -39,7 +39,7 @@ RELEASE_STEPS = [
     {"name": "Tag the release", "id": "release", "run": "just release"},
 ]
 # The tag of jlog that the CI of jnterfaces pins.
-JLOG = "v0.4.0"
+JLOG = "v0.5.0"
 # The line that installs jlog in CI: install.sh from the tag, for the release of the tag.
 JLOG_INSTALL = (f"curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/{JLOG}/scripts/install.sh"
                 f" | sh -s -- --tag {JLOG}")
@@ -112,9 +112,9 @@ class WorkflowTests(unittest.TestCase):
     def test_each_starter_installs_jlog_as_ci_does(self) -> None:
         # Each job of the starters installs the tag of jlog that CI pins, with the step that checks each download
         # against a pin in the file: the archive of the release and the install.sh of the commit of the tag.
-        want = ['fetch "jlog-v0.4.0-$target.tar.gz" '
-                '"https://github.com/rahuldave/jlog/releases/download/v0.4.0/jlog-$target.tar.gz"',
-                f"fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/{JLOG_FULL_COMMIT}"
+        want = ['fetch "jlog-v0.5.0-$target.tar.gz" '
+                '"https://github.com/rahuldave/jlog/releases/download/v0.5.0/jlog-$target.tar.gz"',
+                f"fetch jlog-v0.5.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/{JLOG_FULL_COMMIT}"
                 "/scripts/install.sh"]
         for name in ("github-check.yml", "github-release.yml"):
             text = (ROOT / ".agents/skills/gsu/assets/templates" / name).read_text()
@@ -128,7 +128,7 @@ class WorkflowTests(unittest.TestCase):
                     # uv comes first in the same step, so install.sh finds it and makes the environments of the
                     # plugins of jlog.
                     self.assertLess(step["run"].index('tar -xzf "$work/uv-0.13.7-$target.tar.gz"'),
-                                    step["run"].index('sh "$work/jlog-v0.4.0-install.sh"'))
+                                    step["run"].index('sh "$work/jlog-v0.5.0-install.sh"'))
             # jlog comes from install.sh, so no cargo builds it, and no script goes from curl into a shell.
             self.assertNotRegex(text, r"cargo b?install")
             self.assertNotRegex(text, r"\|\s*sh\b")
@@ -208,8 +208,8 @@ PINNED_INSTALLER = re.compile(r"rahuldave/jlog/(v[0-9]+\.[0-9]+\.[0-9]+)/scripts
 # The CI starters fetch install.sh from the full SHA of the commit of the tag, and check it against a pin.
 COMMIT_INSTALLER = re.compile(r"rahuldave/jlog/([0-9a-f]{40})/scripts/install\.sh$")
 # The commit of the tag of jlog, which the comment next to each install names.
-JLOG_COMMIT = "6078806"
-JLOG_FULL_COMMIT = "6078806eb493630b9e7e8d817e50b99f3753c847"
+JLOG_COMMIT = "224a622"
+JLOG_FULL_COMMIT = "224a622a27920256e3d6ad6a8363c9ea96078a20"
 TAG_COMMIT = re.compile(r"\bis the commit ([0-9a-f]{7,40})\b")
 
 
@@ -281,18 +281,18 @@ class JlogPinTests(unittest.TestCase):
                      "run: cargo install --locked --git https://github.com/rahuldave/jlog --tag v0.2.0",
                      "run: cargo install --git https://github.com/rahuldave/jlog --rev 8febdf1 jlog",
                      "run: cargo install jlog --version 0.2.0",
-                     "# The tag v0.4.0 of jlog is the commit abc1234.",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.4.0",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.2.0/scripts/install.sh | sh -s -- --tag v0.4.0",
-                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/6078806/scripts/install.sh | sh -s -- --tag v0.4.0",
+                     "# The tag v0.5.0 of jlog is the commit abc1234.",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/main/scripts/install.sh | sh -s -- --tag v0.5.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.5.0/scripts/install.sh | sh",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.2.0/scripts/install.sh | sh -s -- --tag v0.5.0",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/224a622/scripts/install.sh | sh -s -- --tag v0.5.0",
                      "curl -fsSL https://github.com/rahuldave/jlog/raw/main/scripts/install.sh | sh",
                      "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/refs/heads/main/scripts/install.sh | sh",
                      "curl -fsSLO https://github.com/rahuldave/jlog/releases/latest/download/jlog-x86_64-unknown-linux-musl.tar.gz",
-                     "fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/"
+                     "fetch jlog-v0.5.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/"
                      "1111111111111111111111111111111111111111/scripts/install.sh",
                      "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/"
-                     "6078806eb493630b9e7e8d817e50b99f3753c847/scripts/install.sh | sh -s -- --tag v0.4.0",
+                     "224a622a27920256e3d6ad6a8363c9ea96078a20/scripts/install.sh | sh -s -- --tag v0.5.0",
                      "gh release download -R rahuldave/jlog"):
             with self.subTest(line=line):
                 self.assertNotEqual(jlog_pins({"a.yml": line})[1], [])

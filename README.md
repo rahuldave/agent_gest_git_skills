@@ -235,7 +235,8 @@ of `target/`, because cargo also writes files under
 `target/debug/build/<pkg>/<hash>/out/`. The key has
 six parts:
 
-1. the runner, such as `Linux-X64`;
+1. the runner and its image, such as `Linux-ubuntu-26.04-X64`. Every job runs on
+   `ubuntu-26.04`, so a cache of another image is never restored;
 2. the compiler, as `rustc -V` prints it, such as `1.95.0-59807616e-2026-04-14`.
    A channel that moves gets a new key with each new compiler;
 3. the word `check`, which each job that runs `just check` uses, so a pull

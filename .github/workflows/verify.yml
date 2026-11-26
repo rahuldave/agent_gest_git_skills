@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     name: verify-skill-package
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     steps:
       # The whole history and the tags, for just release-check.
@@ -28,13 +28,13 @@ jobs:
           git clone --quiet https://github.com/rahuldave/jnterfaces.git "$RUNNER_TEMP/jnterfaces"
           git -C "$RUNNER_TEMP/jnterfaces" checkout --quiet "$(cat scripts/jnterfaces_commit)"
           echo "JNTERFACES_DIR=$RUNNER_TEMP/jnterfaces" >> "$GITHUB_ENV"
-      - name: Install jlog v0.4.0, which the jnterfaces installer needs
-        # The tag v0.4.0 of jlog is the commit 6078806, as in the CI of jnterfaces. install.sh comes from the tag. It
+      - name: Install jlog v0.5.0, which the jnterfaces installer needs
+        # The tag v0.5.0 of jlog is the commit 224a622, as in the CI of jnterfaces. install.sh comes from the tag. It
         # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
         # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed download fails.
         shell: bash
         run: |
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
+          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.5.0/scripts/install.sh | sh -s -- --tag v0.5.0
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install gest v0.6.0 and jagt v0.6.4, which the tasker role needs
         # jnterfaces 0.3.0 stops an install when a required program of a package is not on PATH, so install-test needs
@@ -58,7 +58,7 @@ jobs:
   release:
     needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -88,7 +88,7 @@ jobs:
   docs:
     needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write

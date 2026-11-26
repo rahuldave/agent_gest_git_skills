@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -106,9 +106,9 @@ jobs:
           23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
           287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
           2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
-          8bdde06aa64c355fc5c11b8ec020b8d6af40e680664c6420f4b7daea91d2e47e  jlog-v0.4.0-x86_64-unknown-linux-musl.tar.gz
-          9334926ef3bd731098cd232bf374a0620cbe0f66490fa0881b3294adfc034df4  jlog-v0.4.0-aarch64-unknown-linux-musl.tar.gz
-          ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  jlog-v0.4.0-install.sh
+          eb26088362a29ffee930d4ee1b55ff554073442421b0e61b7b60c8ebeed77c81  jlog-v0.5.0-x86_64-unknown-linux-musl.tar.gz
+          b22245c51c2fa2175fdefc2f44119b4ee04061548d4903abe17696c18e265716  jlog-v0.5.0-aarch64-unknown-linux-musl.tar.gz
+          ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  jlog-v0.5.0-install.sh
           3fca950394a3c49457657c158b1619cec8dfd2647ae5b48746734c0ab969a522  cargo-llvm-cov-0.9.1-x86_64-unknown-linux-musl.tar.gz
           49c0085628392a8d727c4464d91ec417c613c5015f5197cd16d5c05aa3fb5ad1  cargo-llvm-cov-0.9.1-aarch64-unknown-linux-musl.tar.gz
           6b284d6fde9670dfb6ee10ea9d9abbc85f95643d3f592472d420d82e257b3a6c  cargo-nextest-0.9.151-x86_64-unknown-linux-musl.tar.gz
@@ -137,14 +137,14 @@ jobs:
           tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
           fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
           tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
-          # The install.sh of jlog comes from the commit 6078806 of the tag v0.4.0. It unpacks the pinned archive of jlog,
+          # The install.sh of jlog comes from the commit 224a622 of the tag v0.5.0. It unpacks the pinned archive of jlog,
           # which this step puts in a local release folder, and makes the environments of the plugins with uv.
-          fetch "jlog-v0.4.0-$target.tar.gz" "https://github.com/rahuldave/jlog/releases/download/v0.4.0/jlog-$target.tar.gz"
-          fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/6078806eb493630b9e7e8d817e50b99f3753c847/scripts/install.sh
-          mkdir -p "$work/release/v0.4.0"
-          cp "$work/jlog-v0.4.0-$target.tar.gz" "$work/release/v0.4.0/jlog-$target.tar.gz"
-          (cd "$work/release/v0.4.0" && sha256sum "jlog-$target.tar.gz" > "jlog-$target.tar.gz.sha256")
-          JLOG_RELEASE_BASE="file://$work/release" sh "$work/jlog-v0.4.0-install.sh" --tag v0.4.0 --dir "$bin"
+          fetch "jlog-v0.5.0-$target.tar.gz" "https://github.com/rahuldave/jlog/releases/download/v0.5.0/jlog-$target.tar.gz"
+          fetch jlog-v0.5.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/224a622a27920256e3d6ad6a8363c9ea96078a20/scripts/install.sh
+          mkdir -p "$work/release/v0.5.0"
+          cp "$work/jlog-v0.5.0-$target.tar.gz" "$work/release/v0.5.0/jlog-$target.tar.gz"
+          (cd "$work/release/v0.5.0" && sha256sum "jlog-$target.tar.gz" > "jlog-$target.tar.gz.sha256")
+          JLOG_RELEASE_BASE="file://$work/release" sh "$work/jlog-v0.5.0-install.sh" --tag v0.5.0 --dir "$bin"
           if [ "${JN_RUST_TOOLS:-}" = 1 ]; then
             fetch "cargo-llvm-cov-0.9.1-$target.tar.gz" "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.9.1/cargo-llvm-cov-$target.tar.gz"
             tar -xzf "$work/cargo-llvm-cov-0.9.1-$target.tar.gz" -C "$bin" cargo-llvm-cov
@@ -291,10 +291,10 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target/
-          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-ubuntu-26.04-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-
+            ${{ runner.os }}-ubuntu-26.04-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-ubuntu-26.04-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-
       - name: CI
         env:
           JN_CI_BASE: ${{ github.event.pull_request.base.sha }}

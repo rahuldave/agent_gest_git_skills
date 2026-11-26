@@ -131,7 +131,7 @@ The install lines of jlog, jagt and gest put the release binary in `~/.local/bin
 Each line takes the script from the tag of its release.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
+curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.5.0/scripts/install.sh | sh -s -- --tag v0.5.0
 curl -fsSL https://raw.githubusercontent.com/rahuldave/jagt/v0.6.4/scripts/install.sh | sh -s -- --tag v0.6.4
 curl -fsSL https://raw.githubusercontent.com/rahuldave/gest/v0.6.0/scripts/install.sh | sh -s -- --tag v0.6.0
 ```
