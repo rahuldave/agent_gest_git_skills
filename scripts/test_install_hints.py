@@ -24,6 +24,14 @@ REFS = {
     "jagt": "v0.6.4",
     "gest": "v0.6.0",
 }
+# The full SHA of the commit of each release tag. The CI starters fetch install.sh from it, under the local name
+# NAME-TAG-install.sh, and check it against a SHA-256 that they pin.
+COMMITS = {
+    "jlog": "6078806eb493630b9e7e8d817e50b99f3753c847",
+}
+FETCH = "fetch {name}-{tag}-install.sh https://raw.githubusercontent.com/rahuldave/{name}/{commit}/scripts/install.sh"
+# An older tag, on its own line, so the pin scan of test_ci_check.py does not read a probe as a pin of jlog.
+OLD_TAG = "v0.3.0"
 URL = "curl -fsSL https://raw.githubusercontent.com/rahuldave/{name}/{ref}/scripts/install.sh"
 PIPE = " | sh -s -- --tag {tag}"
 HINT = URL + PIPE
@@ -42,6 +50,14 @@ def pin_problems(line: str, comments: bool = True, before_line: str = "") -> tup
     if "install.sh" not in line:
         return [], set()
     problems, programs = [], set()
+    for name, commit in COMMITS.items():
+        if line.strip() == FETCH.format(name=name, tag=RELEASES[name], commit=commit):
+            return [], {name}
+    local = re.sub(r"\b(jlog|jagt|gest)-(v[0-9]+\.[0-9]+\.[0-9]+)-install\.sh\b",
+                   lambda m: "" if RELEASES.get(m.group(1)) == m.group(2) else m.group(0), line)
+    if "install.sh" not in local:
+        # Only the local name of a pinned fetch, as in the list of pins or the run of the script.
+        return [], set()
     if "rahuldave" not in line.lower():
         # A comment of a workflow may tell where install.sh comes from. Prose elsewhere gives the line itself.
         if PROGRAM_NAME.search(before_line + " " + line) and not (comments and line.lstrip().startswith("#")):
@@ -127,7 +143,12 @@ class InstallHintTests(unittest.TestCase):
                     good + ".1",
                     f"{good} or {good.replace('/v0.4.0/', '/main/')}",
                     f"| `jlog` | `{good}` |",
-                    "Run its scripts/install.sh with --tag v0.4.0, as the README of jlog shows."):
+                    "Run its scripts/install.sh with --tag v0.4.0, as the README of jlog shows.",
+                    FETCH.format(name="jlog", tag="v0.4.0", commit="1" * 40),
+                    FETCH.format(name="jlog", tag=OLD_TAG, commit=COMMITS["jlog"]),
+                    FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"]) + " | sh",
+                    FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"]).replace("/scripts/", "/x/"),
+                    f'sh "$work/jlog-{OLD_TAG}-install.sh" --tag v0.4.0'):
             with self.subTest(line=bad):
                 self.assertNotEqual(pin_problems(bad)[0], [])
         # A URL that a line break splits is checked as one line.
@@ -143,6 +164,11 @@ class InstallHintTests(unittest.TestCase):
         self.assertEqual(line_problems([good.split(" | sh")[0] + " \\", "  | sh" + good.split(" | sh")[1]])[0][1], [])
         for tail in ("</code>", "; echo ok", " && jlog --version"):
             self.assertEqual(pin_problems(f"<code>{good}{tail}"), ([], {"jlog"}), tail)
+        # The pinned fetch of the CI starters, its pin and the run of its local file pass.
+        self.assertEqual(pin_problems(FETCH.format(name="jlog", tag="v0.4.0", commit=COMMITS["jlog"])), ([], {"jlog"}))
+        self.assertEqual(pin_problems("ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  "
+                                      "jlog-v0.4.0-install.sh"), ([], set()))
+        self.assertEqual(pin_problems('sh "$work/jlog-v0.4.0-install.sh" --tag v0.4.0 --dir "$bin"'), ([], set()))
         # A comment of a workflow may say where install.sh comes from.
         self.assertEqual(pin_problems("        # install.sh of jlog comes from the tag."), ([], set()))
 

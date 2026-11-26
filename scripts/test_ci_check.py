@@ -110,25 +110,28 @@ class WorkflowTests(unittest.TestCase):
         self.assertLess(uv, steps.index(step))
 
     def test_each_starter_installs_jlog_as_ci_does(self) -> None:
+        # Each job of the starters installs the tag of jlog that CI pins, with the step that checks each download
+        # against a pin in the file: the archive of the release and the install.sh of the commit of the tag.
+        want = ['fetch "jlog-v0.4.0-$target.tar.gz" '
+                '"https://github.com/rahuldave/jlog/releases/download/v0.4.0/jlog-$target.tar.gz"',
+                f"fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/{JLOG_FULL_COMMIT}"
+                "/scripts/install.sh"]
         for name in ("github-check.yml", "github-release.yml"):
-            jobs = yaml.safe_load((ROOT / ".agents/skills/gsu/assets/templates" / name).read_text())["jobs"]
-            for job in jobs.values():
-                with self.subTest(starter=name):
-                    # Each line of the job that names jlog is the one pinned install, so no second install slips in.
-                    self.assertIn([line for line in runs(job) if "rahuldave/jlog" in line], [[], [JLOG_INSTALL]])
-            steps = [step for step in next(iter(jobs.values()))["steps"] if JLOG_INSTALL in (step.get("run") or "")]
-            with self.subTest(starter=name):
-                self.assertEqual(len(steps), 1)
-                # setup-uv comes first, so install.sh finds uv and makes the environments of the plugins of jlog.
-                job_steps = next(iter(jobs.values()))["steps"]
-                uv = next(i for i, step in enumerate(job_steps) if step.get("uses", "").startswith("astral-sh/setup-uv@"))
-                self.assertLess(uv, job_steps.index(steps[0]))
-                self.assertEqual(steps[0].get("shell"), "bash")
-                self.assertIn(GITHUB_PATH, steps[0]["run"])
-                # jlog comes from install.sh, so no cargo builds it. The Rust steps of the starters name cargo, but
-                # no cargo install.
-                self.assertNotRegex((ROOT / ".agents/skills/gsu/assets/templates" / name).read_text(),
-                                    r"cargo b?install")
+            text = (ROOT / ".agents/skills/gsu/assets/templates" / name).read_text()
+            jobs = yaml.safe_load(text)["jobs"]
+            for job_name, job in jobs.items():
+                with self.subTest(starter=name, job=job_name):
+                    self.assertEqual([line for line in runs(job) if "rahuldave/jlog" in line], want)
+                    [step] = [step for step in job["steps"] if "rahuldave/jlog" in (step.get("run") or "")]
+                    self.assertEqual(step.get("shell"), "bash")
+                    self.assertIn('echo "$bin" >> "$GITHUB_PATH"', step["run"])
+                    # uv comes first in the same step, so install.sh finds it and makes the environments of the
+                    # plugins of jlog.
+                    self.assertLess(step["run"].index('tar -xzf "$work/uv-0.13.7-$target.tar.gz"'),
+                                    step["run"].index('sh "$work/jlog-v0.4.0-install.sh"'))
+            # jlog comes from install.sh, so no cargo builds it, and no script goes from curl into a shell.
+            self.assertNotRegex(text, r"cargo b?install")
+            self.assertNotRegex(text, r"\|\s*sh\b")
 
     def test_verify_uploads_the_archive_of_just_check(self) -> None:
         upload = self.jobs["verify"]["steps"][-1]
@@ -202,8 +205,11 @@ INSTALLER = re.compile(r"rahuldave/jlog/\S*install\.sh")
 # A download of a release of jlog, by a URL or by gh. It must name its version.
 DOWNLOAD = re.compile(r"rahuldave/jlog/\S*releases|gh release download\b.*\bjlog\b")
 PINNED_INSTALLER = re.compile(r"rahuldave/jlog/(v[0-9]+\.[0-9]+\.[0-9]+)/scripts/install\.sh \| sh -s -- --tag \1$")
+# The CI starters fetch install.sh from the full SHA of the commit of the tag, and check it against a pin.
+COMMIT_INSTALLER = re.compile(r"rahuldave/jlog/([0-9a-f]{40})/scripts/install\.sh$")
 # The commit of the tag of jlog, which the comment next to each install names.
 JLOG_COMMIT = "6078806"
+JLOG_FULL_COMMIT = "6078806eb493630b9e7e8d817e50b99f3753c847"
 TAG_COMMIT = re.compile(r"\bis the commit ([0-9a-f]{7,40})\b")
 
 
@@ -220,7 +226,10 @@ def jlog_pins(files: dict[str, str]) -> tuple[list[tuple[str, str]], list[str]]:
             pins += [(place, f"v{version}") for version in VERSION.findall(line)]
             if INSTALL.search(line) and not PINNED_INSTALL.search(line.strip()):
                 findings.append(f"{place}: a cargo install of jlog without --tag VERSION jlog at the end")
-            if INSTALLER.search(line) and not PINNED_INSTALLER.search(line.strip()):
+            commit_pin = COMMIT_INSTALLER.search(line.strip())
+            if commit_pin and commit_pin.group(1) != JLOG_FULL_COMMIT:
+                findings.append(f"{place}: the install.sh of jlog comes from {commit_pin.group(1)}, not the tag")
+            elif INSTALLER.search(line) and not commit_pin and not PINNED_INSTALLER.search(line.strip()):
                 findings.append(f"{place}: an install.sh of jlog that is not from the tag of --tag VERSION at the end")
             if DOWNLOAD.search(line) and not VERSION.search(line):
                 findings.append(f"{place}: a download of jlog that names no version")
@@ -280,6 +289,10 @@ class JlogPinTests(unittest.TestCase):
                      "curl -fsSL https://github.com/rahuldave/jlog/raw/main/scripts/install.sh | sh",
                      "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/refs/heads/main/scripts/install.sh | sh",
                      "curl -fsSLO https://github.com/rahuldave/jlog/releases/latest/download/jlog-x86_64-unknown-linux-musl.tar.gz",
+                     "fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/"
+                     "1111111111111111111111111111111111111111/scripts/install.sh",
+                     "curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/"
+                     "6078806eb493630b9e7e8d817e50b99f3753c847/scripts/install.sh | sh -s -- --tag v0.4.0",
                      "gh release download -R rahuldave/jlog"):
             with self.subTest(line=line):
                 self.assertNotEqual(jlog_pins({"a.yml": line})[1], [])

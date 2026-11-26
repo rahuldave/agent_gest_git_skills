@@ -18,7 +18,8 @@ inputs, such as a data folder. Keep outputs in each worktree.
 
 A third file, .worktreeseed, has one build folder on each line. When a new worktree has no such folder and the main
 checkout has one, new copies it with copy-on-write: cp -c on macOS, cp --reflink=auto on Linux. So the first build
-uses the compiled dependencies again. With no .worktreeseed, a project with a Cargo.toml seeds target. The copy is
+uses the compiled dependencies again. With no .worktreeseed, a project with a Cargo.toml seeds target. The copy keeps
+the times of the files, and it leaves out the stamp of the coverage build of jnprofile-rust. The copy is
 never a link: a build folder that two worktrees share gives false passes. A seeded folder does not keep a worktree at
 prune.
 
@@ -46,6 +47,10 @@ import time
 RECORD = Path('.agents/stack.json')
 # The build folder of cargo, which a worktree of a Rust project seeds when the project has no .worktreeseed.
 RUST_BUILD = 'target'
+# The stamp that a seed leaves out of its copy. jnprofile-rust writes it in the folder llvm-cov-target of the build
+# folder, for its warm coverage build. It records a build of one commit, so a worktree of another commit must not
+# trust it. The build folder can be target or another folder, as build.target-dir of cargo names it.
+STAMP = Path('llvm-cov-target/jnprofile-rust-build.txt')
 VARIANTS = ('git', 'gitwt')
 
 
@@ -177,6 +182,21 @@ def copy_command():
     return ['cp', '--reflink=auto', '-p', '-R']
 
 
+def drop_stamps(copy):
+    """Delete the stamp of jnprofile-rust from COPY, a copy of a seed: in its folder llvm-cov-target, or at its top
+    when the seed is that folder itself."""
+    for path in (copy / STAMP, copy / STAMP.name if copy.name == STAMP.parent.name else None):
+        if path is None or not os.path.lexists(path):
+            continue
+        # cp -R copies a link as a link, so a stamp under a linked folder is the file of the main checkout.
+        if path.parent != copy and path.parent.is_symlink():
+            continue
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+
+
 def touch_tracked(top):
     """Give each file that git tracks in top the time of now, so that no build in the worktree is newer."""
     now = time.time()
@@ -200,7 +220,8 @@ def seed(top, main):
     The copy goes into a folder in the Git folder of the worktree first, which git status does not show, and a
     rename puts it in place. So a failed copy leaves no half folder. It is a copy, never a link or a shared folder:
     two worktrees that share one build folder see each other's builds, and a lint can pass on code that it did not
-    check. Returns the number of folders seeded.
+    check. The copy leaves out STAMP, the stamp of the coverage build of jnprofile-rust, since it
+    records a build of the commit of the main checkout. Returns the number of folders seeded.
     """
     seeded = 0
     admin = Path(git('rev-parse', '--absolute-git-dir', cwd=top).stdout.strip())
@@ -233,6 +254,7 @@ def seed(top, main):
                 say(f'Skipped the seed {relative}: cp failed{": " + lines[-1] if lines else ""}. '
                     'The first build makes it.')
                 continue
+            drop_stamps(copy)
             if os.path.lexists(target):
                 say(f'Kept {relative}: the worktree made one during the copy.')
                 continue

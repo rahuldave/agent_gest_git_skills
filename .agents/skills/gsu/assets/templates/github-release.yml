@@ -18,7 +18,7 @@
 #     needs: release
 #     if: needs.release.outputs.tag != ''
 #     steps:
-#       - uses: actions/checkout@v4
+#       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 #         with:
 #           ref: ${{ needs.release.outputs.tag }}
 # When binaries or publish failed, use "Re-run failed jobs", which keeps the tag of the job release. "Re-run all
@@ -47,20 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The whole history and the tags, for the step release-check of just check.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: extractions/setup-just@v3
-      - uses: astral-sh/setup-uv@v6
-      - name: Install jlog
-        # The tag v0.4.0 of jlog is the commit 6078806, as in the CI of jnterfaces. install.sh comes from the tag. It
-        # downloads the release binary, checks its SHA-256 and puts it in ~/.local/bin. setup-uv comes first, so
-        # install.sh makes the environments of the plugins. The step shell bash has pipefail, so a failed
-        # download fails.
-        shell: bash
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/v0.4.0/scripts/install.sh | sh -s -- --tag v0.4.0
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # The Rust steps run only in a project with a toolchain file, so the workflow works for any language. rustup
       # reads the file, so the workflow names no channel, and CI runs the compiler of each machine of the project.
       # just install of jnterfaces writes the file, with the exact version of the Rust of the machine. Do not set
@@ -112,54 +101,254 @@ jobs:
             echo "::warning::The toolchain file names no exact version (${channel:-no channel}). Write the version that rustc -V prints, such as channel = \"1.95.0\", so that CI and each machine run the same compiler."
           fi
           echo "toolchain=$toolchain" >> "$GITHUB_OUTPUT"
-      # cargo-llvm-cov comes as a release binary, so no run compiles it. Keep the version as the profile pins it.
-      - name: Install cargo-llvm-cov
+      # Each tool comes at an exact version, and each download must have the SHA-256 that this file pins. The pins are
+      # here, not on the server of the download, so a changed file on that server stops the job. The README of
+      # agent_gest_git_skills tells how to bump a pin. No action installs a tool, and each action is pinned by the
+      # full SHA of its commit, with its version in a note. In a job that runs just check or just ci with Rust,
+      # JN_RUST_TOOLS is 1, and the step also installs cargo-llvm-cov, at the version that jnprofile-rust pins. With
+      # JNPROFILE_RUST_NEXTEST=1, jnprofile-rust runs its integration tests with cargo llvm-cov nextest, so the step
+      # also installs cargo-nextest. Set that variable in the env of the workflow or of the job, as in:
+      # env: {JNPROFILE_RUST_NEXTEST: "1"}, and in check.yml and release.yml alike. The env of one step does not count.
+      - name: Install the pinned tools
+        shell: bash
+        env:
+          JN_RUST_TOOLS: ${{ steps.rust.outputs.toolchain != '' && '1' || '' }}
+        run: |
+          set -euo pipefail
+          if [ "$(uname -s)" != Linux ]; then
+            echo "::error::The pinned tools are for Linux, not $(uname -s)."
+            exit 1
+          fi
+          case "$(uname -m)" in
+            x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+            aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+            *) echo "::error::No pinned tools for the machine $(uname -m)."; exit 1 ;;
+          esac
+          # The SHA-256 of each download, as sha256sum prints it, under the name that the step gives the file.
+          pins='
+          409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e  just-1.59.0-x86_64-unknown-linux-musl.tar.gz
+          23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
+          287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
+          2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
+          8bdde06aa64c355fc5c11b8ec020b8d6af40e680664c6420f4b7daea91d2e47e  jlog-v0.4.0-x86_64-unknown-linux-musl.tar.gz
+          9334926ef3bd731098cd232bf374a0620cbe0f66490fa0881b3294adfc034df4  jlog-v0.4.0-aarch64-unknown-linux-musl.tar.gz
+          ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  jlog-v0.4.0-install.sh
+          3fca950394a3c49457657c158b1619cec8dfd2647ae5b48746734c0ab969a522  cargo-llvm-cov-0.9.1-x86_64-unknown-linux-musl.tar.gz
+          49c0085628392a8d727c4464d91ec417c613c5015f5197cd16d5c05aa3fb5ad1  cargo-llvm-cov-0.9.1-aarch64-unknown-linux-musl.tar.gz
+          6b284d6fde9670dfb6ee10ea9d9abbc85f95643d3f592472d420d82e257b3a6c  cargo-nextest-0.9.151-x86_64-unknown-linux-musl.tar.gz
+          a9ee2d53cf0711d879f068c0ff814b6fe3af3f9be8799f8ab484e47571087160  cargo-nextest-0.9.151-aarch64-unknown-linux-musl.tar.gz
+          '
+          work="$(mktemp -d)"
+          bin="$HOME/.local/bin"
+          mkdir -p "$bin"
+          export PATH="$bin:$PATH"
+          # fetch NAME URL downloads URL as work/NAME and stops unless its SHA-256 is the pin of NAME.
+          fetch() {
+            local want got
+            want="$(printf '%s\n' "$pins" | awk -v name="$1" '$2 == name { print $1 }')"
+            if [[ ! "$want" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::No pinned SHA-256 for $1."
+              exit 1
+            fi
+            curl -fsSL --retry 3 -o "$work/$1" "$2"
+            got="$(sha256sum "$work/$1" | awk '{ print $1 }')"
+            if [ "$got" != "$want" ]; then
+              echo "::error::The SHA-256 of $1 is $got, not the pin $want."
+              exit 1
+            fi
+          }
+          fetch "just-1.59.0-$target.tar.gz" "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-$target.tar.gz"
+          tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
+          fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
+          tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
+          # The install.sh of jlog comes from the commit 6078806 of the tag v0.4.0. It unpacks the pinned archive of jlog,
+          # which this step puts in a local release folder, and makes the environments of the plugins with uv.
+          fetch "jlog-v0.4.0-$target.tar.gz" "https://github.com/rahuldave/jlog/releases/download/v0.4.0/jlog-$target.tar.gz"
+          fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/6078806eb493630b9e7e8d817e50b99f3753c847/scripts/install.sh
+          mkdir -p "$work/release/v0.4.0"
+          cp "$work/jlog-v0.4.0-$target.tar.gz" "$work/release/v0.4.0/jlog-$target.tar.gz"
+          (cd "$work/release/v0.4.0" && sha256sum "jlog-$target.tar.gz" > "jlog-$target.tar.gz.sha256")
+          JLOG_RELEASE_BASE="file://$work/release" sh "$work/jlog-v0.4.0-install.sh" --tag v0.4.0 --dir "$bin"
+          if [ "${JN_RUST_TOOLS:-}" = 1 ]; then
+            fetch "cargo-llvm-cov-0.9.1-$target.tar.gz" "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.9.1/cargo-llvm-cov-$target.tar.gz"
+            tar -xzf "$work/cargo-llvm-cov-0.9.1-$target.tar.gz" -C "$bin" cargo-llvm-cov
+            if [ "${JNPROFILE_RUST_NEXTEST:-}" = 1 ]; then
+              fetch "cargo-nextest-0.9.151-$target.tar.gz" "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.151/cargo-nextest-0.9.151-$target.tar.gz"
+              tar -xzf "$work/cargo-nextest-0.9.151-$target.tar.gz" -C "$bin" cargo-nextest
+            fi
+          fi
+          rm -rf "$work"
+          echo "$bin" >> "$GITHUB_PATH"
+      # A fresh checkout gives each file the time of now, so cargo builds each path dependency again, such as a crate
+      # with C code in vendor/, even when the cache holds its build. With JN_CI_PATH_DEP_TIMES=1 in the env of the
+      # workflow or of the job, this step gives each file that git tracks in a path dependency a fixed old time, so
+      # cargo reuses the build of the cache. The output hash is the SHA-256 of the paths and contents of those files,
+      # and each level of the key of the cache holds it. So a run restores only a cache that a run with the same files
+      # built, and an old time never hides a change. Without the variable, or with no path dependency, the hash is
+      # none and the step changes no time. A path dependency is a package in the repository that is not a member of
+      # the workspace: a path dependency of a member, of the [patch] or [replace] of Cargo.toml, or of another path
+      # dependency. cargo metadata --no-deps --offline names the members and their dependencies without the network.
+      # A path dependency that the step misses keeps the time of now, so cargo builds it again.
+      - name: Set the times of the path dependencies
+        id: path-deps
         if: steps.rust.outputs.toolchain != ''
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov@0.9.1
-      # With JNPROFILE_RUST_NEXTEST=1, jnprofile-rust runs its integration tests with cargo llvm-cov nextest, which
-      # needs cargo-nextest. It comes as a release binary too, only when the env of the workflow or of this job sets
-      # the variable to 1, as in: env: {JNPROFILE_RUST_NEXTEST: "1"}. Set it in check.yml and in release.yml alike.
-      - name: Install cargo-nextest
-        if: steps.rust.outputs.toolchain != '' && env.JNPROFILE_RUST_NEXTEST == '1'
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest@0.9.151
+        shell: bash
+        run: |
+          python3 -I - <<'PY'
+          import hashlib, json, os, pathlib, subprocess, tomllib
+
+          OLD = 946684800  # 2000-01-01, older than each build in a cache.
+          TABLES = ("dependencies", "dev-dependencies", "build-dependencies", "dev_dependencies", "build_dependencies")
+
+          def run(*args):
+              return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+
+          def put(**values):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                  out.writelines(f"{key}={value}\n" for key, value in values.items())
+
+          def paths(manifest):
+              """The path of each path dependency of the manifest, of its targets, and of its [patch] and [replace]."""
+              try:
+                  doc = tomllib.loads(manifest.read_text())
+              except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+                  return []
+              tables = [doc.get(name) for name in TABLES]
+              tables += [target.get(name) for target in (doc.get("target") or {}).values() if isinstance(target, dict)
+                         for name in TABLES]
+              tables += list((doc.get("patch") or {}).values()) + [doc.get("replace")]
+              found = []
+              for table in tables:
+                  for spec in (table or {}).values() if isinstance(table, dict) else []:
+                      if isinstance(spec, dict) and isinstance(spec.get("path"), str):
+                          found.append(manifest.parent / spec["path"])
+              return found
+
+          if os.environ.get("JN_CI_PATH_DEP_TIMES") != "1":
+              put(hash="none")
+              raise SystemExit
+          top = pathlib.Path(run("git", "rev-parse", "--show-toplevel").strip()).resolve()
+          meta = json.loads(run("cargo", "metadata", "--no-deps", "--offline", "--format-version", "1"))
+          members = {pathlib.Path(package["manifest_path"]).parent.resolve() for package in meta["packages"]}
+          queue = [pathlib.Path(dep["path"]) for package in meta["packages"] for dep in package["dependencies"]
+                   if dep.get("path")]
+          queue += paths(pathlib.Path(meta["workspace_root"]) / "Cargo.toml")
+          found = set()
+          while queue:
+              folder = queue.pop().resolve()
+              # Only a package in the repository, and never a member or a folder that holds one.
+              if folder in found or not folder.is_relative_to(top) or not (folder / "Cargo.toml").is_file():
+                  continue
+              if any(member.is_relative_to(folder) for member in members):
+                  continue
+              found.add(folder)
+              queue += paths(folder / "Cargo.toml")
+          folders = sorted(folder.relative_to(top).as_posix() for folder in found)
+          if not folders:
+              # cargo makes each path dependency under the root of the workspace a member, unless workspace.exclude
+              # names it. A member keeps the time of the checkout.
+              print("::warning::JN_CI_PATH_DEP_TIMES is 1, but the step found no path dependency that is not a member "
+                    "of the workspace. To keep a crate in vendor/ out of the members, name it in workspace.exclude.")
+              put(hash="none")
+              raise SystemExit
+          # The step runs right after the checkout, so the files are as git has them. A change would not be in the hash.
+          if run("git", "--literal-pathspecs", "status", "--porcelain", "--untracked-files=all", "--", *folders):
+              print("::error::A path dependency has changes after the checkout, so the step cannot hash it.")
+              raise SystemExit(1)
+          # Each entry of the index, with its mode and path, and what is on the disk: the SHA-256 of the bytes of a file,
+          # which .gitattributes can change, the target of a link, or the commit of a submodule. cargo follows a link,
+          # so a link that names another file changes the hash. Only a regular file gets the old time.
+          index = [line for line in run("git", "--literal-pathspecs", "ls-files", "-s", "-z", "--", *folders).split("\0")
+                   if line]
+          entries, parts = [], list(folders) + [""]
+          for line in index:
+              meta, name = line.split("\t", 1)
+              mode, blob = meta.split()[:2]
+              path = top / name
+              if path.is_symlink():
+                  state = "link " + os.readlink(path)
+              elif mode == "160000":
+                  state = "commit " + blob
+              elif path.is_file():
+                  with path.open("rb") as handle:
+                      state = "file " + hashlib.file_digest(handle, "sha256").hexdigest()
+                  entries.append(line)
+              else:
+                  state = "missing"
+              parts.append(f"{mode} {name} {state}")
+          digest = hashlib.sha256("\0".join(parts).encode()).hexdigest()
+          # cargo also reads the time of a folder that a build script names in rerun-if-changed, so each folder of a
+          # path dependency that holds such a file gets the old time too. The hash holds the list of its files.
+          dirs = set()
+          for entry in entries:
+              path = top / entry.split("\t", 1)[1]
+              if path.is_file() and not path.is_symlink():
+                  os.utime(path, (OLD, OLD), follow_symlinks=False)
+                  dirs.update(parent for parent in path.parents
+                              if any(parent.is_relative_to(top / folder) for folder in folders))
+          for folder in dirs:
+              if not folder.is_symlink():
+                  os.utime(folder, (OLD, OLD), follow_symlinks=False)
+          print(f"Gave {len(entries)} file(s) of {len(folders)} path dependencies the time {OLD}: {', '.join(folders)}")
+          put(hash=digest, folders=json.dumps(folders))
+          PY
       # The cache keeps the crates that cargo downloads and the whole build folder, target/ with
       # target/llvm-cov-target, the warm build of coverage. Keep all of target/: the new build layout of cargo puts
       # files under target/debug/build/<pkg>/<hash>/out/, so a cache of only target/debug/deps misses them. The
-      # key is the runner, the compiler, the word check, the hash of each Cargo.lock
+      # key is the runner, the compiler, the word check, the hash of the path dependencies, the hash of each Cargo.lock
       # and the commit. Each job that runs just check uses the word check, on a pull request and on main, so a pull
       # request restores the cache of main. A restore takes the newest cache with the same Cargo.lock, else the
-      # newest cache of the same compiler. A run reads the caches of its own branch and of the default branch only.
+      # newest cache of the same compiler. Each level holds the hash of the path dependencies, so a restore never
+      # takes a cache that other files of a path dependency built. A run reads the caches of its own branch and of the
+      # default branch only.
       # Set no CARGO* or RUST* variable from a value that changes on each run, such as github.run_id: the coverage
       # build keeps a fingerprint of these variables, and a new value makes it clean the whole build. The commit in
       # the key is no such variable.
       - name: Restore the Rust cache
         id: rust-cache
-        if: steps.rust.outputs.toolchain != ''
-        uses: actions/cache/restore@v4
+        if: steps.rust.outputs.toolchain != '' && steps.path-deps.outputs.hash != ''
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target/
-          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ steps.rust.outputs.toolchain }}-check-paths-${{ steps.path-deps.outputs.hash }}-
       - name: Check
         run: just check
+      # A check that changed a file of a path dependency would save a build of other files under the hash of the
+      # checkout, and the old times of a later run would hide the change. So such a run saves no cache.
+      - name: Check that the check left the path dependencies as they were
+        id: path-deps-after
+        if: steps.path-deps.outputs.hash != '' && steps.path-deps.outputs.hash != 'none'
+        shell: bash
+        env:
+          FOLDERS: ${{ steps.path-deps.outputs.folders }}
+        run: |
+          python3 -I - <<'PY'
+          import json, os, subprocess
+
+          folders = json.loads(os.environ["FOLDERS"])
+          status = subprocess.run(["git", "--literal-pathspecs", "status", "--porcelain", "--untracked-files=all", "--",
+                                   *folders], check=True, capture_output=True, text=True).stdout
+          if not folders or status:
+              print("::warning::The check changed a path dependency, so this run saves no Rust cache.")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                  out.write("changed=true\n")
+          PY
       # Only a push to main saves the cache, so a pull request or a manual run saves none. The key holds the commit,
       # so each push to main saves a new cache, and the next run restores the newest. Only a run again of the same
       # commit finds its key exactly, and then the cache is already saved. Only a passed check saves.
       - name: Save the Rust cache
         if: >-
           steps.rust.outputs.toolchain != '' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-          && steps.rust-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+          && steps.path-deps.outputs.hash != '' && steps.rust-cache.outputs.cache-hit != 'true'
+          && steps.path-deps-after.outputs.changed != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/registry/index
@@ -180,11 +369,9 @@ jobs:
       group: release
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: extractions/setup-just@v3
-      - uses: astral-sh/setup-uv@v6
       # The Rust steps run only in a project with a toolchain file, so the workflow works for any language. rustup
       # reads the file, so the workflow names no channel, and CI runs the compiler of each machine of the project.
       # just install of jnterfaces writes the file, with the exact version of the Rust of the machine. Do not set
@@ -236,6 +423,82 @@ jobs:
             echo "::warning::The toolchain file names no exact version (${channel:-no channel}). Write the version that rustc -V prints, such as channel = \"1.95.0\", so that CI and each machine run the same compiler."
           fi
           echo "toolchain=$toolchain" >> "$GITHUB_OUTPUT"
+      # Each tool comes at an exact version, and each download must have the SHA-256 that this file pins. The pins are
+      # here, not on the server of the download, so a changed file on that server stops the job. The README of
+      # agent_gest_git_skills tells how to bump a pin. No action installs a tool, and each action is pinned by the
+      # full SHA of its commit, with its version in a note. In a job that runs just check or just ci with Rust,
+      # JN_RUST_TOOLS is 1, and the step also installs cargo-llvm-cov, at the version that jnprofile-rust pins. With
+      # JNPROFILE_RUST_NEXTEST=1, jnprofile-rust runs its integration tests with cargo llvm-cov nextest, so the step
+      # also installs cargo-nextest. Set that variable in the env of the workflow or of the job, as in:
+      # env: {JNPROFILE_RUST_NEXTEST: "1"}, and in check.yml and release.yml alike. The env of one step does not count.
+      - name: Install the pinned tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$(uname -s)" != Linux ]; then
+            echo "::error::The pinned tools are for Linux, not $(uname -s)."
+            exit 1
+          fi
+          case "$(uname -m)" in
+            x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+            aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+            *) echo "::error::No pinned tools for the machine $(uname -m)."; exit 1 ;;
+          esac
+          # The SHA-256 of each download, as sha256sum prints it, under the name that the step gives the file.
+          pins='
+          409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e  just-1.59.0-x86_64-unknown-linux-musl.tar.gz
+          23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d  just-1.59.0-aarch64-unknown-linux-musl.tar.gz
+          287491da03f2a785c70fa75b13e1f849918c2f2b5415fe84876b8214eeb792f9  uv-0.13.7-x86_64-unknown-linux-musl.tar.gz
+          2d3ec076a0c4c0e8250bb6418c44080828b544f1a3be0b6e46adf9fb6923de45  uv-0.13.7-aarch64-unknown-linux-musl.tar.gz
+          8bdde06aa64c355fc5c11b8ec020b8d6af40e680664c6420f4b7daea91d2e47e  jlog-v0.4.0-x86_64-unknown-linux-musl.tar.gz
+          9334926ef3bd731098cd232bf374a0620cbe0f66490fa0881b3294adfc034df4  jlog-v0.4.0-aarch64-unknown-linux-musl.tar.gz
+          ce4e8504307e07f980d73064e20d751ebcadf7fd3433c51c97125d4a51dffb93  jlog-v0.4.0-install.sh
+          3fca950394a3c49457657c158b1619cec8dfd2647ae5b48746734c0ab969a522  cargo-llvm-cov-0.9.1-x86_64-unknown-linux-musl.tar.gz
+          49c0085628392a8d727c4464d91ec417c613c5015f5197cd16d5c05aa3fb5ad1  cargo-llvm-cov-0.9.1-aarch64-unknown-linux-musl.tar.gz
+          6b284d6fde9670dfb6ee10ea9d9abbc85f95643d3f592472d420d82e257b3a6c  cargo-nextest-0.9.151-x86_64-unknown-linux-musl.tar.gz
+          a9ee2d53cf0711d879f068c0ff814b6fe3af3f9be8799f8ab484e47571087160  cargo-nextest-0.9.151-aarch64-unknown-linux-musl.tar.gz
+          '
+          work="$(mktemp -d)"
+          bin="$HOME/.local/bin"
+          mkdir -p "$bin"
+          export PATH="$bin:$PATH"
+          # fetch NAME URL downloads URL as work/NAME and stops unless its SHA-256 is the pin of NAME.
+          fetch() {
+            local want got
+            want="$(printf '%s\n' "$pins" | awk -v name="$1" '$2 == name { print $1 }')"
+            if [[ ! "$want" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::No pinned SHA-256 for $1."
+              exit 1
+            fi
+            curl -fsSL --retry 3 -o "$work/$1" "$2"
+            got="$(sha256sum "$work/$1" | awk '{ print $1 }')"
+            if [ "$got" != "$want" ]; then
+              echo "::error::The SHA-256 of $1 is $got, not the pin $want."
+              exit 1
+            fi
+          }
+          fetch "just-1.59.0-$target.tar.gz" "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-$target.tar.gz"
+          tar -xzf "$work/just-1.59.0-$target.tar.gz" -C "$bin" just
+          fetch "uv-0.13.7-$target.tar.gz" "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-$target.tar.gz"
+          tar -xzf "$work/uv-0.13.7-$target.tar.gz" -C "$bin" --strip-components=1 "uv-$target/uv" "uv-$target/uvx"
+          # The install.sh of jlog comes from the commit 6078806 of the tag v0.4.0. It unpacks the pinned archive of jlog,
+          # which this step puts in a local release folder, and makes the environments of the plugins with uv.
+          fetch "jlog-v0.4.0-$target.tar.gz" "https://github.com/rahuldave/jlog/releases/download/v0.4.0/jlog-$target.tar.gz"
+          fetch jlog-v0.4.0-install.sh https://raw.githubusercontent.com/rahuldave/jlog/6078806eb493630b9e7e8d817e50b99f3753c847/scripts/install.sh
+          mkdir -p "$work/release/v0.4.0"
+          cp "$work/jlog-v0.4.0-$target.tar.gz" "$work/release/v0.4.0/jlog-$target.tar.gz"
+          (cd "$work/release/v0.4.0" && sha256sum "jlog-$target.tar.gz" > "jlog-$target.tar.gz.sha256")
+          JLOG_RELEASE_BASE="file://$work/release" sh "$work/jlog-v0.4.0-install.sh" --tag v0.4.0 --dir "$bin"
+          if [ "${JN_RUST_TOOLS:-}" = 1 ]; then
+            fetch "cargo-llvm-cov-0.9.1-$target.tar.gz" "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.9.1/cargo-llvm-cov-$target.tar.gz"
+            tar -xzf "$work/cargo-llvm-cov-0.9.1-$target.tar.gz" -C "$bin" cargo-llvm-cov
+            if [ "${JNPROFILE_RUST_NEXTEST:-}" = 1 ]; then
+              fetch "cargo-nextest-0.9.151-$target.tar.gz" "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.151/cargo-nextest-0.9.151-$target.tar.gz"
+              tar -xzf "$work/cargo-nextest-0.9.151-$target.tar.gz" -C "$bin" cargo-nextest
+            fi
+          fi
+          rm -rf "$work"
+          echo "$bin" >> "$GITHUB_PATH"
       - name: Name the author of the tag and of the version commit
         if: github.event_name == 'push'
         run: |
