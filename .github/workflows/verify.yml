@@ -81,3 +81,36 @@ jobs:
       - name: Tag the release
         id: release
         run: just release
+
+  # On a push to main, after the job verify passed, build the site and push it to gh-pages, which GitHub Pages serves.
+  # The sitemap dates each page by the time of its file, which a fresh checkout sets, so most runs commit to gh-pages.
+  # No agent runs here.
+  docs:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # One publish at a time. A newer run cancels an older publish, waiting or running, and publishes the tip of main
+    # itself. A push of git is atomic, so a cancelled publish leaves gh-pages as it was.
+    concurrency:
+      group: docs
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+      - name: Name the author of the commit of gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Publish the site of the tip of main
+        # The verify of an older push can end after that of a newer one, and a newer run can cancel an older one. So
+        # each run publishes the tip of main, not its own commit, and the run that ends last publishes the newest site.
+        shell: bash
+        run: |
+          git fetch --quiet origin main
+          git checkout --quiet --detach FETCH_HEAD
+          echo "publishing the site of main at $(git rev-parse HEAD)"
+          just docs-publish

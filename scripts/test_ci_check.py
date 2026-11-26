@@ -44,6 +44,9 @@ JLOG = "v0.4.0"
 JLOG_INSTALL = (f"curl -fsSL https://raw.githubusercontent.com/rahuldave/jlog/{JLOG}/scripts/install.sh"
                 f" | sh -s -- --tag {JLOG}")
 GITHUB_PATH = 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
+# The lines that make github-actions[bot] the author of the commit of gh-pages, as in the job release.
+DOCS_AUTHOR = ['git config user.name "github-actions[bot]"',
+               'git config user.email "41898282+github-actions[bot]@users.noreply.github.com"']
 
 
 def check_steps() -> list[str]:
@@ -142,6 +145,50 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(job["steps"], RELEASE_STEPS)
         # A later job checks out the tag that the release gives, which can be on the version commit.
         self.assertEqual(job["outputs"], {"tag": "${{ steps.release.outputs.tag }}"})
+
+    def test_only_the_jobs_release_and_docs_can_write(self) -> None:
+        self.assertEqual(yaml.safe_load(WORKFLOW.read_text())["permissions"], {"contents": "read"})
+        for name, job in self.jobs.items():
+            if name not in ("release", "docs"):
+                self.assertNotIn("permissions", job, name)
+        self.assertEqual(self.jobs["docs"]["permissions"], {"contents": "write"})
+
+    def test_docs_runs_after_verify_on_a_push_to_main(self) -> None:
+        job = self.jobs["docs"]
+        self.assertEqual(job["needs"], "verify")
+        self.assertEqual(job["if"], "github.event_name == 'push' && github.ref == 'refs/heads/main'")
+        # One publish at a time, and a newer run cancels an older one.
+        self.assertEqual(job["concurrency"], {"group": "docs", "cancel-in-progress": True})
+
+    def test_docs_commits_to_gh_pages_as_the_bot(self) -> None:
+        lines = runs(self.jobs["docs"])
+        for line in DOCS_AUTHOR:
+            self.assertIn(line, lines)
+        names = [step.get("name") for step in self.jobs["docs"]["steps"]]
+        self.assertLess(names.index("Name the author of the commit of gh-pages"), len(names) - 1)
+
+    def test_docs_publishes_the_tip_of_main_and_not_its_own_commit(self) -> None:
+        # A run that publishes its own commit, after the run of a newer push, would put an older site on gh-pages.
+        last = self.jobs["docs"]["steps"][-1]
+        self.assertEqual(last.get("shell"), "bash", "bash in Actions stops at the first failed line")
+        lines = [line.strip() for line in last["run"].splitlines() if line.strip()]
+        self.assertEqual(lines[:2], ["git fetch --quiet origin main", "git checkout --quiet --detach FETCH_HEAD"])
+        self.assertEqual(lines[-1], "just docs-publish")
+        for step in self.jobs["docs"]["steps"][:-1]:
+            self.assertNotIn("docs-publish", step.get("run") or "", step.get("name"))
+
+    def test_docs_publish_builds_the_site_in_strict_mode_first(self) -> None:
+        dump = subprocess.run(["just", "--justfile", str(ROOT / "Justfile"), "--dump", "--dump-format", "json"],
+                              check=True, capture_output=True, text=True).stdout
+        recipes = json.loads(dump)["recipes"]
+        self.assertIn("docs-build", [dependency["recipe"] for dependency in recipes["docs-publish"]["dependencies"]])
+        body = " ".join(part for line in recipes["docs-build"]["body"] for part in line if isinstance(part, str))
+        self.assertIn("--strict", body)
+
+    def test_no_failure_of_docs_is_hidden(self) -> None:
+        self.assertNotIn("continue-on-error", self.jobs["docs"])
+        for step in self.jobs["docs"]["steps"]:
+            self.assertNotIn("continue-on-error", step, step.get("name") or step.get("uses"))
 
 
 # A line that names jlog names only the version of jlog, so each version on such a line is a pin: in an install, the
