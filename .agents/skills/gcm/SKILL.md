@@ -114,7 +114,7 @@ both, so a commit without them stops.
 3. Commit with plain git. The hooks do the rest:
    - The pre-commit hook runs the gate on the tree.
    - The commit-msg hook adds the trailer `Commit-Gate: patch:<id>` to the
-     message.
+     message. After an override, it also adds `Gate-Override: <target>`.
    - The pre-push hook runs `pre_push.py`. It runs `just ci`, less each recipe
      that the pass of `just check` for the pushed tree ran. It always runs
      `ci-gate`, which checks that each pushed commit has the trailer. When it
@@ -231,6 +231,53 @@ of that target. Use it only when the person agrees:
    again. In Codex the hook stops the command, so ask the person to run it.
 
 The run log keeps the reason of each skip.
+
+### The review rounds
+
+A round is one run of `just review` or `just test-review` by a fresh agent,
+and the fixes after it. The count of a round is the number of its
+findings, the open findings and the follow-ups together. Follow this rule in each round:
+
+1. Fix each finding that could lose or corrupt data, or break a documented
+   behaviour, with a test. Write down every other finding as a follow-up
+   task, and do not fix it in the round.
+2. The trend of the count must be down. The count need not fall in every
+   round. One round that equals or slightly exceeds the one before does not
+   stop you by itself.
+3. Stop when the count has not fallen for two rounds in a row, or at five
+   rounds. Consider a redesign of the part that keeps giving findings.
+4. After you stop, hand the open list to the user for a redesign or an
+   override.
+5. After a clean round, add no new code to the change. A new idea is a new
+   task.
+
+The rule exists because one change took 13 rounds. Their counts were 5, 2,
+2, 0, 3, 2, 3, 2, 1, 2, 1, 0 and 1. The gate counts only a record with the status
+`success`, and each edit voids the records of the tree. So without the rule an
+agent cannot stop.
+
+### An override
+
+An override lets one tree through for one target, with its findings open.
+Only the user gives it:
+
+1. Bring the open list to the user. Say which target and tree it is for.
+2. The user chooses a redesign or an override. For an override, the user runs
+   the recipe from their own shell. In Claude Code, the user types
+   `! just gate-override <target> --reason "<reason>"`. In Codex, the user
+   runs `just gate-override` in a terminal.
+3. The recipe writes an override record for the worktree tree. It holds the
+   open findings of the newest record of the target for that tree, the
+   reason, and `"given_by": "user"`.
+4. Commit. The gate says that the commit passed on an override, and the
+   commit-msg hook adds the trailer `Gate-Override: <target>`. `ci-gate`
+   accepts the commit and names the override.
+
+The gate guard stops `just gate-override` when an agent runs it. The guard
+reads the words of each tool call of the agent. It cannot see a call that a
+script or another recipe hides, so it does not prove that the user gave the
+override. The trailer shows each override, so the review of the pull request
+sees it.
 
 ## Stacked PRs With Plain Git
 

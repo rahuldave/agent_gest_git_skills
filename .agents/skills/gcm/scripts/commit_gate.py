@@ -35,7 +35,11 @@ A record is a JSON file in `records/` of the shared log folder, the `.agents/log
      "source": "hook", "model": "<model>", "nonce": "<nonce>"}
 
 A record counts when its status is `success` and each finding has a `test` or a `reason`. A skip from
-`just record-skip` is a record with `"source": "skip"`, a `reason`, and the same tree twice.
+`just record-skip` is a record with `"source": "skip"`, a `reason`, and the same tree twice. An override from `just
+gate-override` is a record with `"source": "override"`, `"status": "override"`, `"given_by": "user"`, a `reason`, a
+list of the open findings, and the same tree twice. It counts in place of `success` for its own tree only, and the
+gate says that the commit passed on an override. Only the person runs `just gate-override`: the gate guard stops it
+for an agent.
 
 The scopes: a record of a tree counts for the commit tree when no path that differs between the two trees is in the
 scope of its target, as SCOPES gives it. Objects compares the two trees, so each side of a rename counts, and a
@@ -48,7 +52,8 @@ and the commit tree, `prose` records may come, since `prose` changes only what i
 tree only. The pass of `just check` is still for the commit tree itself.
 
 The trailer: the commit-msg hook runs the gate once more, and when it passes, it adds a trailer to the message:
-`Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. A patch ID is the hash of the change,
+`Commit-Gate: patch:<patch-id>`, or `Commit-Gate: tree:<tree>` for a merge. When an override let a target through,
+a second trailer `Gate-Override: <target> ...` names each such target, so CI and the review of the pull request see it. A patch ID is the hash of the change,
 from `git patch-id --verbatim` on a diff with no lines of context, so a rebase with no conflict keeps it. With no
 context, a line that moves within one part of a file keeps the ID too. The trailer is a claim, so that is a fair
 price. `git commit -n` skips the commit-msg hook too, so a commit that went around the gate has no trailer. The trailer
@@ -78,7 +83,8 @@ word, `patch:<id>`, and the ID must be the patch ID of the commit. Three kinds o
 are exempt, and the check names each one it skips: a merge with no change of its own, as git merge-tree makes it, a
 commit whose author is a GitHub bot, and a commit from before the gate, when no commit it reaches changed
 `.agents/stack.json`. Another merge needs one trailer `tree:<tree>` with its own tree. CI runs no other step of `just check`
-again: the trailer says that the gate saw a pass of it. The trailer is a claim of the gate, not a proof: an agent
+again: the trailer says that the gate saw a pass of it. A commit with a `Gate-Override` trailer passes, since the
+override is the decision of the person, and the check names it and its targets. The trailer is a claim of the gate, not a proof: an agent
 could write one by hand, and the review of the pull request is the check of that.
 
 Usage: commit_gate.py [--hook pre-commit|pre-merge-commit|commit-msg] [MESSAGE_FILE], or commit_gate.py --trailers
@@ -106,6 +112,9 @@ import subprocess
 import sys
 import tempfile
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+
+# The sources of the records that count for their own tree only: a skip and an override of the person.
+OWN_TREE = ("skip", "override")
 
 # The variables of a harness that mark a commit by an agent.
 AGENT_VARIABLES = ("CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDECODE")
@@ -703,13 +712,20 @@ def has_pass(folders: List[Path], tree: str, steps: List[str]) -> bool:
 
 def record_counts(record: object) -> bool:
     """True for a record whose status is success and whose findings each have a test or a reason."""
-    if not isinstance(record, dict) or record.get("version") != 1 or record.get("status") != "success":
+    if not isinstance(record, dict) or record.get("version") != 1:
+        return False
+    if (record.get("source") == "override") != (record.get("status") == "override"):
+        return False
+    if record.get("status") not in ("success", "override"):
         return False
     if not (isinstance(record.get("target"), str) and is_tree(record.get("input_tree"))
             and is_tree(record.get("output_tree"))):
         return False
-    if record.get("source") == "skip":
+    if record.get("source") in ("skip", "override"):
         reason = record.get("reason")
+        if record["source"] == "override" and (record.get("given_by") != "user"
+                                               or not isinstance(record.get("findings"), list)):
+            return False
         return isinstance(reason, str) and bool(reason.strip()) and record["input_tree"] == record["output_tree"]
     findings = record.get("findings", [])
     if not isinstance(findings, list):
@@ -1113,7 +1129,7 @@ def _missing(required: List[str], records: List[dict], tree: str, objects: Optio
 
     def own(record: dict) -> Optional[str]:
         """The tree that the record checked last, or None for a record that cannot count."""
-        if record.get("source") == "skip":
+        if record.get("source") in OWN_TREE:
             return record["output_tree"] if record["input_tree"] == tree == record["output_tree"] else None
         if record["target"] not in CHANGERS and record["input_tree"] != record["output_tree"]:
             return None
@@ -1130,7 +1146,7 @@ def _missing(required: List[str], records: List[dict], tree: str, objects: Optio
             return True
         for index, target in enumerate(later):
             for record in by_target.get(target, []):
-                if record.get("source") != "skip" and clean(start, record["input_tree"], scope) \
+                if record.get("source") not in OWN_TREE and clean(start, record["input_tree"], scope) \
                         and reaches(record["output_tree"], scope, later[index + 1:]):
                     return True
         return False
@@ -1147,6 +1163,14 @@ def _missing(required: List[str], records: List[dict], tree: str, objects: Optio
 
     changers = [t for t in CHANGERS if t in required and not counts(t)]
     return changers + [t for t in required if t not in CHANGERS and not counts(t)]
+
+
+def overridden(required: List[str], records: List[dict], tree: str, root: Path, code: Sequence[str]) -> List[str]:
+    """The required targets that only an override of the person lets through for TREE."""
+    if not any(record.get("source") == "override" for record in records):
+        return []
+    plain = [record for record in records if record.get("source") != "override"]
+    return missing_targets(required, plain, tree, root, code)
 
 
 def is_agent() -> bool:
@@ -1205,7 +1229,8 @@ def required_against(root: Path, parent: Optional[str], stack: dict, tree: str) 
     return [t for t, paths in required_paths.items() if needed(paths)]
 
 
-def gate(root: Path) -> None:
+def gate(root: Path) -> List[str]:
+    """Check the commit, and give the targets that an override of the person let through."""
     parents = parents_of_commit(root)
     stack_text = read_at(root, "", STACK)
     if stack_text is None and any(p is not None and read_at(root, p, STACK) is not None for p in parents):
@@ -1243,15 +1268,36 @@ def gate(root: Path) -> None:
                         "targets that the new tree needs and `just check`, then commit, then `git stash pop`")
         raise Stop(message)
 
-    if is_agent():
-        missing = missing_targets(required, load_records(folders), tree, root, scope_code(root, parents, stack))
-        if missing:
-            notes = refusal_notes(folders, missing, tree, root)
-            raise Stop("no record for this tree of " + ", ".join(f"`just {t}`" for t in missing)
-                       + ": run them in this order" + "".join(f". {note}" for note in notes))
+    records = load_records(folders)
+    # A commit by the person needs no record, so the gate reads the records only for an override of this tree.
+    if not is_agent() and not any(r.get("source") == "override" and r["input_tree"] == tree for r in records):
+        return []
+    code = scope_code(root, parents, stack)
+    missing = missing_targets(required, records, tree, root, code)
+    if missing and not is_agent():
+        # A commit by the person needs no record, but the trailer still names each override that counts.
+        passed = [t for t in overridden(required, records, tree, root, code) if t not in missing]
+        if passed:
+            print("commit gate: the trailer names the override of the person for "
+                  + ", ".join(f"`{t}`" for t in passed), file=sys.stderr)
+        return passed
+    if missing:
+        notes = refusal_notes(folders, missing, tree, root)
+        raise Stop("no record for this tree of " + ", ".join(f"`just {t}`" for t in missing)
+                   + ": run them in this order" + "".join(f". {note}" for note in notes)
+                   + ". When the review rounds stopped with findings open, bring the open list to the person, who "
+                   "chooses a redesign or runs `just gate-override TARGET --reason ...` from their own shell")
+    passed = overridden(required, records, tree, root, code)
+    if passed and is_agent():
+        print("commit gate: the commit passed on an override of the person for "
+              + ", ".join(f"`{t}`" for t in passed) + ", with the findings in the override record", file=sys.stderr)
+    return passed
 
 
 TRAILER = "Commit-Gate"
+# The trailer that names the targets that an override let through. Its key shares no start with TRAILER, since git
+# interpret-trailers matches a key by its start.
+OVERRIDE_TRAILER = "Gate-Override"
 
 
 def empty_tree(root: Path) -> str:
@@ -1528,10 +1574,35 @@ def may_be_empty(root: Path, text: str, argv: Sequence[str], exact: Optional[Seq
     return answers == {True}
 
 
-def add_trailer(root: Path, message: Path) -> None:
-    """Put the one trailer of the gate at the end of the message. Each old trailer of the gate goes first, so an
-    amend of a commit with a trailer has the new one alone."""
+def add_trailer(root: Path, message: Path, overrides: Sequence[str] = ()) -> None:
+    """Put the one trailer of the gate at the end of the message, after a trailer Gate-Override that names the
+    OVERRIDES when there are any. Each old trailer of the gate goes first, so an amend of a commit with a trailer has
+    the new one alone."""
     value = trailer_value(root)
+    old = re.compile(rf"^{OVERRIDE_TRAILER}\s*:", re.IGNORECASE)
+    text = message.read_text(errors="surrogateescape")
+    lines = text.splitlines(keepends=True)
+    # An old one of an amend goes. Only the last block of lines holds trailers, so a line above it is text. In the
+    # editor, git gives the hook its comment lines and the scissors line too, and the block comes before them.
+    comments = comment_strings(root, text, True)
+    start = next((index for index, line in enumerate(lines)
+                  if any(line.rstrip("\n") == comment + SCISSORS for comment in comments)), len(lines))
+    while start > 0 and (not lines[start - 1].strip()
+                         or any(lines[start - 1].startswith(comment) for comment in comments)):
+        start -= 1
+    while start > 0 and lines[start - 1].strip():
+        start -= 1
+    drop = {index for index in range(start, len(lines)) if old.match(lines[index])}
+    # A line counts only when git reads the block as trailers, so a line of prose in the body stays.
+    if drop and not any(old.match(line) for line in git(
+            ["interpret-trailers", "--parse", "--no-divider", str(message)], root, plain_env()).splitlines()):
+        drop = set()
+    if drop:
+        message.write_text("".join(line for index, line in enumerate(lines) if index not in drop),
+                           errors="surrogateescape")
+    if overrides:
+        git(["interpret-trailers", "--in-place", "--no-divider", "--trailer",
+             f"{OVERRIDE_TRAILER}: {' '.join(overrides)}", str(message)], root, plain_env())
     # With --no-divider, a line --- in the message is text, so the trailer goes at the end, where git log reads it.
     git(["interpret-trailers", "--in-place", "--no-divider", "--if-exists", "replace", "--trailer",
          f"{TRAILER}: {value}", str(message)], root, plain_env())
@@ -1720,6 +1791,11 @@ def check_trailers(root: Path, base: Optional[str], head: str, notes: Optional[L
             problems.append(f"{name} changed after the commit gate passed it: its {kind} is {expected}, and the "
                             f"trailer names {values[0]}, for example after a rebase with a conflict or an amend "
                             "with git commit -n")
+            continue
+        overrides = git(["log", "-1", f"--format=%(trailers:key={OVERRIDE_TRAILER},valueonly,separator=%x20)",
+                         commit], root).split()
+        if overrides and notes is not None:
+            notes.append(f"{name} passed the commit gate on an override of the person for {' '.join(overrides)}")
     return problems
 
 
@@ -1901,7 +1977,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 1 if problems else 0
         problems = check_hooks(root) if args.check_hooks else []
         if not args.check_hooks:
-            gate(root)
+            overrides = gate(root)
             if args.hook == "commit-msg":
                 if args.message is None:
                     raise Stop("the commit-msg hook needs the message file")
@@ -1912,7 +1988,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                           "A commit that git makes anyway has no trailer, and just ci-gate names it", file=sys.stderr)
                     return 0
                 release_check(root, Path(args.message))
-                add_trailer(root, Path(args.message))
+                add_trailer(root, Path(args.message), overrides)
     except Stop as stop:
         problems = [str(stop)]
     for problem in problems:

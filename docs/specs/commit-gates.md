@@ -644,6 +644,58 @@ The first questions:
 The required targets are not a question. `.agents/targets/required.txt` is the
 only place for them.
 
+### The review rounds
+
+A round is one run of `just review` or `just test-review` by a fresh agent,
+and the fixes after it. The count of a round is the number of its
+findings, the open findings and the follow-ups together. The skills `gcm`, `grv` and `gte` and the base tasks of the two
+targets give this rule:
+
+1. Fix each finding that could lose or corrupt data, or break a documented
+   behaviour, with a test. Write down every other finding as a follow-up
+   task, and do not fix it in the round.
+2. The trend of the count must be down. The count need not fall in every
+   round. One round that equals or slightly exceeds the one before does not
+   stop the agent by itself.
+3. Stop when the count has not fallen for two rounds in a row, or at five
+   rounds. Consider a redesign of the part that keeps giving findings.
+4. After stopping, hand the open list to the user for a redesign or an
+   override.
+5. After a clean round, add no new code to the change.
+
+One change took 13 rounds. Their counts were 5, 2, 2, 0, 3, 2, 3, 2, 1, 2, 1,
+0 and 1. The gate counts only a record with the status `success`, and each
+edit voids the records of the tree. So without the rule an agent cannot stop.
+
+**The override.** The user ends the rounds with an override:
+
+- **The recipe.** The user runs
+  `just gate-override <target> --reason "<reason>"` from their own shell. In
+  Claude Code, the user types it after `!`. That line is not a tool call of
+  the agent, so no agent hook runs.
+- **The record.** The recipe runs `record_result.py override`. It writes
+  `records/override-<target>-<tree>.json` for the worktree tree, with
+  `"status": "override"`, `"source": "override"` and `"given_by": "user"`. The
+  record holds the reason and the open list of the newest record of the
+  target for the tree. The open list is each finding with no `test`, and the
+  notes of the result, where a review puts its open findings.
+- **The gate.** An override counts in place of `success` for its target and
+  its own tree only, as a skip does. The gate says that the commit passed on
+  an override, and names each target. A commit by the user needs no record,
+  but its trailer still names each override of its tree.
+- **The trailer.** The commit-msg hook adds `Gate-Override: <target> ...` next
+  to `Commit-Gate`. The key shares no start with `Commit-Gate`, because
+  `git interpret-trailers` matches a key by its start.
+- **CI.** `ci-gate` accepts a commit with `Gate-Override`, and names the
+  commit and its targets. The override is the decision of the user, and CI
+  has no agent to judge it. The reviewer of the pull request sees the name.
+- **The limit.** The gate guard stops `just gate-override` and
+  `record_result.py override` in each tool call of an agent, in Claude Code
+  and in Codex. The guard reads only the words of the call. A script, another
+  recipe or `python -c` can still write an override record. So the guard
+  does not prove that the user gave the override. The trailer makes each
+  override visible to the review.
+
 ### Records
 
 - **A record has two trees.** The input tree is the worktree tree when the
@@ -731,11 +783,13 @@ only place for them.
   |---|---|
   | `version` | `1`. |
   | `target` | The name of the target, for example `review`. |
-  | `status` | The status of the result. Only `success` counts. |
+  | `status` | The status of the result. Only `success` counts, and `override` for an override of the user. |
   | `input_tree`, `output_tree` | The two trees of the record. |
   | `findings` | A list. Each finding has a `summary`, and a `test` that shows the fix or a `reason` not to fix it. |
-  | `source` | `hook`, `agent` for `just record`, or `skip` for `just record-skip`. |
-  | `reason` | For a skip, the reason. A skip has the same tree twice. |
+  | `source` | `hook`, `agent` for `just record`, `skip` for `just record-skip`, or `override` for `just gate-override`. |
+  | `reason` | For a skip or an override, the reason. Each has the same tree twice. |
+  | `notes` | The notes of the result, when it has any. A review puts its open findings there. |
+  | `given_by`, `open_findings` | For an override, `user`, and the notes of the newest record of the target for the tree. |
   | `model`, `nonce` | The model of the fresh agent, and the nonce of its packet. |
 
   The gate is `.agents/skills/gcm/scripts/commit_gate.py`.
@@ -1297,6 +1351,8 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
   - `core.hooksPath`, `git commit-tree` and `git update-ref`.
   - `just record-skip`, until the person agrees. In Claude Code the hook asks
     the person. In Codex it stops the command.
+  - `just gate-override`, always. Only the user runs it, from their own
+    shell. "The review rounds" gives what the guard can prove.
   - A write to a log folder, `.git/hooks`, `required.txt` or the settings of
     the hooks.
 - **Other commands that make commits:**
@@ -1338,6 +1394,9 @@ check: fmt-check lint typecheck test integration coverage-check docstring-check 
     is empty. With `--allow-empty-message`, the trailer is the whole message.
     Git reads that line as the subject, not as a trailer, so `ci-gate` names
     the commit.
+  - **An override shows.** After an override, the hook also adds
+    `Gate-Override: <target> ...`, and removes an old one in the last block
+    of the message.
   - **A skip shows.** `git commit -n` skips the `commit-msg` hook too. So a
     commit that went around the gate has no trailer.
   - **`just ci`** runs `ci-gate`, then the steps in the list `ci` of

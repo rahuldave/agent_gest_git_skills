@@ -106,8 +106,17 @@ just quick [args]           # a fix round: format, lint, types and unit tests, w
 7. For frontend, UI or interaction changes, run `just visual-check`, and give
    its packet to a fresh agent. Before it, start the app with `just dev
    [port]`, or confirm that a server already runs.
-8. Run `just test-review`, and give its packet to a fresh agent. Fix each
-   finding with a test, or give the reason not to fix it. While you fix, run
+8. Run `just test-review`, and give its packet to a fresh agent. In each
+   round, fix only each finding that could lose or corrupt data, or break a documented
+   behaviour, with a test. Write down every other finding as a follow-up task,
+   and do not fix it in the round. The trend of the count of findings
+   must be down, though one round that equals or slightly exceeds the one
+   before does not stop you by itself. Stop when the count has not fallen for
+   two rounds in a row, or at five rounds, and hand the open list to the user
+   for a redesign or an override. After a clean round, add no new code. The
+   section "The review rounds" of the `gcm` skill gives the reason and the
+   override.
+   While you fix, run
    `just quick` when `just --list` shows it. Run `just check` once on the
    final tree.
 9. Report the strategy, the red check when it applies, the recipes and the

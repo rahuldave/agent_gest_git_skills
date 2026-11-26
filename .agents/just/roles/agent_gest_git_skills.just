@@ -74,6 +74,13 @@ record target file:
 record-skip target +reason:
     @{{jn_record}} skip "$@"
 
+# Only you run gate-override, from your own shell, as with ! in Claude Code. The agent hooks stop it for an agent.
+
+# Let the worktree tree through for TARGET with its findings open: just gate-override TARGET --reason "..."
+[positional-arguments]
+gate-override target +reason:
+    @{{jn_record}} override "$@"
+
 jn_gate := "uv run --no-project --quiet --no-python-downloads --python '>=3.9' python .agents/skills/gcm/scripts/commit_gate.py"
 
 # JN_CI_BASE selects the verified PR base for an existing-topic push; the hook keeps its pushed head.

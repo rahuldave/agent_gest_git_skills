@@ -37,8 +37,16 @@ You are the fresh agent. Judge the tests of the change. Do not change a file.
 
 ## The findings
 
-A finding that the change already fixes needs the test that shows the fix. A finding that the change
-does not need to fix needs the reason. A missing or empty test that needs a fix is an open finding.
+A finding that the change already fixes needs the test that shows the fix. Sort each other finding by
+the rule of the review rounds:
+
+- **An open finding** is a missing or empty test of a behaviour whose fault could lose or corrupt data,
+  or break a documented behaviour. The writer adds the test in this round.
+- **A follow-up** is every other finding. Give it a `reason` that starts with `follow-up:`. The writer
+  writes it down as a follow-up task, and does not fix it in this round.
+
+The writer counts the findings of each round, the open findings and the follow-ups together. When the count has not fallen for two rounds in a
+row, or after five rounds, the writer stops and hands the open list to the user.
 
 ## The result
 

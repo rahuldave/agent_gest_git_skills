@@ -664,6 +664,76 @@ class GateTests(unittest.TestCase):
         self.record("review", source="skip", reason="a typo")
         self.assertGoes(self.commit(env=self.agent))
 
+    def test_an_override_lets_its_tree_through_and_the_trailer_names_it(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review", status="failed", findings=[{"summary": "a bug"}])
+        result = self.commit(env=self.agent)
+        self.assertStops(result, "`just review`")
+        self.assertIn("just gate-override", result.stderr)
+        self.record("review", status="override", source="override", given_by="user", reason="redesign later",
+                    findings=[{"summary": "a bug"}])
+        result = self.commit(env=self.agent)
+        self.assertGoes(result)
+        self.assertIn("passed on an override of the person for `review`", result.stderr)
+        message = git("log", "-1", "--format=%B", cwd=self.repo).stdout
+        self.assertIn("Gate-Override: review", message)
+        self.assertIn("Commit-Gate: patch:", message)
+        notes: list = []
+        self.assertEqual(commit_gate.check_trailers(self.repo, "HEAD~1", "HEAD", notes), [])
+        self.assertTrue(any("override of the person for review" in note for note in notes), notes)
+        # An amend whose tree has a record of its own drops the old override trailer.
+        self.record("review")
+        self.assertGoes(git("commit", "-q", "--amend", "--no-edit", cwd=self.repo, env=self.agent, check=False))
+        self.assertNotIn("Gate-Override", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+
+    def test_a_commit_by_the_person_keeps_the_override_trailer(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.record("review", status="override", source="override", given_by="user", reason="r", findings=[])
+        self.assertGoes(self.commit())
+        self.assertIn("Gate-Override: review", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+        self.assertGoes(git("commit", "-q", "--amend", "--no-edit", cwd=self.repo, env=self.person, check=False))
+        self.assertIn("Gate-Override: review", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+        # A commit by the person with no record at all names no override.
+        self.write("b.txt", "b\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertGoes(self.commit())
+        self.assertNotIn("Gate-Override", git("log", "-1", "--format=%B", cwd=self.repo).stdout)
+
+    def test_an_amend_in_the_editor_drops_the_old_override_trailer(self) -> None:
+        # In the editor, git gives the commit-msg hook its comment lines after the trailers.
+        self.first_commit()
+        message = self.repo / "message.txt"
+        old = "Subject\n\nGate-Override: review\nCommit-Gate: patch:old\n\n# Please enter the message.\n# Lines are ignored.\n"
+        for overrides, count in (((), 0), (("review",), 1)):
+            with self.subTest(overrides=overrides):
+                message.write_text(old)
+                commit_gate.add_trailer(self.repo, message, overrides)
+                self.assertEqual(message.read_text().count("Gate-Override:"), count, message.read_text())
+
+    def test_a_line_of_prose_that_names_the_override_trailer_stays(self) -> None:
+        self.first_commit()
+        message = self.repo / "message.txt"
+        text = "Add it\n\nThe hook writes, as in\nGate-Override: review\nwhen the person gave one.\n"
+        message.write_text(text)
+        commit_gate.add_trailer(self.repo, message, ())
+        self.assertIn("as in\nGate-Override: review\nwhen", message.read_text())
+
+    def test_an_override_counts_for_its_own_tree_only(self) -> None:
+        self.first_commit()
+        self.write("a.txt", "a\n")
+        self.record("review", status="override", source="override", given_by="user", reason="r", findings=[])
+        self.write("a.txt", "b\n")
+        git("add", "-A", cwd=self.repo)
+        self.passed()
+        self.assertStops(self.commit(env=self.agent), "`just review`")
+
     # The scopes of the records
 
     def all_records(self) -> None:
