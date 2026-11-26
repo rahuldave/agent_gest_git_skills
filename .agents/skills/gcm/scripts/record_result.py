@@ -10,6 +10,11 @@ Three commands write a record in `records/` of the shared log folder:
   the command, so an agent cannot write the result itself.
 - `record_result.py skip TARGET REASON` lets the worktree tree through without the record of TARGET. `just
   record-skip` runs it, after the agent hooks asked the person. The record has `"source": "skip"`.
+- `record_result.py override TARGET --reason REASON` lets the worktree tree through on an override of the person,
+  after the review rounds stopped with findings open. `just gate-override` runs it, and the agent hooks stop it for
+  an agent, so only the person runs it, from their own shell. The record has `"source": "override"`, `"status":
+  "override"`, `"given_by": "user"`, the reason, and the open list of the newest record of TARGET for the tree: each
+  finding with no `test`, and the notes, where a review puts its open findings.
 
 When the hook gives no record of a result whose nonce names a packet, it writes the reason in
 `refusals/NONCE.json` of the shared log folder. The harness does not show the output of the hook, so the gate reads
@@ -24,7 +29,7 @@ A result counts only when `jagt result lint --expect-target TARGET --expect-nonc
 the packet file in `packets/`, which gives the target, the input tree and the worktree. The output tree is the
 worktree tree of that worktree now, after the changes of the fresh agent.
 
-Usage: record_result.py hook | record TARGET FILE | skip TARGET REASON
+Usage: record_result.py hook | record TARGET FILE | skip TARGET REASON | override TARGET --reason REASON
 """
 
 from __future__ import annotations
@@ -204,6 +209,9 @@ def record_from(text: str, root: Path, source: str, model: Optional[str], target
     record = {"version": 1, "target": packet["target"], "status": block.get("status"),
               "input_tree": packet["input_tree"], "output_tree": output_tree, "findings": findings_of(block),
               "source": source, "model": model or "unknown", "nonce": nonce}
+    # The open findings of a review are in its notes, and an override of the person keeps them.
+    if block.get("notes") not in (None, "none", "", []):
+        record["notes"] = block["notes"]
     return write_record(root, record, nonce, once=True)
 
 
@@ -578,6 +586,39 @@ def skip(root: Path, target: str, reason: str) -> Path:
     return write_record(root, record, f"skip-{target}-{tree}")
 
 
+def open_findings(root: Path, target: str, tree: str) -> Tuple[List[object], object]:
+    """The findings with no test, and the notes that hold the open findings, of the newest record of TARGET for
+    TREE, from the hook, an agent or a skip."""
+    folder, newest, found, notes = shared_log(root) / "records", -1.0, [], None
+    for path in folder.glob("*.json") if folder.is_dir() else []:
+        try:
+            record, when = json.loads(path.read_text()), path.stat().st_mtime
+        except (OSError, ValueError):
+            continue
+        if (isinstance(record, dict) and record.get("target") == target and record.get("input_tree") == tree
+                and record.get("source") != "override" and isinstance(record.get("findings"), list)
+                and when > newest):
+            newest = when
+            found = [f for f in record["findings"] if not (isinstance(f, dict) and isinstance(f.get("test"), str)
+                                                           and f["test"].strip())]
+            notes = record.get("notes")
+    return found, notes
+
+
+def override(root: Path, target: str, reason: str) -> Path:
+    """The override of the person for TARGET and the worktree tree. The agent hooks stop this command for an agent."""
+    if target not in agentic_target.TARGETS:
+        raise Stop(f"{target} is not an agentic target; the targets are " + ", ".join(agentic_target.TARGETS))
+    if not reason.strip():
+        raise Stop("an override needs a reason")
+    _, tree, _ = worktree_diff(root)
+    findings, notes = open_findings(root, target, tree)
+    record = {"version": 1, "target": target, "status": "override", "input_tree": tree, "output_tree": tree,
+              "findings": findings, "open_findings": notes, "source": "override", "given_by": "user",
+              "reason": reason.strip()}
+    return write_record(root, record, f"override-{target}-{tree}")
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv == ["hook"]:
@@ -590,10 +631,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if len(argv) >= 3 and argv[0] == "skip":
             print(f"record: wrote {skip(root, argv[1], ' '.join(argv[2:]))}")
             return 0
+        if len(argv) >= 4 and argv[0] == "override" and argv[2] == "--reason":
+            path = override(root, argv[1], " ".join(argv[3:]))
+            count = len(json.loads(path.read_text())["findings"])
+            print(f"record: wrote {path}, an override of {argv[1]} for this tree, with {count} findings that have no "
+                  "test and the open findings of the review")
+            return 0
     except Stop as stop:
         print(f"record: {stop}", file=sys.stderr)
         return 1
-    print("usage: record_result.py hook | record TARGET FILE | skip TARGET REASON", file=sys.stderr)
+    print("usage: record_result.py hook | record TARGET FILE | skip TARGET REASON | override TARGET --reason REASON",
+          file=sys.stderr)
     return 2
 
 

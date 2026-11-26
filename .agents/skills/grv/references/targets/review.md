@@ -37,9 +37,16 @@ A lens is one point of view of the review. Look at the change through each lens:
 Report only real defects. For each one, give a concrete reproduction, such as an input and the wrong
 result.
 
-A finding that the change already fixes needs the test that shows the fix. A finding that the change
-does not need to fix needs the reason. A defect that the change does not fix and that needs a fix is an
-open finding.
+A finding that the change already fixes needs the test that shows the fix. Sort each other defect by
+the rule of the review rounds:
+
+- **An open finding** is a defect that could lose or corrupt data, or break a documented behaviour. The
+  writer fixes it in this round, with a test.
+- **A follow-up** is every other defect. Give it a `reason` that starts with `follow-up:`. The writer
+  writes it down as a follow-up task, and does not fix it in this round.
+
+The writer counts the findings of each round, the open findings and the follow-ups together. When the count has not fallen for two rounds in a
+row, or after five rounds, the writer stops and hands the open list to the user.
 
 ## The result
 

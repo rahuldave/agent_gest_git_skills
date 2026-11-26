@@ -223,6 +223,17 @@ class GuardTests(unittest.TestCase):
                 self.assertEqual((answer["hookEventName"], answer["permissionDecision"]), ("PreToolUse", "ask"))
                 self.assertIn("without the record of a fresh agent", answer["permissionDecisionReason"])
 
+    def test_an_override_stops_for_an_agent_in_each_harness(self) -> None:
+        for command in ("just gate-override review --reason x", "cd sub && just --quiet gate-override review --reason x",
+                        "just agent_gest_git_skills::gate-override review --reason x",
+                        "sh -c 'just gate-override review --reason x'",
+                        "uv run python .agents/skills/gcm/scripts/record_result.py override review --reason x"):
+            for harness in ("claude", "codex"):
+                with self.subTest(command=command, harness=harness):
+                    result = self.guard_in(harness, command)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn("only the person gives an override", result.stderr)
+
     def test_a_skip_in_codex_stops_and_names_the_person(self) -> None:
         result = subprocess.run([sys.executable, str(SCRIPT)], input=json.dumps(
             {"tool_name": "Bash", "tool_input": {"command": "just record-skip review typo"}, "cwd": str(self.repo)}),

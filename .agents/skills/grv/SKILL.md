@@ -28,7 +28,16 @@ To run `grv` by hand is to run `just review`:
 3. The fresh agent returns its findings. The hook of the harness writes the
    record of the review, and the commit gate needs that record for each
    commit.
-4. Fix each finding with a test, and run `just review` again on the new tree.
+4. Run `just review` again on the new tree after each round of fixes. In each
+   round, fix only each finding that could lose or corrupt data, or break a documented
+   behaviour, with a test. Write down every other finding as a follow-up task,
+   and do not fix it in the round. The trend of the count of findings
+   must be down, though one round that equals or slightly exceeds the one
+   before does not stop you by itself. Stop when the count has not fallen for
+   two rounds in a row, or at five rounds, and hand the open list to the user
+   for a redesign or an override. After a clean round, add no new code. The
+   section "The review rounds" of the `gcm` skill gives the reason and the
+   override.
    While you fix, run `just quick` when `just --list` shows it. Run
    `just check` once on the final tree, before the commit.
 

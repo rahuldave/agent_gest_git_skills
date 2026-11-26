@@ -18,6 +18,12 @@ gate has no trailer, so CI stops it. The guard stops:
   the settings of the agent hooks, by a shell command, or by a file tool of Claude Code. Codex runs the guard for its
   shell only.
 
+It stops `just gate-override` and `record_result.py override` for an agent, in Claude Code and in Codex, so only
+the person runs them, from their own shell, as with `!` in Claude Code, which runs no hook. The guard proves only
+that no tool call of an agent named the override in its words. A script, a recipe that calls it, or `python -c`
+could still write an override, as they could write any record. The `Gate-Override` trailer shows each override in
+the commit, so the review of the pull request sees it.
+
 It asks the person before `just record-skip` or `record_result.py skip`, which let a tree through without a
 record. Claude Code shows the question. Codex has no question for a hook, so there the guard stops the call and the
 agent asks the person to run the command. It stops `record_result.py hook`, which only the harness runs, `just
@@ -462,6 +468,7 @@ def record_calls(rest: List[str]) -> List[str]:
     calls = []
     if name_of(rest[0]) == "just":
         calls += ["skip" for word in rest[1:] if recipe_is(word, "record-skip")]
+        calls += ["override" for word in rest[1:] if recipe_is(word, "gate-override")]
         if runs_record(rest[1:]):
             calls.append("record")
     for index, word in enumerate(rest):
@@ -488,6 +495,9 @@ def check_records(words: List[str], rest: List[str], command: str) -> None:
     calls = record_calls(rest)
     if not calls:
         return
+    if "override" in calls:
+        raise Blocked("only the person gives an override, from their own shell, as with ! just gate-override in "
+                      "Claude Code. Bring the open findings to the person")
     if "hook" in calls:
         raise Blocked("only the SubagentStop hook of the harness runs record_result.py hook")
     # env and exec -c can clear the variables without naming them, and unset can name them through a pattern.

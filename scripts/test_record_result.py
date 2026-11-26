@@ -928,6 +928,42 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(self.run_script("skip", "review").returncode, 2)
         self.assertEqual(self.records(), [])
 
+    def test_the_record_keeps_the_notes_that_hold_the_open_findings(self) -> None:
+        nonce = self.render()
+        text = result(nonce, status="partial").replace("notes: none", "notes: an open bug")
+        self.assertEqual(self.hook({"last_assistant_message": text}).returncode, 0)
+        [record] = self.records()
+        self.assertEqual(record["notes"], "an open bug")
+
+    def test_override_holds_the_open_findings_and_counts_for_its_tree(self) -> None:
+        gate = load("commit_gate")
+        tree = gate.worktree_tree(self.repo)
+        folder = self.repo / ".agents/log/records"
+        folder.mkdir(parents=True)
+        findings = [{"summary": "fixed", "test": "test_a"}, {"summary": "open", "reason": "a follow-up task"}]
+        (folder / "r.json").write_text(json.dumps({"version": 1, "target": "review", "status": "failed",
+                                                   "input_tree": tree, "output_tree": tree, "findings": findings,
+                                                   "source": "hook", "notes": "an open bug"}))
+        run = self.run_script("override", "review", "--reason", "the", "user", "accepts")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("1 findings", run.stdout)
+        [record] = [r for r in self.records() if r["source"] == "override"]
+        self.assertEqual((record["status"], record["given_by"], record["reason"]), ("override", "user", "the user accepts"))
+        self.assertEqual((record["findings"], record["open_findings"]), (findings[1:], "an open bug"))
+        self.assertTrue(gate.record_counts(record))
+        self.assertEqual(gate.missing_targets(["review"], [record], tree), [])
+        self.assertEqual(gate.missing_targets(["review"], [record], "d" * 40), ["review"])
+        # A record that claims an override without the person, or a success from an override, does not count.
+        self.assertFalse(gate.record_counts(dict(record, given_by="agent")))
+        self.assertFalse(gate.record_counts(dict(record, status="success")))
+        self.assertFalse(gate.record_counts(dict(record, source="hook")))
+
+    def test_override_needs_a_target_and_a_reason(self) -> None:
+        self.assertIn("is not an agentic target", self.run_script("override", "lint", "--reason", "x").stderr)
+        self.assertEqual(self.run_script("override", "review", "--reason", " ").returncode, 1)
+        self.assertEqual(self.run_script("override", "review", "x").returncode, 2)
+        self.assertEqual(self.records(), [])
+
     def test_a_linked_records_folder_gets_no_write(self) -> None:
         outside = self.base / "outside"
         outside.mkdir()
