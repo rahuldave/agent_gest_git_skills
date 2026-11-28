@@ -76,6 +76,10 @@ a release tag on HEAD stops the commit too.
 
 `--dry-run` prints the next tag and the reason, and changes nothing. Without it, the script makes an annotated tag on
 HEAD, or on the release commit, pushes it, and checks with `git ls-remote` that the remote tag points at that commit.
+After a push that failed, the next run on the same commit finds the tag on HEAD that the remote lacks. It pushes that
+same tag object, also a signed one, when the tag is the annotated tag that the release makes, and when the plan
+without the tag gives that tag. Else it fails and changes nothing. A tag on the remote that is another tag object
+than the tag here, with another message or signature, stops the release too.
 When the variable `GITHUB_OUTPUT` names a file, as in GitHub Actions, the script adds the lines `tag=vX.Y.Z` and
 `commit=<hash>` to it, so that a later job can check out the tag. It never moves or deletes a tag.
 When there is nothing to tag, it prints "no release" and exits 0. A tag at or above the next number on a later
@@ -154,9 +158,11 @@ def parse_tag(name: str) -> Optional[Version]:
     return None if match is None else (int(match[1]), int(match[2]), int(match[3]))
 
 
-def last_tag(root: Path) -> Optional[Version]:
-    """The newest tag vX.Y.Z that is an ancestor of HEAD, or None."""
-    versions = [parse_tag(name) for name in git(root, "tag", "--merged", "HEAD", "--list", "v*").split()]
+def last_tag(root: Path, without: Optional[str] = None) -> Optional[Version]:
+    """The newest tag vX.Y.Z that is an ancestor of HEAD, or None. WITHOUT is a tag to leave out, as the unpublished
+    tag of a retry, whose plan must be the plan without it."""
+    versions = [parse_tag(name) for name in git(root, "tag", "--merged", "HEAD", "--list", "v*").split()
+                if name != without]
     found = [version for version in versions if version is not None]
     return max(found) if found else None
 
@@ -282,12 +288,14 @@ def check_remote_tags(root: Path, remote: str) -> Optional[Dict[str, str]]:
     result = subprocess.run(["git", "ls-remote", "--tags", remote], cwd=root, capture_output=True, text=True)
     if result.returncode != 0:
         raise ReleaseError(f"git ls-remote --tags {remote} failed: {result.stderr.strip()}")
-    remote_commits = {}
+    remote_commits, remote_objects = {}, {}
     for line in result.stdout.splitlines():
         sha, _, ref = line.partition("\t")
         name = ref[len("refs/tags/"):]
         peeled = name.endswith("^{}")
         name = name[:-3] if peeled else name
+        if parse_tag(name) is not None and not peeled:
+            remote_objects[name] = sha
         if parse_tag(name) is not None and (peeled or name not in remote_commits):
             remote_commits[name] = sha
     missing = sorted(name for name in remote_commits if tag_commit(root, name) is None)
@@ -298,7 +306,41 @@ def check_remote_tags(root: Path, remote: str) -> Optional[Dict[str, str]]:
     if differ:
         raise ReleaseError(f"the tags {', '.join(differ)} point at other commits on {remote} than here. A pushed tag "
                            "never moves, so delete the local tags and fetch them again")
+    objects_differ = sorted(name for name, sha in remote_objects.items()
+                            if git(root, "rev-parse", f"refs/tags/{name}").strip() != sha)
+    if objects_differ:
+        raise ReleaseError(f"the tags {', '.join(objects_differ)} on {remote} are other tag objects than here, with "
+                           "another message or signature. A pushed tag never moves, so delete the local tags and "
+                           "fetch them again")
     return remote_commits
+
+
+def unpublished_tag(root: Path, remote_tags: Optional[Dict[str, str]], head: str) -> Optional[str]:
+    """The release tag on HEAD that the remote lacks, as after a push that failed, or None. It must be the annotated
+    tag that the release makes: a tag object with its own name as the message, on HEAD. Git adds a signature to the
+    message when tag.gpgsign is on, so the check leaves the signature out, and the retry pushes the same tag object.
+    With no remote, no tag is unpublished."""
+    if remote_tags is None:
+        return None
+    names = [name for name in git(root, "tag", "--points-at", head, "--list", "v*").split()
+             if parse_tag(name) is not None and name not in remote_tags]
+    if len(names) > 1:
+        raise ReleaseError(f"HEAD has the release tags {', '.join(sorted(names))}, which the remote lacks, so the "
+                           "release cannot tell which one to push. Delete the wrong ones")
+    if not names:
+        return None
+    name = names[0]
+    ref = f"refs/tags/{name}"
+    kind, inner, target = git(root, "for-each-ref", "--format=%(objecttype)%00%(tag)%00%(*objectname)",
+                              ref).rstrip("\n").split("\0")
+    contents = git(root, "for-each-ref", "--format=%(contents)", ref)
+    signature = git(root, "for-each-ref", "--format=%(contents:signature)", ref)
+    message = contents[:len(contents) - len(signature)] if signature and contents.endswith(signature) else contents
+    if kind != "tag" or inner != name or target != head or message.strip() != name:
+        raise ReleaseError(f"{name} is on HEAD here, but not on the remote, and it is not the annotated tag that the "
+                           f"release makes, with the message {name}. So the release does not push it. Delete it, "
+                           "then run the release again")
+    return name
 
 
 def is_ancestor(root: Path, older: str, newer: str) -> bool:
@@ -469,9 +511,10 @@ def pending_message(root: Path) -> Optional[str]:
     return max(readings, key=lambda message: LEVELS.index(commit_level(message)), default=None)
 
 
-def tag_on_head(root: Path) -> Optional[str]:
-    """A release tag on HEAD, or None."""
-    names = [name for name in git(root, "tag", "--points-at", "HEAD", "--list", "v*").split() if parse_tag(name)]
+def tag_on_head(root: Path, without: Optional[str] = None) -> Optional[str]:
+    """A release tag on HEAD, or None. WITHOUT is a tag to leave out, as the unpublished tag of a retry."""
+    names = [name for name in git(root, "tag", "--points-at", "HEAD", "--list", "v*").split()
+             if parse_tag(name) and name != without]
     return max(names, key=parse_tag) if names else None
 
 
@@ -495,10 +538,10 @@ def show(version: Version) -> str:
     return "%d.%d.%d" % version
 
 
-def plan(root: Path, pending: Optional[str] = None, amend: bool = False) -> Plan:
+def plan(root: Path, pending: Optional[str] = None, amend: bool = False, without: Optional[str] = None) -> Plan:
     """The next tag and the reason. PENDING is the message of the commit being made, which counts as one more commit
-    after HEAD. With AMEND, it replaces the message of HEAD."""
-    last = last_tag(root)
+    after HEAD. With AMEND, it replaces the message of HEAD. WITHOUT is a tag to leave out, as for a retry."""
+    last = last_tag(root, without)
     manifest = manifest_version(root)
     if last is None:
         if manifest is not None:
@@ -913,14 +956,15 @@ def has_commit(root: Path, sha: str) -> bool:
 
 
 def already_released(root: Path, remote: str, remote_tags: Optional[Dict[str, str]], head: str,
-                     dry_run: bool) -> Optional[str]:
+                     dry_run: bool, retry: Optional[str] = None) -> Optional[str]:
     """The message of a run on a commit that is released already, after it writes the tag and its commit to
     GITHUB_OUTPUT, or None. HEAD is released when it has a release tag, as after a raise of the version by hand, or
     when a trusted version commit of the release, whose parent is HEAD, has one. So "Re-run all jobs" of a release
     workflow gives the later jobs the tag again. The tag must be on the remote, when there is one. A run on the
     version commit itself, as a push with a token that starts workflows makes, gives no tag, since the run of its
-    parent gives it. A dry run writes no output."""
-    tagged = tag_on_head(root)
+    parent gives it. A dry run writes no output. RETRY is the unpublished tag on HEAD. The check leaves it out, so a
+    commit that is released already without it stays released, and the release does not push RETRY."""
+    tagged = tag_on_head(root, retry)
     if tagged is not None:
         above = parents(root, head)
         # The checkout is at the version commit, not at its parent, so the check of its files is left out. A
@@ -948,10 +992,19 @@ def release(root: Path, remote: str, dry_run: bool) -> str:
                            "whole history, for example with fetch-depth: 0 in actions/checkout")
     remote_tags = check_remote_tags(root, remote)
     head = git(root, "rev-parse", "HEAD").strip()
-    done = already_released(root, remote, remote_tags, head, dry_run)
+    retry = unpublished_tag(root, remote_tags, head)
+    if retry is not None and git(root, "log", "-1", "--format=%s", head).strip() == f"chore(release): {retry}":
+        # A version commit and its tag go to the remote together, with git push --atomic, or not at all. A run that
+        # stopped before that push left both here, so the tag alone is no retry. The rules of a version commit apply.
+        retry = None
+    done = already_released(root, remote, remote_tags, head, dry_run, retry)
     if done is not None:
         return done
-    version, reason, write = plan(root)
+    version, reason, write = plan(root, without=retry)
+    if retry is not None and (version is None or tag_name(version) != retry or write is not None):
+        planned = "no release" if version is None else tag_name(version)
+        raise ReleaseError(f"{retry} is on HEAD here, but not on {remote}, and the plan without it gives {planned}. "
+                           f"So the release does not push it. Delete it, then run the release again")
     if version is None:
         return f"no release: {reason}"
     name = tag_name(version)
@@ -961,7 +1014,7 @@ def release(root: Path, remote: str, dry_run: bool) -> str:
         note = "".join(f". Not trusted as the release of HEAD: {why}" for why in untrusted)
         return f"no release: {newer} is on a later commit, so a later release has this commit{note}"
     existing = tag_commit(root, name)
-    if existing is not None:
+    if existing is not None and retry is None:
         if existing == head:
             write_output({"tag": name, "commit": head})
             return f"no release: {name} is already on HEAD"
@@ -972,13 +1025,18 @@ def release(root: Path, remote: str, dry_run: bool) -> str:
     if write is not None:
         return release_commit(root, remote, dry_run, version, reason, head)
     if dry_run:
+        if retry is not None:
+            return f"next tag: {name} ({reason}), made here already and not pushed yet"
         return f"next tag: {name} ({reason})"
-    git(root, "tag", "-a", name, "-m", name, head)
+    if retry is None:
+        git(root, "tag", "-a", name, "-m", name, head)
     git(root, "push", remote, f"refs/tags/{name}:refs/tags/{name}")
     pushed = git(root, "ls-remote", remote, f"refs/tags/{name}^{{}}").split()
     if not pushed or pushed[0] != head:
         raise ReleaseError(f"{remote} does not show {name} on {head[:12]} after the push")
     write_output({"tag": name, "commit": head})
+    if retry is not None:
+        return f"pushed {name}, made on {head[:12]} by an earlier run, to {remote} ({reason})"
     return f"tagged {name} on {head[:12]} and pushed it to {remote} ({reason})"
 
 

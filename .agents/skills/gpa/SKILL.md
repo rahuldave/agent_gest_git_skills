@@ -402,6 +402,9 @@ gest task meta set <task-id> github.merged_commit <sha>
    just release
    ```
 
+   When the push fails after the tag was made, run `just release` again on
+   the same commit. It checks the tag and pushes the same tag object.
+
    A run on a commit that already has its tag prints `already released` and
    gives the tag again. So does a run on the pushed commit after its version
    commit got the tag, as in "Re-run all jobs". To build a tag again by hand,

@@ -197,6 +197,99 @@ class ReleaseTests(ReleaseBase):
         self.assertIn("already released: v0.1.1 is on HEAD", again.stdout)
         self.assertEqual(output.read_text(), f"tag=v0.1.1\ncommit={head}\n")
 
+    def test_retry_publishes_the_same_tag_after_a_failed_push(self) -> None:
+        self.commit("feat: start")
+        reject = self.origin / "hooks/pre-receive"
+        reject.write_text("#!/bin/sh\nexit 1\n")
+        reject.chmod(0o755)
+        first = self.run_script()
+        self.assertEqual(first.returncode, 1)
+        tag_object = git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip()
+        self.assertEqual(self.remote_tags(), "")
+        reject.unlink()
+        dry = self.run_script("--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertIn("next tag: v0.1.0", dry.stdout)
+        self.assertEqual(self.remote_tags(), "")
+        retry = self.run_script()
+        self.assertEqual(retry.returncode, 0, retry.stderr)
+        self.assertIn(tag_object + "\trefs/tags/v0.1.0", self.remote_tags())
+        self.assertEqual(git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip(), tag_object)
+        self.assertIn("already released: v0.1.0 is on HEAD", self.run_script().stdout)
+
+    @unittest.skipUnless(shutil.which("ssh-keygen"), "needs ssh-keygen for an owned signing key")
+    def test_retry_preserves_a_signed_tag_after_a_failed_push(self) -> None:
+        self.commit("feat: start")
+        key = self.repo.parent / "signing-key"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
+        for name, value in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("tag.gpgsign", "true")):
+            git("config", name, value, cwd=self.repo)
+        reject = self.origin / "hooks/pre-receive"
+        reject.write_text("#!/bin/sh\nexit 1\n")
+        reject.chmod(0o755)
+        self.assertEqual(self.run_script().returncode, 1)
+        original = git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip()
+        signature = git("for-each-ref", "--format=%(contents:signature)", "refs/tags/v0.1.0", cwd=self.repo)
+        self.assertIn("BEGIN SSH SIGNATURE", signature)
+        reject.unlink()
+        retry = self.run_script()
+        self.assertEqual(retry.returncode, 0, retry.stderr)
+        self.assertIn(original + "\trefs/tags/v0.1.0", self.remote_tags())
+        self.assertEqual(git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip(), original)
+        self.assertEqual(git("for-each-ref", "--format=%(contents:signature)", "refs/tags/v0.1.0", cwd=self.repo),
+                         signature)
+
+    def test_retry_after_an_existing_release_keeps_the_planned_patch_tag(self) -> None:
+        self.commit("feat: start")
+        self.tag("v0.1.0")
+        self.commit("fix: next")
+        reject = self.origin / "hooks/pre-receive"
+        reject.write_text("#!/bin/sh\nexit 1\n")
+        reject.chmod(0o755)
+        self.assertEqual(self.run_script().returncode, 1)
+        original = git("rev-parse", "refs/tags/v0.1.1", cwd=self.repo).strip()
+        reject.unlink()
+        retry = self.run_script()
+        self.assertEqual(retry.returncode, 0, retry.stderr)
+        self.assertIn(original + "\trefs/tags/v0.1.1", self.remote_tags())
+
+    def test_an_unpublished_lightweight_tag_is_not_retried(self) -> None:
+        self.commit("feat: start")
+        git("tag", "v0.1.0", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.remote_tags(), "")
+
+    def test_an_unpublished_tag_must_match_the_plan_without_it(self) -> None:
+        self.commit("feat: start")
+        git("tag", "-a", "v9.0.0", "-m", "v9.0.0", cwd=self.repo)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.remote_tags(), "")
+
+    def test_an_unpublished_tag_on_a_released_commit_is_not_pushed(self) -> None:
+        self.profile("0.2.0")
+        self.commit("feat: start")
+        self.tag("v0.1.0")
+        git("tag", "-a", "v0.2.0", "-m", "v0.2.0", cwd=self.repo)
+        output = self.base / "github-output"
+        result = self.run_script(GITHUB_OUTPUT=str(output))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("already released: v0.1.0 is on HEAD", result.stdout)
+        self.assertNotIn("v0.2.0", self.remote_tags())
+        self.assertEqual(output.read_text(), f"tag=v0.1.0\ncommit={git('rev-parse', 'HEAD', cwd=self.repo).strip()}\n")
+
+    def test_remote_annotation_mismatch_is_rejected_without_replacing_either_tag(self) -> None:
+        self.commit("feat: start")
+        self.tag("v0.1.0")
+        remote_object = git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip()
+        git("tag", "-f", "-a", "v0.1.0", "-m", "a different annotation", cwd=self.repo)
+        local_object = git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(git("rev-parse", "refs/tags/v0.1.0", cwd=self.repo).strip(), local_object)
+        self.assertIn(remote_object + "\trefs/tags/v0.1.0", self.remote_tags())
+
     def test_a_tag_on_another_commit_is_never_moved(self) -> None:
         self.commit("feat: start")
         self.tag("v0.1.0")
@@ -1397,6 +1490,25 @@ class WriteTests(ReleaseBase):
             self.assertIn("asks for a version of the workspace crate b", result.stderr)
         self.assertEqual(self.head(), merged)
         self.assertEqual(git("status", "--porcelain", cwd=self.repo), "")
+
+    def test_a_tag_on_an_unpushed_version_commit_is_not_retried(self) -> None:
+        for bot in (True, False):
+            with self.subTest(bot=bot):
+                self.setUp()
+                self.start("python")
+                self.commit("fix: a crash")
+                git("push", "-q", "origin", "main", cwd=self.repo)
+                pushed = self.remote_head()
+                if bot:
+                    self.as_bot()
+                # A run that wrote, committed and tagged, then stopped before git push --atomic.
+                release_tag.write_versions(self.repo, (1, 0, 0), (1, 0, 1))
+                git("commit", "-q", "-am", "chore(release): v1.0.1", cwd=self.repo)
+                git("tag", "-a", "v1.0.1", "-m", "v1.0.1", cwd=self.repo)
+                result = self.run_script()
+                self.assertEqual(result.returncode, 0 if bot else 1, result.stderr)
+                self.assertNotIn("v1.0.1", self.remote_tags())
+                self.assertEqual(self.remote_head(), pushed)
 
     def test_the_release_commit_passes_ci_gate_as_a_github_bot(self) -> None:
         sys.path.insert(0, str(ROOT / ".agents/skills/gcm/scripts"))
