@@ -411,6 +411,20 @@ These cases stop the script with an error:
   `git fetch --tags origin`, then run the script again.
 - A tag of the next number exists on another commit. The script does not move
   it.
+- The remote has a release tag that is another tag object than the tag in
+  the checkout, with another message or signature. The script moves neither
+  tag.
+
+When a push fails after the script made the tag, run the script again on the
+same commit. It finds the tag on HEAD that the remote does not have. It pushes
+that same tag object, also a signed one, when two rules are true:
+
+- The tag is the annotated tag that the script makes, with its name as the
+  message.
+- The plan without the tag gives the same tag.
+
+Else the script pushes nothing. It stops with an error, or it prints
+`already released` when another tag released the commit.
 
 When there is nothing to tag, the script prints `no release` and exits 0. So a
 second run on the same commit is safe. A tag at or above the next number on a
